@@ -71,7 +71,7 @@ class User extends Authenticatable implements FilamentUser
         // Check panel access based on role
         return match($panel->getId()) {
             'admin' => $this->isAdmin() || $this->isModerator(),
-            'business' => $this->isBusinessOwner() || $this->isBranchManagerRole(),
+            'business' => $this->isBusinessOwner() || $this->isBusinessManager(),
             'customer' => $this->isCustomer(),
             default => false,
         };
@@ -184,25 +184,32 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasMany(User::class, 'referred_by');
     }
 
-    public function branchManagerAssignments()
+    /**
+     * Business Manager assignments
+     */
+    public function businessManagerAssignments()
     {
-        return $this->hasMany(BranchManager::class);
+        return $this->hasMany(BusinessManager::class);
     }
 
-    public function activeBranchManagers()
+    public function activeBusinessManagers()
     {
-        return $this->hasMany(BranchManager::class)->where('is_active', true);
+        return $this->hasMany(BusinessManager::class)->where('is_active', true);
     }
 
-    public function managedBranches()
+    /**
+     * Businesses this user manages
+     */
+    public function managedBusinesses()
     {
         return $this->belongsToMany(
-            BusinessBranch::class,
-            'branch_managers',
+            Business::class,
+            'business_managers',
             'user_id',
-            'business_branch_id'
+            'business_id'
         )
-        ->withPivot(['position', 'permissions', 'is_active', 'is_primary'])
+        ->using(BusinessManager::class)
+        ->withPivot(['position', 'permissions', 'is_active', 'is_primary', 'joined_at'])
         ->wherePivot('is_active', true);
     }
 
@@ -271,9 +278,36 @@ public function getPreferencesAttribute()
 
     public function canManageBusinesses(): bool
     {
-        return $this->role === UserRole::BUSINESS_OWNER;
+        return $this->isBusinessOwner() || $this->isBusinessManager();
     }
 
+    /**
+     * Check if user is a business manager (manages at least one business)
+     */
+    public function isBusinessManager(): bool
+    {
+        return $this->activeBusinessManagers()->exists();
+    }
+
+    /**
+     * Check if user manages a specific business
+     */
+    public function managesBusiness(int $businessId): bool
+    {
+        return $this->activeBusinessManagers()
+            ->where('business_id', $businessId)
+            ->exists();
+    }
+
+    /**
+     * Get BusinessManager relationship for a specific business
+     */
+    public function getBusinessManagerFor(int $businessId): ?BusinessManager
+    {
+        return $this->activeBusinessManagers()
+            ->where('business_id', $businessId)
+            ->first();
+    }
 
     // ============================================
     // PERMISSION SYSTEM
@@ -289,15 +323,14 @@ public function getPreferencesAttribute()
             'create-business' => $this->isBusinessOwner(),
             'edit-business' => $this->canEditBusiness($arguments),
             'delete-business' => $this->canDeleteBusiness($arguments),
-            'create-branch' => $this->ownsBusinessForBranch($arguments),
-            'edit-branch' => $this->canEditBranch($arguments),
-            'delete-branch' => $this->ownsBranch($arguments),
             'manage-products' => $this->canManageProducts($arguments),
             'respond-to-review' => $this->canRespondToReview($arguments),
             'delete-review' => $this->isAdmin(),
             'view-leads' => $this->canViewLeads($arguments),
             'respond-to-leads' => $this->canRespondToLeads($arguments),
             'view-analytics' => $this->canViewAnalytics($arguments),
+            'access-financials' => $this->canAccessFinancials($arguments),
+            'manage-staff' => $this->canManageStaff($arguments),
             'moderate-content' => $this->isStaff(),
             'approve-claims' => $this->isAdmin(),
             'approve-verifications' => $this->isAdmin(),
@@ -309,68 +342,77 @@ public function getPreferencesAttribute()
     {
         if ($this->isAdmin()) return true;
         
-        if ($this->isBusinessOwner() && $business->user_id === $this->id) {
+        // Business owner
+        if (is_object($business) && $business->user_id === $this->id) {
             return true;
+        }
+        
+        // Business manager with permission
+        if (is_object($business)) {
+            $manager = $this->getBusinessManagerFor($business->id);
+            if ($manager && $manager->hasPermission('can_edit_business')) {
+                return true;
+            }
         }
         
         return false;
     }
 
-    private function canEditBranch($branch): bool
+    private function canManageProducts($business): bool
     {
         if ($this->isAdmin()) return true;
         
-        if ($branch->business->user_id === $this->id) {
+        // Business owner
+        if (is_object($business) && $business->user_id === $this->id) {
             return true;
         }
         
-        if ($this->is_branch_manager) {
-            return $this->canPerformAction($branch->id, 'can_edit_branch');
+        // Business manager with permission
+        if (is_object($business)) {
+            $manager = $this->getBusinessManagerFor($business->id);
+            if ($manager && $manager->hasPermission('can_manage_products')) {
+                return true;
+            }
         }
         
         return false;
     }
 
-    private function canManageProducts($branch): bool
+    private function canViewLeads($business): bool
     {
         if ($this->isAdmin()) return true;
         
-        if ($branch->business->user_id === $this->id) {
+        // Business owner
+        if (is_object($business) && $business->user_id === $this->id) {
             return true;
         }
         
-        if ($this->is_branch_manager) {
-            return $this->canPerformAction($branch->id, 'can_manage_products');
+        // Business manager with permission
+        if (is_object($business)) {
+            $manager = $this->getBusinessManagerFor($business->id);
+            if ($manager && $manager->hasPermission('can_view_leads')) {
+                return true;
+            }
         }
         
         return false;
     }
 
-    private function canViewLeads($branch): bool
+    private function canRespondToLeads($business): bool
     {
         if ($this->isAdmin()) return true;
         
-        if ($branch->business->user_id === $this->id) {
+        // Business owner
+        if (is_object($business) && $business->user_id === $this->id) {
             return true;
         }
         
-        if ($this->is_branch_manager) {
-            return $this->canPerformAction($branch->id, 'can_view_leads');
-        }
-        
-        return false;
-    }
-
-    private function canRespondToLeads($branch): bool
-    {
-        if ($this->isAdmin()) return true;
-        
-        if ($branch->business->user_id === $this->id) {
-            return true;
-        }
-        
-        if ($this->is_branch_manager) {
-            return $this->canPerformAction($branch->id, 'can_respond_to_leads');
+        // Business manager with permission
+        if (is_object($business)) {
+            $manager = $this->getBusinessManagerFor($business->id);
+            if ($manager && $manager->hasPermission('can_respond_to_leads')) {
+                return true;
+            }
         }
         
         return false;
@@ -380,44 +422,83 @@ public function getPreferencesAttribute()
     {
         if ($this->isAdmin()) return true;
         
-        $branch = $review->branch;
+        // Get business from review
+        $business = $review->reviewable;
+        if (!$business || !($business instanceof Business)) {
+            return false;
+        }
         
-        if ($branch->business->user_id === $this->id) {
+        // Business owner
+        if ($business->user_id === $this->id) {
             return true;
         }
         
-        if ($this->is_branch_manager) {
-            return $this->canPerformAction($branch->id, 'can_respond_to_reviews');
+        // Business manager with permission
+        $manager = $this->getBusinessManagerFor($business->id);
+        if ($manager && $manager->hasPermission('can_respond_to_reviews')) {
+            return true;
         }
         
         return false;
     }
 
-    private function canViewAnalytics($branch): bool
+    private function canViewAnalytics($business): bool
     {
         if ($this->isAdmin()) return true;
         
-        if ($branch->business->user_id === $this->id) {
+        // Business owner
+        if (is_object($business) && $business->user_id === $this->id) {
             return true;
         }
         
-        if ($this->is_branch_manager) {
-            return $this->canPerformAction($branch->id, 'can_view_analytics');
+        // Business manager with permission
+        if (is_object($business)) {
+            $manager = $this->getBusinessManagerFor($business->id);
+            if ($manager && $manager->hasPermission('can_view_analytics')) {
+                return true;
+            }
         }
         
         return false;
     }
 
-    private function ownsBranch($branch): bool
+    private function canAccessFinancials($business): bool
     {
-        return $branch->business->user_id === $this->id;
+        if ($this->isAdmin()) return true;
+        
+        // Business owner
+        if (is_object($business) && $business->user_id === $this->id) {
+            return true;
+        }
+        
+        // Business manager with permission
+        if (is_object($business)) {
+            $manager = $this->getBusinessManagerFor($business->id);
+            if ($manager && $manager->hasPermission('can_access_financials')) {
+                return true;
+            }
+        }
+        
+        return false;
     }
 
-    private function ownsBusinessForBranch($branch): bool
+    private function canManageStaff($business): bool
     {
-        if (is_object($branch) && isset($branch->business)) {
-            return $branch->business->user_id === $this->id;
+        if ($this->isAdmin()) return true;
+        
+        // Business owner
+        if (is_object($business) && $business->user_id === $this->id) {
+            return true;
         }
+        
+        // Business manager with permission
+        if (is_object($business)) {
+            $manager = $this->getBusinessManagerFor($business->id);
+            if ($manager && $manager->hasPermission('can_manage_staff')) {
+                return true;
+            }
+        }
+        
         return false;
     }
 

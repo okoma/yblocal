@@ -40,11 +40,22 @@ class ProductResource extends Resource
                             ->relationship(
                                 'business',
                                 'business_name',
-                                fn($query) => $query->where('user_id', Auth::id())
+                                fn($query) => {
+                                    $user = Auth::user();
+                                    return $query->where(function ($q) use ($user) {
+                                        $q->where('user_id', $user->id)
+                                          ->orWhereHas('managers', function ($query) use ($user) {
+                                              $query->where('user_id', $user->id)
+                                                    ->where('is_active', true)
+                                                    ->whereJsonContains('permissions->can_manage_products', true);
+                                          });
+                                    });
+                                }
                             )
                             ->searchable()
                             ->preload()
-                            ->required(),
+                            ->required()
+                            ->disabled(fn($context) => $context === 'edit'),
                     ])
                     ->columns(1),
                 
@@ -258,12 +269,63 @@ class ProductResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::whereIn('business_id', Auth::user()->businesses()->pluck('id'))->count();
+        $user = Auth::user();
+        $businessIds = static::getAccessibleBusinessIds($user);
+        return static::getModel()::whereIn('business_id', $businessIds)->count();
     }
     
     public static function getEloquentQuery(): Builder
     {
+        $user = Auth::user();
+        $businessIds = static::getAccessibleBusinessIds($user);
+        
         return parent::getEloquentQuery()
-            ->whereIn('business_id', Auth::user()->businesses()->pluck('id'));
+            ->whereIn('business_id', $businessIds);
+    }
+    
+    /**
+     * Get business IDs that the user can manage products for
+     */
+    protected static function getAccessibleBusinessIds($user): array
+    {
+        // Businesses owned by user
+        $ownedBusinessIds = $user->businesses()->pluck('id')->toArray();
+        
+        // Businesses managed by user with can_manage_products permission
+        $managedBusinessIds = $user->activeBusinessManagers()
+            ->whereJsonContains('permissions->can_manage_products', true)
+            ->pluck('business_id')
+            ->toArray();
+        
+        return array_unique(array_merge($ownedBusinessIds, $managedBusinessIds));
+    }
+    
+    public static function canCreate(): bool
+    {
+        $user = Auth::user();
+        return $user->isBusinessOwner() || 
+               $user->activeBusinessManagers()
+                    ->whereJsonContains('permissions->can_manage_products', true)
+                    ->exists();
+    }
+    
+    public static function canEdit(Model $record): bool
+    {
+        $user = Auth::user();
+        $business = $record->business;
+        
+        // Owner can always edit
+        if ($business->user_id === $user->id) {
+            return true;
+        }
+        
+        // Manager can edit if they have permission
+        $manager = $user->getBusinessManagerFor($business->id);
+        return $manager && $manager->hasPermission('can_manage_products');
+    }
+    
+    public static function canDelete(Model $record): bool
+    {
+        return static::canEdit($record);
     }
 }

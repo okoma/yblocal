@@ -27,10 +27,10 @@
                 <div class="space-y-4">
                     <div>
                         <h3 class="text-lg font-medium text-gray-900 dark:text-white">
-                            {{ $invitation->branch->business->business_name }}
+                            {{ $invitation->business->business_name }}
                         </h3>
                         <p class="text-sm text-gray-600 dark:text-gray-400">
-                            {{ $invitation->branch->branch_title }}
+                            {{ $invitation->business->city }}, {{ $invitation->business->state }}
                         </p>
                     </div>
 
@@ -129,7 +129,7 @@
                         <div class="grid grid-cols-1 gap-2">
                             @php
                                 $permissionLabels = [
-                                    'can_edit_branch' => 'Edit Branch Information',
+                                    'can_edit_business' => 'Edit Business Information',
                                     'can_manage_products' => 'Manage Products/Services',
                                     'can_respond_to_reviews' => 'Respond to Reviews',
                                     'can_view_leads' => 'View Customer Leads',

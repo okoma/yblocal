@@ -221,6 +221,52 @@ class Business extends Model
             ->withTimestamps();
     }
 
+    /**
+     * Business Managers (users who manage this business)
+     */
+    public function managers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'business_managers', 'business_id', 'user_id')
+            ->using(BusinessManager::class)
+            ->withPivot(['position', 'permissions', 'is_active', 'is_primary', 'joined_at'])
+            ->wherePivot('is_active', true)
+            ->withTimestamps();
+    }
+
+    /**
+     * All business manager assignments (including inactive)
+     */
+    public function managerAssignments(): HasMany
+    {
+        return $this->hasMany(BusinessManager::class);
+    }
+
+    /**
+     * Active business managers only
+     */
+    public function activeManagers(): HasMany
+    {
+        return $this->hasMany(BusinessManager::class)->where('is_active', true);
+    }
+
+    /**
+     * Manager invitations for this business
+     */
+    public function managerInvitations(): HasMany
+    {
+        return $this->hasMany(ManagerInvitation::class);
+    }
+
+    /**
+     * Pending manager invitations
+     */
+    public function pendingManagerInvitations(): HasMany
+    {
+        return $this->hasMany(ManagerInvitation::class)
+            ->where('status', 'pending')
+            ->where('expires_at', '>', now());
+    }
+
 
     // ============================================
     // FEATURES & AMENITIES
