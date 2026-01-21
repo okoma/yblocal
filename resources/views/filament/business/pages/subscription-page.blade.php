@@ -119,19 +119,93 @@
                             </li>
                         </ul>
                         
-                        <x-filament::button 
-                            class="w-full mt-6"
-                            :color="$plan->is_popular ? 'primary' : 'gray'"
-                        >
-                            @if($subscription && $subscription->plan_id === $plan->id)
+                        @if($subscription && $subscription->plan_id === $plan->id)
+                            <x-filament::button 
+                                class="w-full mt-6"
+                                color="gray"
+                                disabled
+                            >
                                 Current Plan
-                            @else
-                                Upgrade
-                            @endif
-                        </x-filament::button>
+                            </x-filament::button>
+                        @else
+                            <x-filament::button 
+                                class="w-full mt-6"
+                                :color="$plan->is_popular ? 'primary' : 'gray'"
+                                wire:click="openPaymentModal({{ $plan->id }})"
+                            >
+                                Subscribe Now
+                            </x-filament::button>
+                        @endif
                     </div>
                 @endforeach
             </div>
         </x-filament::section>
     </div>
+    
+    @if($this->selectedPlanId)
+        @php
+            $plan = \App\Models\SubscriptionPlan::find($this->selectedPlanId);
+        @endphp
+        
+        <x-filament::modal id="subscribe-modal" width="md">
+            <x-slot name="heading">
+                Subscribe to {{ $plan->name }}
+            </x-slot>
+            
+            <x-slot name="description">
+                <div class="space-y-2">
+                    <div class="flex justify-between">
+                        <span>Plan Price:</span>
+                        <span class="font-semibold">₦{{ number_format($plan->price, 2) }}</span>
+                    </div>
+                    @if($this->appliedCoupon && $this->discountAmount > 0)
+                        <div class="flex justify-between text-success-600 dark:text-success-400">
+                            <span>Discount ({{ $this->appliedCoupon->code }}):</span>
+                            <span class="font-semibold">-₦{{ number_format($this->discountAmount, 2) }}</span>
+                        </div>
+                    @endif
+                    <div class="flex justify-between border-t pt-2 mt-2">
+                        <span class="font-bold">Total Amount:</span>
+                        <span class="font-bold text-lg">₦{{ number_format($this->finalAmount, 2) }}</span>
+                    </div>
+                </div>
+            </x-slot>
+            
+            <form wire:submit="processPayment">
+                {{ $this->paymentForm }}
+                
+                @if($this->appliedCoupon)
+                    <div class="mt-4 p-3 bg-success-50 dark:bg-success-900/20 rounded-lg">
+                        <div class="flex items-center gap-2">
+                            <svg class="w-5 h-5 text-success-600 dark:text-success-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <div>
+                                <p class="text-sm font-medium text-success-800 dark:text-success-200">
+                                    Coupon Applied: {{ $this->appliedCoupon->code }}
+                                </p>
+                                @if($this->appliedCoupon->description)
+                                    <p class="text-xs text-success-600 dark:text-success-400">
+                                        {{ $this->appliedCoupon->description }}
+                                    </p>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                @endif
+                
+                <x-filament::modal.actions>
+                    <x-filament::button type="submit" color="primary">
+                        Pay ₦{{ number_format($this->finalAmount, 2) }}
+                    </x-filament::button>
+                    <x-filament::button 
+                        color="gray" 
+                        wire:click="$set('selectedPlanId', null)"
+                    >
+                        Cancel
+                    </x-filament::button>
+                </x-filament::modal.actions>
+            </form>
+        </x-filament::modal>
+    @endif
 </x-filament-panels::page>

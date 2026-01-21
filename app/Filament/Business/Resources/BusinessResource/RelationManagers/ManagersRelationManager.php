@@ -143,6 +143,16 @@ class ManagersRelationManager extends RelationManager
                     ->formatStateUsing(function ($state) {
                         if (!$state) return 'None';
                         
+                        // Handle case where permissions might be a JSON string
+                        if (is_string($state)) {
+                            $state = json_decode($state, true);
+                        }
+                        
+                        // Ensure it's an array
+                        if (!is_array($state)) {
+                            return 'None';
+                        }
+                        
                         $permissionLabels = [
                             'can_edit_business' => 'Edit Business',
                             'can_manage_products' => 'Manage Products',

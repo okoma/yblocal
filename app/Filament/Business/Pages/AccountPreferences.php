@@ -42,6 +42,11 @@ class AccountPreferences extends Page
         $this->data = [
             // Notification Preferences
             'email_notifications' => $preferences->email_notifications,
+            'telegram_notifications' => $preferences->telegram_notifications,
+            'telegram_username' => $preferences->telegram_username,
+            'telegram_chat_id' => $preferences->telegram_chat_id,
+            'whatsapp_notifications' => $preferences->whatsapp_notifications,
+            'whatsapp_number' => $preferences->whatsapp_number,
             'notify_new_leads' => $preferences->notify_new_leads,
             'notify_new_reviews' => $preferences->notify_new_reviews,
             'notify_review_replies' => $preferences->notify_review_replies,
@@ -107,6 +112,51 @@ class AccountPreferences extends Page
                                                     ->helperText('Updates about your ad campaigns'),
                                             ])
                                             ->visible(fn (Forms\Get $get) => $get('email_notifications')),
+                                    ]),
+                                
+                                Forms\Components\Section::make('Telegram Notifications')
+                                    ->description('Receive notifications via Telegram.')
+                                    ->schema([
+                                        Forms\Components\Toggle::make('telegram_notifications')
+                                            ->label('Enable Telegram Notifications')
+                                            ->helperText('Receive notifications via Telegram')
+                                            ->live(),
+                                        
+                                        Forms\Components\TextInput::make('telegram_username')
+                                            ->label('Telegram Username')
+                                            ->placeholder('@username')
+                                            ->maxLength(255)
+                                            ->helperText('Your Telegram username (e.g., @username)')
+                                            ->visible(fn (Forms\Get $get) => $get('telegram_notifications')),
+                                        
+                                        Forms\Components\TextInput::make('telegram_chat_id')
+                                            ->label('Telegram Chat ID')
+                                            ->maxLength(255)
+                                            ->helperText('Your Telegram Chat ID (if available, this will be used instead of username)')
+                                            ->visible(fn (Forms\Get $get) => $get('telegram_notifications')),
+                                    ])
+                                    ->columns(2),
+                                
+                                Forms\Components\Section::make('WhatsApp Notifications')
+                                    ->description('Receive lead notifications via WhatsApp (leads only).')
+                                    ->schema([
+                                        Forms\Components\Toggle::make('whatsapp_notifications')
+                                            ->label('Enable WhatsApp Notifications')
+                                            ->helperText('Receive lead notifications via WhatsApp')
+                                            ->live(),
+                                        
+                                        Forms\Components\TextInput::make('whatsapp_number')
+                                            ->label('WhatsApp Number')
+                                            ->tel()
+                                            ->placeholder('+2348012345678')
+                                            ->maxLength(20)
+                                            ->helperText('Your WhatsApp number with country code (e.g., +2348012345678)')
+                                            ->visible(fn (Forms\Get $get) => $get('whatsapp_notifications')),
+                                        
+                                        Forms\Components\Placeholder::make('whatsapp_info')
+                                            ->label('')
+                                            ->content('Note: WhatsApp notifications are only sent for new leads.')
+                                            ->visible(fn (Forms\Get $get) => $get('whatsapp_notifications')),
                                     ]),
                             ]),
 
