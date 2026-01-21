@@ -7,7 +7,7 @@
 
 namespace App\Filament\Admin\Widgets;
 
-use App\Models\BusinessBranch;
+use App\Models\Business;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
@@ -22,8 +22,8 @@ class TopPerformersWidget extends BaseWidget
         return $table
             ->heading('Top Performing Businesses (This Month)')
             ->query(
-                BusinessBranch::query()
-                    ->with(['business', 'reviews'])
+                Business::query()
+                    ->with(['reviews'])
                     ->withCount([
                         'views as views_count' => function ($query) {
                             $query->whereDate('created_at', '>=', now()->startOfMonth());
@@ -38,11 +38,11 @@ class TopPerformersWidget extends BaseWidget
                     ->limit(10)
             )
             ->columns([
-                Tables\Columns\TextColumn::make('business.business_name')
+                Tables\Columns\TextColumn::make('business_name')
                     ->label('Business')
                     ->searchable()
                     ->limit(30)
-                    ->description(fn ($record) => $record->branch_title),
+                    ->description(fn ($record) => $record->city . ', ' . $record->state),
                 
                 Tables\Columns\TextColumn::make('views_count')
                     ->label('Views')
@@ -65,7 +65,7 @@ class TopPerformersWidget extends BaseWidget
                     ->badge()
                     ->color('warning'),
                 
-                Tables\Columns\TextColumn::make('rating')
+                Tables\Columns\TextColumn::make('avg_rating')
                     ->label('Rating')
                     ->formatStateUsing(fn ($state) => $state ? number_format($state, 1) . ' ⭐' : 'No ratings')
                     ->sortable(),

@@ -84,7 +84,6 @@ class ManagerInvitationResource extends Resource
                                 'can_view_analytics',
                             ])
                             ->columns(2)
-                            ->gridColumns(2)
                             ->bulkToggleable(),
                     ]),
                 

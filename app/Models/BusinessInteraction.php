@@ -47,13 +47,6 @@ class BusinessInteraction extends Model
         return $this->belongsTo(Business::class);
     }
 
-    /**
-     * Branch (for multi-location businesses)
-     */
-    public function branch(): BelongsTo
-    {
-        return $this->belongsTo(BusinessBranch::class, 'business_branch_id');
-    }
 
     /**
      * User who performed the interaction (optional - can be guest)

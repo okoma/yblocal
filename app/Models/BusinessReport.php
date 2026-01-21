@@ -40,10 +40,6 @@ class BusinessReport extends Model
         return $this->belongsTo(Business::class);
     }
 
-    public function branch()
-    {
-        return $this->belongsTo(BusinessBranch::class, 'business_branch_id');
-    }
 
     public function reporter()
     {

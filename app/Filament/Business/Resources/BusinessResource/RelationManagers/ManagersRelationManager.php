@@ -65,7 +65,6 @@ class ManagersRelationManager extends RelationManager
                                 'can_view_analytics',
                             ])
                             ->columns(2)
-                            ->gridColumns(2)
                             ->bulkToggleable()
                             ->afterStateHydrated(function ($component, $state) {
                                 if ($state && is_array($state)) {
@@ -212,7 +211,6 @@ class ManagersRelationManager extends RelationManager
                                 'can_view_analytics',
                             ])
                             ->columns(2)
-                            ->gridColumns(2)
                             ->bulkToggleable(),
                     ])
                     ->action(function (array $data, $livewire) {
