@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class BusinessManager extends Pivot
 {
+    protected $table = 'business_managers';
 
     protected $fillable = [
         'business_id',
