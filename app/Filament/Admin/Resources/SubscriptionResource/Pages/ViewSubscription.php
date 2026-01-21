@@ -26,6 +26,7 @@ class ViewSubscription extends ViewRecord {
             ])->columns(3),
             Components\Section::make('Usage')->schema([
                 Components\TextEntry::make('faqs_used')->suffix(fn ($r) => '/' . ($r->plan->max_faqs ?? '∞')),
+                Components\TextEntry::make('leads_viewed_used')->label('Leads Viewed')->suffix(fn ($r) => '/' . ($r->plan->max_leads_view ?? '∞'))->helperText('Viewing limit only, unlimited receiving'),
                 Components\TextEntry::make('products_used')->suffix(fn ($r) => '/' . ($r->plan->max_products ?? '∞')),
                 Components\TextEntry::make('team_members_used')->suffix(fn ($r) => '/' . ($r->plan->max_team_members ?? '∞')),
                 Components\TextEntry::make('photos_used')->suffix(fn ($r) => '/' . ($r->plan->max_photos ?? '∞')),

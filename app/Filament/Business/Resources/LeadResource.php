@@ -271,8 +271,20 @@ class LeadResource extends Resource
     
     public static function getEloquentQuery(): Builder
     {
-        $businesses = Auth::user()->businesses()->pluck('id');
-        return parent::getEloquentQuery()
-            ->whereIn('business_id', $businesses);
+        $user = Auth::user();
+        $businesses = $user->businesses()->pluck('id');
+        $query = parent::getEloquentQuery()
+            ->whereIn('business_id', $businesses)
+            ->orderBy('created_at', 'desc'); // Most recent first
+        
+        // Apply viewing limit based on subscription (only for viewing, not receiving)
+        $subscription = $user->subscription;
+        if ($subscription && $subscription->plan->max_leads_view !== null) {
+            // Limit to the number of leads they can view (most recent N leads)
+            $maxLeads = $subscription->plan->max_leads_view;
+            $query->limit($maxLeads);
+        }
+        
+        return $query;
     }
 }

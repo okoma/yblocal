@@ -98,9 +98,44 @@ class ViewBusiness extends ViewRecord
                 
                 Components\Section::make('Business Hours')
                     ->schema([
-                        Components\ViewEntry::make('business_hours')
-                            ->view('filament.infolists.business-hours')
-                            ->columnSpanFull(),
+                        Components\TextEntry::make('business_hours')
+                            ->label('')
+                            ->formatStateUsing(function ($state) {
+                                if (empty($state) || !is_array($state)) {
+                                    return 'No business hours set.';
+                                }
+                                
+                                $days = [
+                                    'monday' => 'Monday',
+                                    'tuesday' => 'Tuesday',
+                                    'wednesday' => 'Wednesday',
+                                    'thursday' => 'Thursday',
+                                    'friday' => 'Friday',
+                                    'saturday' => 'Saturday',
+                                    'sunday' => 'Sunday',
+                                ];
+                                
+                                $hoursList = [];
+                                foreach ($days as $key => $dayName) {
+                                    if (isset($state[$key])) {
+                                        $hours = $state[$key];
+                                        if (isset($hours['closed']) && $hours['closed']) {
+                                            $hoursList[] = "{$dayName}: Closed";
+                                        } elseif (isset($hours['open']) && isset($hours['close'])) {
+                                            $open = date('g:i A', strtotime($hours['open']));
+                                            $close = date('g:i A', strtotime($hours['close']));
+                                            $hoursList[] = "{$dayName}: {$open} - {$close}";
+                                        }
+                                    }
+                                }
+                                
+                                return empty($hoursList) 
+                                    ? 'No business hours set.' 
+                                    : implode("\n", $hoursList);
+                            })
+                            ->columnSpanFull()
+                            ->markdown()
+                            ->prose(),
                     ])
                     ->visible(fn ($record) => !empty($record->business_hours))
                     ->collapsible()

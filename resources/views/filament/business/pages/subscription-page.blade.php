@@ -35,12 +35,19 @@
                 <div class="mt-6 space-y-4">
                     <h4 class="font-medium">Usage Statistics</h4>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                             <div class="text-sm text-gray-500 dark:text-gray-400">FAQs</div>
                             <div class="text-2xl font-bold mt-1">
                                 {{ $subscription->faqs_used }} / {{ $subscription->plan->max_faqs ?? '∞' }}
                             </div>
+                        </div>
+                        <div class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <div class="text-sm text-gray-500 dark:text-gray-400">Leads Viewed</div>
+                            <div class="text-2xl font-bold mt-1">
+                                {{ $subscription->leads_viewed_used }} / {{ $subscription->plan->max_leads_view ?? '∞' }}
+                            </div>
+                            <div class="text-xs text-gray-400 mt-1">Unlimited receiving</div>
                         </div>
                         <div class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                             <div class="text-sm text-gray-500 dark:text-gray-400">Products</div>
@@ -89,6 +96,14 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                                 </svg>
                                 <span class="text-sm">{{ $plan->max_faqs ?? 'Unlimited' }} FAQs</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                                <span class="text-sm">View {{ $plan->max_leads_view ?? 'Unlimited' }} Leads</span>
+                                <span class="text-xs text-gray-400 ml-1">(Unlimited receiving)</span>
                             </li>
                             <li class="flex items-start">
                                 <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

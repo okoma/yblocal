@@ -220,6 +220,17 @@ class ViewSubscription extends ViewRecord
                                     : 'success'
                             ),
 
+                        Components\TextEntry::make('leads_viewed_used')
+                            ->label('Leads Viewed')
+                            ->suffix(fn ($record) => ' / ' . ($record->plan->max_leads_view ?? '∞'))
+                            ->icon('heroicon-o-eye')
+                            ->helperText('Viewing limit only - unlimited receiving')
+                            ->color(fn ($record) => 
+                                $record->plan->max_leads_view && $record->leads_viewed_used >= $record->plan->max_leads_view 
+                                    ? 'danger' 
+                                    : 'success'
+                            ),
+
                         Components\TextEntry::make('products_used')
                             ->label('Products Used')
                             ->suffix(fn ($record) => ' / ' . ($record->plan->max_products ?? '∞'))

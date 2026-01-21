@@ -29,6 +29,7 @@ class Subscription extends Model
         'auto_renew',
         'cancellation_reason',
         'faqs_used',
+        'leads_viewed_used',
         'products_used',
         'team_members_used',
         'photos_used',
@@ -141,6 +142,12 @@ class Subscription extends Model
     public function canAddFaq()
     {
         return $this->plan->max_faqs === null || $this->faqs_used < $this->plan->max_faqs;
+    }
+
+    public function canViewMoreLeads()
+    {
+        // They can always receive unlimited leads, but viewing is limited
+        return $this->plan->max_leads_view === null || $this->leads_viewed_used < $this->plan->max_leads_view;
     }
 
     public function canAddProduct()

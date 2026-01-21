@@ -48,6 +48,7 @@ class SubscriptionResource extends Resource
             
             Forms\Components\Section::make('Usage Tracking')->schema([
                 Forms\Components\TextInput::make('faqs_used')->numeric()->default(0),
+                Forms\Components\TextInput::make('leads_viewed_used')->numeric()->default(0)->helperText('Leads viewed (not received)'),
                 Forms\Components\TextInput::make('products_used')->numeric()->default(0),
                 Forms\Components\TextInput::make('team_members_used')->numeric()->default(0),
                 Forms\Components\TextInput::make('photos_used')->numeric()->default(0),
@@ -74,6 +75,7 @@ class SubscriptionResource extends Resource
             Tables\Columns\TextColumn::make('ends_at')->dateTime()->sortable()->since()->description(fn ($r) => $r->ends_at->format('M d, Y')),
             Tables\Columns\IconColumn::make('auto_renew')->boolean()->label('Auto Renew')->toggleable(),
             Tables\Columns\TextColumn::make('faqs_used')->label('FAQs')->suffix(fn ($r) => '/' . ($r->plan->max_faqs ?? '∞'))->toggleable(isToggledHiddenByDefault: true),
+            Tables\Columns\TextColumn::make('leads_viewed_used')->label('Leads Viewed')->suffix(fn ($r) => '/' . ($r->plan->max_leads_view ?? '∞'))->toggleable(isToggledHiddenByDefault: true),
             Tables\Columns\TextColumn::make('products_used')->label('Products')->suffix(fn ($r) => '/' . ($r->plan->max_products ?? '∞'))->toggleable(isToggledHiddenByDefault: true),
         ])->defaultSort('created_at', 'desc')->filters([
             Tables\Filters\SelectFilter::make('status')->options(['active' => 'Active', 'cancelled' => 'Cancelled', 'expired' => 'Expired', 'paused' => 'Paused', 'trialing' => 'Trialing'])->multiple(),

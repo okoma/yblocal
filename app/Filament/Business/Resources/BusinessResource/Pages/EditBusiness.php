@@ -13,6 +13,8 @@ use App\Models\PaymentMethod;
 use App\Models\Amenity;
 use App\Models\Location;
 use App\Models\FAQ;
+use App\Models\SocialAccount;
+use App\Models\Official;
 use Illuminate\Support\Facades\Auth;
 use Filament\Actions;
 use Filament\Forms;
@@ -233,37 +235,7 @@ class EditBusiness extends EditRecord
                 ])
                 ->columns(1),
             
-            // Step 4: Media & Branding (Optional)
-            Wizard\Step::make('Media & Branding')
-                ->description('Upload your business images (optional - you can skip this step)')
-                ->schema([
-                    Forms\Components\FileUpload::make('logo')
-                        ->image()
-                        ->directory('business-logos')
-                        ->maxSize(2048)
-                        ->imageEditor()
-                        ->helperText('Square logo works best'),
-                    
-                    Forms\Components\FileUpload::make('cover_photo')
-                        ->image()
-                        ->directory('business-covers')
-                        ->maxSize(5120)
-                        ->imageEditor()
-                        ->helperText('Wide banner image'),
-                    
-                    Forms\Components\FileUpload::make('gallery')
-                        ->image()
-                        ->directory('business-gallery')
-                        ->multiple()
-                        ->maxFiles(10)
-                        ->maxSize(3072)
-                        ->imageEditor()
-                        ->helperText('Upload up to 10 images')
-                        ->columnSpanFull(),
-                ])
-                ->columns(2),
-            
-            // Step 5: Features & Amenities (Optional)
+            // Step 4: Features & Amenities (Optional)
             Wizard\Step::make('Features & Amenities')
                 ->description('What facilities do you offer? (optional - you can skip this step)')
                 ->schema([
@@ -285,7 +257,7 @@ class EditBusiness extends EditRecord
                 ])
                 ->columns(1),
             
-            // Step 6: Legal Information (Optional)
+            // Step 5: Legal Information (Optional)
             Wizard\Step::make('Legal Information')
                 ->description('Business registration details (optional - you can skip this step)')
                 ->schema([
@@ -313,40 +285,7 @@ class EditBusiness extends EditRecord
                 ])
                 ->columns(3),
             
-            // Step 7: SEO Settings (Optional)
-            Wizard\Step::make('SEO Settings')
-                ->description('Search engine optimization (optional - you can skip this step)')
-                ->schema([
-                    Forms\Components\Select::make('canonical_strategy')
-                        ->label('Indexing Strategy')
-                        ->options([
-                            'self' => 'Index Separately (Unique business with own SEO)',
-                            'parent' => 'Standard Business',
-                        ])
-                        ->default('self')
-                        ->required()
-                        ->helperText('Most businesses should use "Index Separately"'),
-                    
-                    Forms\Components\TextInput::make('meta_title')
-                        ->maxLength(255)
-                        ->helperText('Custom page title (auto-generated if empty)'),
-                    
-                    Forms\Components\Textarea::make('meta_description')
-                        ->maxLength(255)
-                        ->rows(3)
-                        ->helperText('Custom meta description (auto-generated if empty)'),
-                    
-                    Forms\Components\TagsInput::make('unique_features')
-                        ->helperText('What makes your business unique? (e.g., "24/7 Service", "Award Winning")')
-                        ->placeholder('Add unique features'),
-                    
-                    Forms\Components\Textarea::make('nearby_landmarks')
-                        ->rows(3)
-                        ->helperText('Mention nearby landmarks to help customers find you'),
-                ])
-                ->columns(1),
-            
-            // Step 8: FAQs (Optional)
+            // Step 6: FAQs (Optional)
             Wizard\Step::make('FAQs')
                 ->description('Add frequently asked questions (optional - you can skip this step)')
                 ->schema([
@@ -423,6 +362,180 @@ class EditBusiness extends EditRecord
                         ->columnSpanFull(),
                 ])
                 ->columns(1),
+            
+            // Step 7: Social Media (Optional)
+            Wizard\Step::make('Social Media')
+                ->description('Connect your social media profiles (optional - you can skip this step)')
+                ->schema([
+                    Forms\Components\Repeater::make('social_accounts_temp')
+                        ->label('Social Media Accounts')
+                        ->schema([
+                            Forms\Components\Select::make('platform')
+                                ->options([
+                                    'facebook' => 'Facebook',
+                                    'instagram' => 'Instagram',
+                                    'twitter' => 'Twitter (X)',
+                                    'linkedin' => 'LinkedIn',
+                                    'youtube' => 'YouTube',
+                                    'tiktok' => 'TikTok',
+                                    'pinterest' => 'Pinterest',
+                                    'whatsapp' => 'WhatsApp Business',
+                                ])
+                                ->required()
+                                ->searchable(),
+                            
+                            Forms\Components\TextInput::make('url')
+                                ->label('Profile URL')
+                                ->url()
+                                ->required()
+                                ->maxLength(255)
+                                ->placeholder('https://facebook.com/yourbusiness'),
+                            
+                            Forms\Components\Toggle::make('is_active')
+                                ->label('Active')
+                                ->default(true),
+                        ])
+                        ->columns(3)
+                        ->defaultItems(0)
+                        ->collapsible()
+                        ->itemLabel(fn (array $state): ?string => ucfirst($state['platform'] ?? 'New Account'))
+                        ->helperText('Add your social media profiles to increase your online presence')
+                        ->columnSpanFull(),
+                ])
+                ->columns(1),
+            
+            // Step 8: Team Members (Optional)
+            Wizard\Step::make('Team Members')
+                ->description('Add your team members and staff (optional - you can skip this step)')
+                ->schema([
+                    Forms\Components\Repeater::make('officials_temp')
+                        ->label('Team Members')
+                        ->schema([
+                            Forms\Components\FileUpload::make('photo')
+                                ->image()
+                                ->directory('official-photos')
+                                ->maxSize(2048)
+                                ->imageEditor()
+                                ->avatar()
+                                ->columnSpanFull(),
+                            
+                            Forms\Components\TextInput::make('name')
+                                ->required()
+                                ->maxLength(255),
+                            
+                            Forms\Components\TextInput::make('position')
+                                ->required()
+                                ->maxLength(255)
+                                ->helperText('e.g., CEO, Manager, Chef, etc.'),
+                            
+                            Forms\Components\TextInput::make('order')
+                                ->label('Display Order')
+                                ->numeric()
+                                ->default(0)
+                                ->helperText('Lower numbers appear first'),
+                            
+                            Forms\Components\Toggle::make('is_active')
+                                ->label('Active')
+                                ->default(true),
+                            
+                            Forms\Components\Repeater::make('social_accounts')
+                                ->label('Social Media')
+                                ->schema([
+                                    Forms\Components\Select::make('platform')
+                                        ->options([
+                                            'linkedin' => 'LinkedIn',
+                                            'twitter' => 'Twitter (X)',
+                                            'facebook' => 'Facebook',
+                                            'instagram' => 'Instagram',
+                                            'youtube' => 'YouTube',
+                                            'tiktok' => 'TikTok',
+                                            'github' => 'GitHub',
+                                            'website' => 'Personal Website',
+                                        ])
+                                        ->required(),
+                                    
+                                    Forms\Components\TextInput::make('url')
+                                        ->url()
+                                        ->required()
+                                        ->maxLength(255),
+                                ])
+                                ->columns(2)
+                                ->defaultItems(0)
+                                ->collapsible()
+                                ->itemLabel(fn (array $state): ?string => $state['platform'] ?? null)
+                                ->columnSpanFull(),
+                        ])
+                        ->columns(2)
+                        ->defaultItems(0)
+                        ->collapsible()
+                        ->itemLabel(fn (array $state): ?string => $state['name'] ?? 'New Team Member')
+                        ->helperText('Add your team members to showcase your business team')
+                        ->columnSpanFull(),
+                ])
+                ->columns(1),
+            
+            // Step 9: Media & Branding (Optional)
+            Wizard\Step::make('Media & Branding')
+                ->description('Upload your business images (optional - you can skip this step)')
+                ->schema([
+                    Forms\Components\FileUpload::make('logo')
+                        ->image()
+                        ->directory('business-logos')
+                        ->maxSize(2048)
+                        ->imageEditor()
+                        ->helperText('Square logo works best'),
+                    
+                    Forms\Components\FileUpload::make('cover_photo')
+                        ->image()
+                        ->directory('business-covers')
+                        ->maxSize(5120)
+                        ->imageEditor()
+                        ->helperText('Wide banner image'),
+                    
+                    Forms\Components\FileUpload::make('gallery')
+                        ->image()
+                        ->directory('business-gallery')
+                        ->multiple()
+                        ->maxFiles(10)
+                        ->maxSize(3072)
+                        ->imageEditor()
+                        ->helperText('Upload up to 10 images')
+                        ->columnSpanFull(),
+                ])
+                ->columns(2),
+            
+            // Step 10: SEO Settings (Optional) - LAST STEP
+            Wizard\Step::make('SEO Settings')
+                ->description('Search engine optimization (optional - you can skip this step)')
+                ->schema([
+                    Forms\Components\Select::make('canonical_strategy')
+                        ->label('Indexing Strategy')
+                        ->options([
+                            'self' => 'Index Separately (Unique business with own SEO)',
+                            'parent' => 'Standard Business',
+                        ])
+                        ->default('self')
+                        ->required()
+                        ->helperText('Most businesses should use "Index Separately"'),
+                    
+                    Forms\Components\TextInput::make('meta_title')
+                        ->maxLength(255)
+                        ->helperText('Custom page title (auto-generated if empty)'),
+                    
+                    Forms\Components\Textarea::make('meta_description')
+                        ->maxLength(255)
+                        ->rows(3)
+                        ->helperText('Custom meta description (auto-generated if empty)'),
+                    
+                    Forms\Components\TagsInput::make('unique_features')
+                        ->helperText('What makes your business unique? (e.g., "24/7 Service", "Award Winning")')
+                        ->placeholder('Add unique features'),
+                    
+                    Forms\Components\Textarea::make('nearby_landmarks')
+                        ->rows(3)
+                        ->helperText('Mention nearby landmarks to help customers find you'),
+                ])
+                ->columns(1),
         ];
     }
     
@@ -441,6 +554,29 @@ class EditBusiness extends EditRecord
                 'answer' => $faq->answer,
                 'order' => $faq->order,
                 'is_active' => $faq->is_active,
+            ];
+        })->toArray();
+        
+        // Load Social Accounts
+        $data['social_accounts_temp'] = $this->record->socialAccounts()->get()->map(function ($account) {
+            return [
+                'id' => $account->id,
+                'platform' => $account->platform,
+                'url' => $account->url,
+                'is_active' => $account->is_active,
+            ];
+        })->toArray();
+        
+        // Load Officials/Team Members
+        $data['officials_temp'] = $this->record->officials()->get()->map(function ($official) {
+            return [
+                'id' => $official->id,
+                'name' => $official->name,
+                'position' => $official->position,
+                'photo' => $official->photo,
+                'order' => $official->order,
+                'is_active' => $official->is_active,
+                'social_accounts' => $official->social_accounts ?? [],
             ];
         })->toArray();
         
@@ -484,13 +620,17 @@ class EditBusiness extends EditRecord
         $paymentMethods = $data['payment_methods'] ?? [];
         $amenities = $data['amenities'] ?? [];
         $faqs = $data['faqs_temp'] ?? [];
+        $socialAccounts = $data['social_accounts_temp'] ?? [];
+        $officials = $data['officials_temp'] ?? [];
         
-        unset($data['categories'], $data['payment_methods'], $data['amenities'], $data['faqs_temp']);
+        unset($data['categories'], $data['payment_methods'], $data['amenities'], $data['faqs_temp'], $data['social_accounts_temp'], $data['officials_temp']);
         
         $this->categoriesData = $categories;
         $this->paymentMethodsData = $paymentMethods;
         $this->amenitiesData = $amenities;
         $this->faqsData = $faqs;
+        $this->socialAccountsData = $socialAccounts;
+        $this->officialsData = $officials;
         
         return $data;
     }
@@ -579,6 +719,74 @@ class EditBusiness extends EditRecord
                 $subscription->update(['faqs_used' => $totalFaqs]);
             }
         }
+        
+        // Handle Social Accounts - Delete existing and create new ones
+        if (isset($this->socialAccountsData)) {
+            // Get IDs of social accounts that should be kept
+            $accountIdsToKeep = collect($this->socialAccountsData)->pluck('id')->filter()->toArray();
+            
+            // Delete social accounts that are not in the new list
+            $business->socialAccounts()->whereNotIn('id', $accountIdsToKeep)->delete();
+            
+            // Update or create social accounts
+            foreach ($this->socialAccountsData as $accountData) {
+                if (isset($accountData['id']) && $accountData['id']) {
+                    // Update existing account
+                    SocialAccount::where('id', $accountData['id'])
+                        ->where('business_id', $business->id)
+                        ->update([
+                            'platform' => $accountData['platform'],
+                            'url' => $accountData['url'],
+                            'is_active' => $accountData['is_active'] ?? true,
+                        ]);
+                } else {
+                    // Create new account
+                    SocialAccount::create([
+                        'business_id' => $business->id,
+                        'platform' => $accountData['platform'],
+                        'url' => $accountData['url'],
+                        'is_active' => $accountData['is_active'] ?? true,
+                    ]);
+                }
+            }
+        }
+        
+        // Handle Officials/Team Members - Delete existing and create new ones
+        if (isset($this->officialsData)) {
+            // Get IDs of officials that should be kept
+            $officialIdsToKeep = collect($this->officialsData)->pluck('id')->filter()->toArray();
+            
+            // Delete officials that are not in the new list
+            $business->officials()->whereNotIn('id', $officialIdsToKeep)->delete();
+            
+            // Update or create officials
+            foreach ($this->officialsData as $officialData) {
+                if (isset($officialData['id']) && $officialData['id']) {
+                    // Update existing official
+                    Official::where('id', $officialData['id'])
+                        ->where('business_id', $business->id)
+                        ->update([
+                            'name' => $officialData['name'],
+                            'position' => $officialData['position'],
+                            'photo' => $officialData['photo'] ?? null,
+                            'order' => $officialData['order'] ?? 0,
+                            'is_active' => $officialData['is_active'] ?? true,
+                            'social_accounts' => $officialData['social_accounts'] ?? [],
+                        ]);
+                } else {
+                    // Create new official
+                    Official::create([
+                        'business_id' => $business->id,
+                        'name' => $officialData['name'],
+                        'position' => $officialData['position'],
+                        'photo' => $officialData['photo'] ?? null,
+                        'order' => $officialData['order'] ?? 0,
+                        'is_active' => $officialData['is_active'] ?? true,
+                        'social_accounts' => $officialData['social_accounts'] ?? [],
+                    ]);
+                }
+            }
+        }
     }
     
     protected function getRedirectUrl(): string
@@ -590,4 +798,6 @@ class EditBusiness extends EditRecord
     protected ?array $paymentMethodsData = null;
     protected ?array $amenitiesData = null;
     protected ?array $faqsData = null;
+    protected ?array $socialAccountsData = null;
+    protected ?array $officialsData = null;
 }

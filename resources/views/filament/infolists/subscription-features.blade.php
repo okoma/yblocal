@@ -25,6 +25,22 @@
             </div>
         @endif
 
+        @if ($plan->max_leads_view)
+            <div class="flex items-center text-sm">
+                <x-heroicon-o-eye class="w-5 h-5 text-primary-500 mr-2" />
+                <span class="text-gray-700 dark:text-gray-300">
+                    View up to <strong>{{ $plan->max_leads_view }}</strong> leads
+                </span>
+            </div>
+        @else
+            <div class="flex items-center text-sm">
+                <x-heroicon-o-eye class="w-5 h-5 text-success-500 mr-2" />
+                <span class="text-gray-700 dark:text-gray-300">
+                    <strong>Unlimited</strong> lead viewing
+                </span>
+            </div>
+        @endif
+
         @if ($plan->max_products)
             <div class="flex items-center text-sm">
                 <x-heroicon-o-shopping-bag class="w-5 h-5 text-primary-500 mr-2" />

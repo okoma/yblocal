@@ -48,6 +48,11 @@ class SubscriptionOverviewWidget extends Widget
                     'limit' => $plan->max_faqs,
                     'percentage' => $plan->max_faqs ? ($subscription->faqs_used / $plan->max_faqs * 100) : 0,
                 ],
+                'leads_view' => [
+                    'used' => $subscription->leads_viewed_used,
+                    'limit' => $plan->max_leads_view,
+                    'percentage' => $plan->max_leads_view ? ($subscription->leads_viewed_used / $plan->max_leads_view * 100) : 0,
+                ],
                 'products' => [
                     'used' => $subscription->products_used,
                     'limit' => $plan->max_products,

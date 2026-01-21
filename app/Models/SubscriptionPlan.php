@@ -27,6 +27,7 @@ class SubscriptionPlan extends Model
         'trial_days',
         'features',
         'max_faqs',
+        'max_leads_view',
         'max_products',
         'max_team_members',
         'max_photos',
