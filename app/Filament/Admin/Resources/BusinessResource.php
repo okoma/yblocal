@@ -250,15 +250,10 @@ class BusinessResource extends Resource
                                         ->label('')
                                         ->content(function ($record) {
                                             if (!$record) {
-                                                return '💡 After creating this business, you can add branches from the "Branches" tab';
+                                                return '💡 After creating this business, you can manage products, officials, and leads directly on this business.';
                                             }
                                             
-                                            $branchCount = $record->branches()->count();
-                                            if ($branchCount === 0) {
-                                                return '✅ This is a standalone single-location business. Products, officials, and leads are managed directly on this business.';
-                                            }
-                                            
-                                            return "✅ This business has {$branchCount} branch(es). Each branch can have its own products, officials, and leads.";
+                                            return '✅ This is a single-location business. Products, officials, and leads are managed directly on this business.';
                                         })
                                         ->columnSpanFull(),
                                 ])
