@@ -40,7 +40,7 @@ class ProductResource extends Resource
                             ->relationship(
                                 'business',
                                 'business_name',
-                                fn($query) => {
+                                function($query) {
                                     $user = Auth::user();
                                     return $query->where(function ($q) use ($user) {
                                         $q->where('user_id', $user->id)
