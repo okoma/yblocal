@@ -194,17 +194,18 @@
                     </div>
                 @endif
                 
-                <x-filament::modal.actions>
-                    <x-filament::button type="submit" color="primary">
-                        Pay ₦{{ number_format($this->finalAmount, 2) }}
-                    </x-filament::button>
+                <div class="mt-6 flex justify-end gap-3">
                     <x-filament::button 
+                        type="button"
                         color="gray" 
                         wire:click="$set('selectedPlanId', null)"
                     >
                         Cancel
                     </x-filament::button>
-                </x-filament::modal.actions>
+                    <x-filament::button type="submit" color="primary">
+                        Pay ₦{{ number_format($this->finalAmount, 2) }}
+                    </x-filament::button>
+                </div>
             </form>
         </x-filament::modal>
     @endif

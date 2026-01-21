@@ -1,15 +1,13 @@
 <x-filament-panels::page>
-    <form wire:submit="save">
-        {{ $this->form }}
-        
-        <x-filament::section>
-            <x-slot name="heading">
-                Actions
-            </x-slot>
-            
-            <x-filament::button type="submit" size="lg">
-                Save Settings
-            </x-filament::button>
-        </x-filament::section>
-    </form>
+    <x-filament::card>
+        <form wire:submit="save">
+            {{ $this->form }}
+
+            <div class="mt-6 flex items-center justify-end">
+                <x-filament::button type="submit">
+                    Save Settings
+                </x-filament::button>
+            </div>
+        </form>
+    </x-filament::card>
 </x-filament-panels::page>
