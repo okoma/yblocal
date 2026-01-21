@@ -12,6 +12,8 @@ use App\Models\Category;
 use App\Models\PaymentMethod;
 use App\Models\Amenity;
 use App\Models\Location;
+use App\Models\FAQ;
+use Illuminate\Support\Facades\Auth;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Forms\Components\Wizard;
@@ -343,6 +345,84 @@ class EditBusiness extends EditRecord
                         ->helperText('Mention nearby landmarks to help customers find you'),
                 ])
                 ->columns(1),
+            
+            // Step 8: FAQs (Optional)
+            Wizard\Step::make('FAQs')
+                ->description('Add frequently asked questions (optional - you can skip this step)')
+                ->schema([
+                    Forms\Components\Repeater::make('faqs_temp')
+                        ->label('Frequently Asked Questions')
+                        ->schema([
+                            Forms\Components\TextInput::make('question')
+                                ->label('Question')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpanFull(),
+                            
+                            Forms\Components\Textarea::make('answer')
+                                ->label('Answer')
+                                ->required()
+                                ->rows(3)
+                                ->maxLength(1000)
+                                ->columnSpanFull(),
+                            
+                            Forms\Components\Toggle::make('is_active')
+                                ->label('Active')
+                                ->default(true),
+                            
+                            Forms\Components\TextInput::make('order')
+                                ->label('Order')
+                                ->numeric()
+                                ->default(0)
+                                ->helperText('Display order (lower numbers appear first)'),
+                        ])
+                        ->columns(2)
+                        ->defaultItems(0)
+                        ->collapsible()
+                        ->itemLabel(fn (array $state): ?string => $state['question'] ?? 'New FAQ')
+                        ->helperText(function () {
+                            $user = Auth::user();
+                            $subscription = $user->subscription;
+                            $maxFaqs = $subscription?->plan?->max_faqs;
+                            $currentCount = $this->record->faqs()->count();
+                            
+                            if ($maxFaqs === null) {
+                                return "Add frequently asked questions about your business (Unlimited - {$currentCount} added)";
+                            }
+                            
+                            return "Add frequently asked questions about your business ({$currentCount} / {$maxFaqs} used)";
+                        })
+                        ->maxItems(function () {
+                            $user = Auth::user();
+                            $subscription = $user->subscription;
+                            $maxFaqs = $subscription?->plan?->max_faqs;
+                            
+                            if ($maxFaqs === null) {
+                                return null; // Unlimited
+                            }
+                            
+                            return $maxFaqs;
+                        })
+                        ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
+                            // Validate FAQ limit
+                            $user = Auth::user();
+                            $subscription = $user->subscription;
+                            $maxFaqs = $subscription?->plan?->max_faqs;
+                            
+                            if ($maxFaqs !== null && count($state ?? []) > $maxFaqs) {
+                                \Filament\Notifications\Notification::make()
+                                    ->warning()
+                                    ->title('FAQ Limit Reached')
+                                    ->body("Your plan allows a maximum of {$maxFaqs} FAQs. Please remove some FAQs or upgrade your plan.")
+                                    ->send();
+                                
+                                // Trim to max
+                                $set('faqs_temp', array_slice($state, 0, $maxFaqs));
+                            }
+                        })
+                        ->columnSpanFull(),
+                ])
+                ->columns(1),
         ];
     }
     
@@ -352,6 +432,17 @@ class EditBusiness extends EditRecord
         $data['categories'] = $this->record->categories()->pluck('categories.id')->toArray();
         $data['payment_methods'] = $this->record->paymentMethods()->pluck('payment_methods.id')->toArray();
         $data['amenities'] = $this->record->amenities()->pluck('amenities.id')->toArray();
+        
+        // Load FAQs
+        $data['faqs_temp'] = $this->record->faqs()->get()->map(function ($faq) {
+            return [
+                'id' => $faq->id,
+                'question' => $faq->question,
+                'answer' => $faq->answer,
+                'order' => $faq->order,
+                'is_active' => $faq->is_active,
+            ];
+        })->toArray();
         
         // Transform business_hours from keyed array to repeater format for editing
         if (isset($data['business_hours']) && is_array($data['business_hours'])) {
@@ -392,12 +483,14 @@ class EditBusiness extends EditRecord
         $categories = $data['categories'] ?? [];
         $paymentMethods = $data['payment_methods'] ?? [];
         $amenities = $data['amenities'] ?? [];
+        $faqs = $data['faqs_temp'] ?? [];
         
-        unset($data['categories'], $data['payment_methods'], $data['amenities']);
+        unset($data['categories'], $data['payment_methods'], $data['amenities'], $data['faqs_temp']);
         
         $this->categoriesData = $categories;
         $this->paymentMethodsData = $paymentMethods;
         $this->amenitiesData = $amenities;
+        $this->faqsData = $faqs;
         
         return $data;
     }
@@ -420,6 +513,72 @@ class EditBusiness extends EditRecord
         if (isset($this->amenitiesData)) {
             $business->amenities()->sync($this->amenitiesData);
         }
+        
+        // Handle FAQs - Delete existing and create new ones (with limit check)
+        if (isset($this->faqsData)) {
+            $user = Auth::user();
+            $subscription = $user->subscription;
+            $maxFaqs = $subscription?->plan?->max_faqs;
+            
+            // Count existing FAQs from other businesses
+            $otherBusinessesFaqs = $user->businesses()
+                ->where('id', '!=', $business->id)
+                ->withCount('faqs')
+                ->get()
+                ->sum('faqs_count');
+            
+            // Calculate how many FAQs this business can have
+            $allowedForThisBusiness = $maxFaqs !== null 
+                ? max(0, $maxFaqs - $otherBusinessesFaqs)
+                : null;
+            
+            // Enforce limit
+            if ($allowedForThisBusiness !== null && count($this->faqsData) > $allowedForThisBusiness) {
+                \Filament\Notifications\Notification::make()
+                    ->warning()
+                    ->title('FAQ Limit Exceeded')
+                    ->body("Your plan allows a maximum of {$maxFaqs} FAQs total. You have {$otherBusinessesFaqs} FAQs in other businesses. Only the first {$allowedForThisBusiness} FAQs were saved.")
+                    ->send();
+                
+                $this->faqsData = array_slice($this->faqsData, 0, $allowedForThisBusiness);
+            }
+            
+            // Get IDs of FAQs that should be kept
+            $faqIdsToKeep = collect($this->faqsData)->pluck('id')->filter()->toArray();
+            
+            // Delete FAQs that are not in the new list
+            $business->faqs()->whereNotIn('id', $faqIdsToKeep)->delete();
+            
+            // Update or create FAQs
+            foreach ($this->faqsData as $faqData) {
+                if (isset($faqData['id']) && $faqData['id']) {
+                    // Update existing FAQ
+                    FAQ::where('id', $faqData['id'])
+                        ->where('business_id', $business->id)
+                        ->update([
+                            'question' => $faqData['question'],
+                            'answer' => $faqData['answer'],
+                            'order' => $faqData['order'] ?? 0,
+                            'is_active' => $faqData['is_active'] ?? true,
+                        ]);
+                } else {
+                    // Create new FAQ
+                    FAQ::create([
+                        'business_id' => $business->id,
+                        'question' => $faqData['question'],
+                        'answer' => $faqData['answer'],
+                        'order' => $faqData['order'] ?? 0,
+                        'is_active' => $faqData['is_active'] ?? true,
+                    ]);
+                }
+            }
+            
+            // Update subscription usage
+            if ($subscription) {
+                $totalFaqs = $user->businesses()->withCount('faqs')->get()->sum('faqs_count');
+                $subscription->update(['faqs_used' => $totalFaqs]);
+            }
+        }
     }
     
     protected function getRedirectUrl(): string
@@ -430,4 +589,5 @@ class EditBusiness extends EditRecord
     protected ?array $categoriesData = null;
     protected ?array $paymentMethodsData = null;
     protected ?array $amenitiesData = null;
+    protected ?array $faqsData = null;
 }

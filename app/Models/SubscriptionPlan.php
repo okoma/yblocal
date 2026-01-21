@@ -26,7 +26,7 @@ class SubscriptionPlan extends Model
         'billing_interval',
         'trial_days',
         'features',
-        'max_branches',
+        'max_faqs',
         'max_products',
         'max_team_members',
         'max_photos',

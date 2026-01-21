@@ -43,10 +43,10 @@ class SubscriptionOverviewWidget extends Widget
                 'auto_renew' => $subscription->auto_renew,
             ],
             'usage' => [
-                'branches' => [
-                    'used' => $subscription->branches_used,
-                    'limit' => $plan->max_branches,
-                    'percentage' => $plan->max_branches ? ($subscription->branches_used / $plan->max_branches * 100) : 0,
+                'faqs' => [
+                    'used' => $subscription->faqs_used,
+                    'limit' => $plan->max_faqs,
+                    'percentage' => $plan->max_faqs ? ($subscription->faqs_used / $plan->max_faqs * 100) : 0,
                 ],
                 'products' => [
                     'used' => $subscription->products_used,

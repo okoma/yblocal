@@ -25,7 +25,7 @@ class ViewSubscription extends ViewRecord {
                 Components\TextEntry::make('trial_ends_at')->dateTime()->visible(fn ($r) => $r->trial_ends_at),
             ])->columns(3),
             Components\Section::make('Usage')->schema([
-                Components\TextEntry::make('branches_used')->suffix(fn ($r) => '/' . ($r->plan->max_branches ?? '∞')),
+                Components\TextEntry::make('faqs_used')->suffix(fn ($r) => '/' . ($r->plan->max_faqs ?? '∞')),
                 Components\TextEntry::make('products_used')->suffix(fn ($r) => '/' . ($r->plan->max_products ?? '∞')),
                 Components\TextEntry::make('team_members_used')->suffix(fn ($r) => '/' . ($r->plan->max_team_members ?? '∞')),
                 Components\TextEntry::make('photos_used')->suffix(fn ($r) => '/' . ($r->plan->max_photos ?? '∞')),

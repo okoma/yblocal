@@ -210,12 +210,12 @@ class ViewSubscription extends ViewRecord
 
                 Components\Section::make('Usage Statistics')
                     ->schema([
-                        Components\TextEntry::make('branches_used')
-                            ->label('Branches Used')
-                            ->suffix(fn ($record) => ' / ' . ($record->plan->max_branches ?? '∞'))
-                            ->icon('heroicon-o-building-storefront')
+                        Components\TextEntry::make('faqs_used')
+                            ->label('FAQs Used')
+                            ->suffix(fn ($record) => ' / ' . ($record->plan->max_faqs ?? '∞'))
+                            ->icon('heroicon-o-question-mark-circle')
                             ->color(fn ($record) => 
-                                $record->plan->max_branches && $record->branches_used >= $record->plan->max_branches 
+                                $record->plan->max_faqs && $record->faqs_used >= $record->plan->max_faqs 
                                     ? 'danger' 
                                     : 'success'
                             ),

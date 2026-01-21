@@ -12,6 +12,7 @@ use App\Models\Category;
 use App\Models\PaymentMethod;
 use App\Models\Amenity;
 use App\Models\Location;
+use App\Models\FAQ;
 use Filament\Forms;
 use Filament\Forms\Components\Wizard;
 use Filament\Forms\Form;
@@ -340,6 +341,83 @@ Forms\Components\Grid::make(2)
                         ->helperText('Mention nearby landmarks to help customers find you'),
                 ])
                 ->columns(1),
+            
+            // Step 8: FAQs (Optional)
+            Wizard\Step::make('FAQs')
+                ->description('Add frequently asked questions (optional - you can skip this step)')
+                ->schema([
+                    Forms\Components\Repeater::make('faqs_temp')
+                        ->label('Frequently Asked Questions')
+                        ->schema([
+                            Forms\Components\TextInput::make('question')
+                                ->label('Question')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpanFull(),
+                            
+                            Forms\Components\Textarea::make('answer')
+                                ->label('Answer')
+                                ->required()
+                                ->rows(3)
+                                ->maxLength(1000)
+                                ->columnSpanFull(),
+                            
+                            Forms\Components\Toggle::make('is_active')
+                                ->label('Active')
+                                ->default(true),
+                            
+                            Forms\Components\TextInput::make('order')
+                                ->label('Order')
+                                ->numeric()
+                                ->default(0)
+                                ->helperText('Display order (lower numbers appear first)'),
+                        ])
+                        ->columns(2)
+                        ->defaultItems(0)
+                        ->collapsible()
+                        ->itemLabel(fn (array $state): ?string => $state['question'] ?? 'New FAQ')
+                        ->helperText(function () {
+                            $user = Auth::user();
+                            $subscription = $user->subscription;
+                            $maxFaqs = $subscription?->plan?->max_faqs;
+                            
+                            if ($maxFaqs === null) {
+                                return 'Add frequently asked questions about your business (Unlimited)';
+                            }
+                            
+                            return "Add frequently asked questions about your business (Max: {$maxFaqs})";
+                        })
+                        ->maxItems(function () {
+                            $user = Auth::user();
+                            $subscription = $user->subscription;
+                            $maxFaqs = $subscription?->plan?->max_faqs;
+                            
+                            if ($maxFaqs === null) {
+                                return null; // Unlimited
+                            }
+                            
+                            return $maxFaqs;
+                        })
+                        ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
+                            // Validate FAQ limit
+                            $user = Auth::user();
+                            $subscription = $user->subscription;
+                            $maxFaqs = $subscription?->plan?->max_faqs;
+                            
+                            if ($maxFaqs !== null && count($state ?? []) > $maxFaqs) {
+                                \Filament\Notifications\Notification::make()
+                                    ->warning()
+                                    ->title('FAQ Limit Reached')
+                                    ->body("Your plan allows a maximum of {$maxFaqs} FAQs. Please remove some FAQs or upgrade your plan.")
+                                    ->send();
+                                
+                                // Trim to max
+                                $set('faqs_temp', array_slice($state, 0, $maxFaqs));
+                            }
+                        })
+                        ->columnSpanFull(),
+                ])
+                ->columns(1),
         ];
     }
     
@@ -372,14 +450,16 @@ Forms\Components\Grid::make(2)
         $categories = $data['categories'] ?? [];
         $paymentMethods = $data['payment_methods'] ?? [];
         $amenities = $data['amenities'] ?? [];
+        $faqs = $data['faqs_temp'] ?? [];
         
         // Remove from data array (will be synced after creation)
-        unset($data['categories'], $data['payment_methods'], $data['amenities']);
+        unset($data['categories'], $data['payment_methods'], $data['amenities'], $data['faqs_temp']);
         
         // Store for after creation hook
         $this->categoriesData = $categories;
         $this->paymentMethodsData = $paymentMethods;
         $this->amenitiesData = $amenities;
+        $this->faqsData = $faqs;
         
         return $data;
     }
@@ -403,6 +483,40 @@ Forms\Components\Grid::make(2)
         if (!empty($this->amenitiesData)) {
             $business->amenities()->sync($this->amenitiesData);
         }
+        
+        // Create FAQs (with limit check)
+        if (!empty($this->faqsData)) {
+            $user = Auth::user();
+            $subscription = $user->subscription;
+            $maxFaqs = $subscription?->plan?->max_faqs;
+            
+            // Enforce limit
+            if ($maxFaqs !== null && count($this->faqsData) > $maxFaqs) {
+                \Filament\Notifications\Notification::make()
+                    ->warning()
+                    ->title('FAQ Limit Exceeded')
+                    ->body("Your plan allows a maximum of {$maxFaqs} FAQs. Only the first {$maxFaqs} FAQs were saved.")
+                    ->send();
+                
+                $this->faqsData = array_slice($this->faqsData, 0, $maxFaqs);
+            }
+            
+            foreach ($this->faqsData as $faqData) {
+                FAQ::create([
+                    'business_id' => $business->id,
+                    'question' => $faqData['question'],
+                    'answer' => $faqData['answer'],
+                    'order' => $faqData['order'] ?? 0,
+                    'is_active' => $faqData['is_active'] ?? true,
+                ]);
+            }
+            
+            // Update subscription usage
+            if ($subscription) {
+                $totalFaqs = $user->businesses()->withCount('faqs')->get()->sum('faqs_count');
+                $subscription->update(['faqs_used' => $totalFaqs]);
+            }
+        }
     }
     
     protected function getCreatedNotificationTitle(): ?string
@@ -419,4 +533,5 @@ Forms\Components\Grid::make(2)
     protected array $categoriesData = [];
     protected array $paymentMethodsData = [];
     protected array $amenitiesData = [];
+    protected array $faqsData = [];
 }

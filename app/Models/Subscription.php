@@ -28,7 +28,7 @@ class Subscription extends Model
         'paused_at',
         'auto_renew',
         'cancellation_reason',
-        'branches_used',
+        'faqs_used',
         'products_used',
         'team_members_used',
         'photos_used',
@@ -138,9 +138,9 @@ class Subscription extends Model
         ]);
     }
 
-    public function canAddBranch()
+    public function canAddFaq()
     {
-        return $this->plan->max_branches === null || $this->branches_used < $this->plan->max_branches;
+        return $this->plan->max_faqs === null || $this->faqs_used < $this->plan->max_faqs;
     }
 
     public function canAddProduct()

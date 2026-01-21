@@ -77,9 +77,9 @@ class AmenityResource extends Resource
                 Tables\Columns\TextColumn::make('icon')
                     ->toggleable(),
                 
-                Tables\Columns\TextColumn::make('branches_count')
-                    ->counts('branches')
-                    ->label('Used in Branches')
+                Tables\Columns\TextColumn::make('businesses_count')
+                    ->counts('businesses')
+                    ->label('Used in Businesses')
                     ->sortable(),
                 
                 Tables\Columns\IconColumn::make('is_active')

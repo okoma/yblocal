@@ -9,18 +9,18 @@
     <div class="space-y-2">
         <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-2">Core Features</h4>
         
-        @if ($plan->max_branches)
+        @if ($plan->max_faqs)
             <div class="flex items-center text-sm">
-                <x-heroicon-o-building-storefront class="w-5 h-5 text-primary-500 mr-2" />
+                <x-heroicon-o-question-mark-circle class="w-5 h-5 text-primary-500 mr-2" />
                 <span class="text-gray-700 dark:text-gray-300">
-                    Up to <strong>{{ $plan->max_branches }}</strong> branches
+                    Up to <strong>{{ $plan->max_faqs }}</strong> FAQs
                 </span>
             </div>
         @else
             <div class="flex items-center text-sm">
-                <x-heroicon-o-building-storefront class="w-5 h-5 text-success-500 mr-2" />
+                <x-heroicon-o-question-mark-circle class="w-5 h-5 text-success-500 mr-2" />
                 <span class="text-gray-700 dark:text-gray-300">
-                    <strong>Unlimited</strong> branches
+                    <strong>Unlimited</strong> FAQs
                 </span>
             </div>
         @endif

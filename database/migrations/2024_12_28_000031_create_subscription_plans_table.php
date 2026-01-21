@@ -31,7 +31,7 @@ return new class extends Migration
             // Features (JSON)
             $table->json('features')->nullable();
             // Example: {
-            //   "max_branches": 5,
+            //   "max_faqs": 10,
             //   "max_products": 100,
             //   "analytics": true,
             //   "priority_support": false,
@@ -41,7 +41,7 @@ return new class extends Migration
             // }
             
             // Limits
-            $table->integer('max_branches')->nullable(); // null = unlimited
+            $table->integer('max_faqs')->nullable(); // null = unlimited
             $table->integer('max_products')->nullable();
             $table->integer('max_team_members')->nullable();
             $table->integer('max_photos')->nullable();

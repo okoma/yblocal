@@ -288,6 +288,24 @@ class Business extends Model
         return $this->belongsToMany(Amenity::class, 'business_amenity');
     }
 
+    /**
+     * Business FAQs
+     */
+    public function faqs(): HasMany
+    {
+        return $this->hasMany(FAQ::class)->ordered();
+    }
+
+    /**
+     * Active FAQs only
+     */
+    public function activeFaqs(): HasMany
+    {
+        return $this->hasMany(FAQ::class)
+            ->where('is_active', true)
+            ->ordered();
+    }
+
     // ============================================
     // REVIEWS & RATINGS
     // ============================================
