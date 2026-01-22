@@ -45,7 +45,10 @@ class ViewSubscription extends ViewRecord
                             $period = $this->record->isYearly() ? '1 Year' : '1 Month';
                             $price = number_format($this->record->getPrice(), 2);
                             $currentEnd = $this->record->ends_at->format('M j, Y');
-                            $newEnd = $this->record->ends_at->addDays($this->record->isYearly() ? 365 : 30)->format('M j, Y');
+                            
+                            // Clone the date to avoid modifying the original
+                            $newEndDate = clone $this->record->ends_at;
+                            $newEnd = $newEndDate->addDays($this->record->isYearly() ? 365 : 30)->format('M j, Y');
                             
                             return <<<HTML
                                 <div class="space-y-2 text-sm">
