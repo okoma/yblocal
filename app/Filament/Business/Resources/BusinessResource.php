@@ -123,18 +123,6 @@ class BusinessResource extends Resource
             ]);
     }
 
-    public static function getRelations(): array
-    {
-        return [
-            RelationManagers\ProductsRelationManager::class,
-            RelationManagers\LeadsRelationManager::class,
-            RelationManagers\ReviewsRelationManager::class,
-            RelationManagers\OfficialsRelationManager::class,
-            RelationManagers\SocialAccountsRelationManager::class,
-            RelationManagers\ManagersRelationManager::class,
-        ];
-    }
-
     public static function getPages(): array
     {
         return [
