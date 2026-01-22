@@ -93,23 +93,50 @@ class WalletPage extends Page implements HasTable, HasActions
                 ->color('primary')
                 ->modalWidth('md')
                 ->form([
+                    Forms\Components\Select::make('credit_package')
+                        ->label('Select Credit Package')
+                        ->options([
+                            '100' => '100 Credits - ₦1,000',
+                            '500' => '500 Credits - ₦5,000',
+                            '1000' => '1,000 Credits - ₦10,000',
+                            '2500' => '2,500 Credits - ₦25,000',
+                            '5000' => '5,000 Credits - ₦50,000',
+                            '10000' => '10,000 Credits - ₦100,000',
+                            'custom' => 'Custom Amount',
+                        ])
+                        ->native(false)
+                        ->required()
+                        ->live()
+                        ->afterStateUpdated(function (Forms\Set $set, $state) {
+                            if ($state && $state !== 'custom') {
+                                $set('credits', (int) $state);
+                                $set('amount', (int) $state * 10);
+                            } else {
+                                $set('credits', null);
+                                $set('amount', null);
+                            }
+                        })
+                        ->helperText('Choose a package or enter custom amount'),
+
                     Forms\Components\TextInput::make('credits')
-                        ->label('Number of Credits')
+                        ->label('Custom Credits')
                         ->numeric()
                         ->required()
                         ->minValue(10)
                         ->maxValue(10000)
                         ->live(debounce: 500)
                         ->afterStateUpdated(fn (Forms\Set $set, $state) => 
-                            $set('amount', $state * 10)
+                            $set('amount', $state ? ((int) $state * 10) : 0)
                         )
-                        ->helperText('1 Credit = ₦10'),
+                        ->visible(fn (Forms\Get $get) => $get('credit_package') === 'custom')
+                        ->helperText('Minimum: 10 credits, Maximum: 10,000 credits'),
 
                     Forms\Components\Placeholder::make('total_display')
                         ->label('Total Cost')
                         ->content(fn (Forms\Get $get) => 
                             '₦' . number_format(($get('credits') ?? 0) * 10, 2)
-                        ),
+                        )
+                        ->visible(fn (Forms\Get $get) => $get('credits') > 0),
                     
                     Forms\Components\Hidden::make('amount'),
 
