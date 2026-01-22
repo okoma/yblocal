@@ -18,7 +18,6 @@ use Filament\Notifications\Notification;
 use Filament\Forms;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Filament\Support\Enums\Alignment;
 
 class ViewSubscription extends ViewRecord
 {
@@ -89,7 +88,6 @@ class ViewSubscription extends ViewRecord
                     return $this->processRenewal($data);
                 })
                 ->modalSubmitActionLabel('Pay & Renew')
-                ->modalActionsAlignment(Alignment::Right)
                 ->visible(fn () => $this->record->isActive()),
 
             Actions\Action::make('toggle_auto_renew')
