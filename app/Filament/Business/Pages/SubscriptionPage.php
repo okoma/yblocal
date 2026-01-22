@@ -35,6 +35,7 @@ class SubscriptionPage extends Page implements HasForms
     public ?Coupon $appliedCoupon = null;
     public float $discountAmount = 0;
     public float $finalAmount = 0;
+    public string $billingInterval = 'monthly'; // 'monthly' or 'yearly'
     
     public function getTitle(): string
     {
@@ -65,6 +66,7 @@ class SubscriptionPage extends Page implements HasForms
     {
         $this->selectedPlanId = $planId;
         $plan = \App\Models\SubscriptionPlan::findOrFail($planId);
+        $this->billingInterval = 'monthly';
         $this->paymentData = [
             'payment_gateway_id' => null,
             'coupon_code' => null,
@@ -76,28 +78,15 @@ class SubscriptionPage extends Page implements HasForms
         $this->dispatch('open-modal', id: 'subscribe-modal');
     }
     
+    public function updatedBillingInterval(): void
+    {
+        $this->updateFinalAmount();
+    }
+    
     public function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\Section::make('Payment Details')
-                    ->schema([
-                        Forms\Components\Select::make('payment_gateway_id')
-                            ->label('Payment Method')
-                            ->options(function () {
-                                return PaymentGateway::enabled()
-                                    ->ordered()
-                                    ->get()
-                                    ->mapWithKeys(function ($gateway) {
-                                        return [$gateway->id => $gateway->display_name];
-                                    });
-                            })
-                            ->required()
-                            ->searchable()
-                            ->preload()
-                            ->live(),
-                    ]),
-                
                 Forms\Components\Section::make('Coupon Code (Optional)')
                     ->schema([
                         Forms\Components\TextInput::make('coupon_code')
@@ -118,9 +107,25 @@ class SubscriptionPage extends Page implements HasForms
                                     $this->updateFinalAmount();
                                 }
                             }),
-                    ])
-                    ->collapsible()
-                    ->collapsed(),
+                    ]),
+                
+                Forms\Components\Section::make('Payment Method')
+                    ->schema([
+                        Forms\Components\Select::make('payment_gateway_id')
+                            ->label('Select Payment Method')
+                            ->options(function () {
+                                return PaymentGateway::enabled()
+                                    ->ordered()
+                                    ->get()
+                                    ->mapWithKeys(function ($gateway) {
+                                        return [$gateway->id => $gateway->display_name];
+                                    });
+                            })
+                            ->required()
+                            ->searchable()
+                            ->preload()
+                            ->live(),
+                    ]),
             ])
             ->statePath('paymentData');
     }
@@ -220,7 +225,24 @@ class SubscriptionPage extends Page implements HasForms
     protected function updateFinalAmount(): void
     {
         $plan = \App\Models\SubscriptionPlan::findOrFail($this->selectedPlanId);
-        $this->finalAmount = max(0, $plan->price - $this->discountAmount);
+        $basePrice = $this->billingInterval === 'yearly' && $plan->yearly_price 
+            ? $plan->yearly_price 
+            : $plan->price;
+        $this->finalAmount = max(0, $basePrice - $this->discountAmount);
+    }
+    
+    public function getCurrentPlanPrice(): float
+    {
+        if (!$this->selectedPlanId) {
+            return 0;
+        }
+        $plan = \App\Models\SubscriptionPlan::find($this->selectedPlanId);
+        if (!$plan) {
+            return 0;
+        }
+        return $this->billingInterval === 'yearly' && $plan->yearly_price 
+            ? $plan->yearly_price 
+            : $plan->price;
     }
     
     public function processPayment(): void
@@ -230,13 +252,16 @@ class SubscriptionPage extends Page implements HasForms
         $gateway = PaymentGateway::findOrFail($data['payment_gateway_id']);
         $user = Auth::user();
         
+        // Calculate subscription duration based on billing interval
+        $duration = $this->billingInterval === 'yearly' ? 12 : 1;
+        
         // Create pending subscription
         $subscription = \App\Models\Subscription::create([
             'user_id' => $user->id,
             'subscription_plan_id' => $plan->id,
             'status' => 'pending',
             'starts_at' => now(),
-            'ends_at' => now()->addMonth(),
+            'ends_at' => now()->addMonths($duration),
             'payment_method' => $gateway->slug,
             'auto_renew' => true,
         ]);
@@ -251,9 +276,10 @@ class SubscriptionPage extends Page implements HasForms
             'currency' => 'NGN',
             'payment_method' => $gateway->slug,
             'status' => 'pending',
-            'description' => 'Subscription payment for ' . $plan->name,
+            'description' => 'Subscription payment for ' . $plan->name . ' (' . $this->billingInterval . ')',
             'metadata' => [
-                'original_amount' => $plan->price,
+                'billing_interval' => $this->billingInterval,
+                'original_amount' => $this->getCurrentPlanPrice(),
                 'discount_amount' => $this->discountAmount,
                 'coupon_code' => $this->appliedCoupon?->code,
                 'coupon_id' => $this->appliedCoupon?->id,
@@ -263,7 +289,8 @@ class SubscriptionPage extends Page implements HasForms
         // Apply coupon if one was used
         if ($this->appliedCoupon) {
             try {
-                $this->appliedCoupon->apply($user->id, $plan->price, $transaction->id);
+                $basePrice = $this->getCurrentPlanPrice();
+                $this->appliedCoupon->apply($user->id, $basePrice, $transaction->id);
             } catch (\Exception $e) {
                 Notification::make()
                     ->warning()

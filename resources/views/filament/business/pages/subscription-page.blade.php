@@ -147,35 +147,63 @@
             $plan = \App\Models\SubscriptionPlan::find($this->selectedPlanId);
         @endphp
         
-        <x-filament::modal id="subscribe-modal" width="md">
+        <x-filament::modal id="subscribe-modal" width="3xl">
             <x-slot name="heading">
-                Subscribe to {{ $plan->name }}
-            </x-slot>
-            
-            <x-slot name="description">
-                <div class="space-y-2">
-                    <div class="flex justify-between">
-                        <span>Plan Price:</span>
-                        <span class="font-semibold">₦{{ number_format($plan->price, 2) }}</span>
-                    </div>
-                    @if($this->appliedCoupon && $this->discountAmount > 0)
-                        <div class="flex justify-between text-success-600 dark:text-success-400">
-                            <span>Discount ({{ $this->appliedCoupon->code }}):</span>
-                            <span class="font-semibold">-₦{{ number_format($this->discountAmount, 2) }}</span>
+                <div class="text-center">
+                    <div class="flex justify-center mb-3">
+                        <div class="w-16 h-16 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center">
+                            <svg class="w-8 h-8 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
                         </div>
-                    @endif
-                    <div class="flex justify-between border-t pt-2 mt-2">
-                        <span class="font-bold">Total Amount:</span>
-                        <span class="font-bold text-lg">₦{{ number_format($this->finalAmount, 2) }}</span>
                     </div>
+                    <h3 class="text-2xl font-bold">{{ $plan->name }}</h3>
                 </div>
             </x-slot>
             
             <form wire:submit="processPayment">
-                {{ $this->form }}
+                {{-- Billing Interval Toggle --}}
+                <div class="mb-6">
+                    <div class="flex items-center justify-center gap-4">
+                        <span class="text-sm font-medium {{ $this->billingInterval === 'monthly' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400' }}">
+                            Monthly
+                        </span>
+                        <button 
+                            type="button"
+                            class="relative inline-flex items-center cursor-pointer"
+                            wire:click="$set('billingInterval', $billingInterval === 'monthly' ? 'yearly' : 'monthly')"
+                        >
+                            <input 
+                                type="checkbox" 
+                                class="sr-only peer" 
+                                @if($this->billingInterval === 'yearly') checked @endif
+                                readonly
+                            >
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
+                        </button>
+                        <span class="text-sm font-medium {{ $this->billingInterval === 'yearly' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400' }}">
+                            Yearly
+                        </span>
+                    </div>
+                    @if($this->billingInterval === 'yearly' && $plan->yearly_price)
+                        @php
+                            $monthlyTotal = $plan->price * 12;
+                            $savings = $monthlyTotal - $plan->yearly_price;
+                            $savingsPercent = round(($savings / $monthlyTotal) * 100);
+                        @endphp
+                        <p class="text-center text-sm text-success-600 dark:text-success-400 mt-2">
+                            Save {{ $savingsPercent }}% (₦{{ number_format($savings, 2) }}) with yearly billing
+                        </p>
+                    @endif
+                </div>
+                
+                {{-- Form Fields (Coupon and Payment Method) --}}
+                <div class="mb-6 space-y-4">
+                    {{ $this->form }}
+                </div>
                 
                 @if($this->appliedCoupon)
-                    <div class="mt-4 p-3 bg-success-50 dark:bg-success-900/20 rounded-lg">
+                    <div class="mb-6 p-3 bg-success-50 dark:bg-success-900/20 rounded-lg">
                         <div class="flex items-center gap-2">
                             <svg class="w-5 h-5 text-success-600 dark:text-success-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
@@ -194,7 +222,32 @@
                     </div>
                 @endif
                 
-                <div class="mt-6 flex justify-end gap-3">
+                {{-- Summary Section --}}
+                <div class="mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <h4 class="font-semibold mb-3">Order Summary</h4>
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-sm">
+                            <span>Plan:</span>
+                            <span class="font-medium">{{ $plan->name }} ({{ ucfirst($this->billingInterval) }})</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span>Plan Price:</span>
+                            <span class="font-medium">₦{{ number_format($this->getCurrentPlanPrice(), 2) }}</span>
+                        </div>
+                        @if($this->appliedCoupon && $this->discountAmount > 0)
+                            <div class="flex justify-between text-sm text-success-600 dark:text-success-400">
+                                <span>Discount ({{ $this->appliedCoupon->code }}):</span>
+                                <span class="font-medium">-₦{{ number_format($this->discountAmount, 2) }}</span>
+                            </div>
+                        @endif
+                        <div class="flex justify-between border-t border-gray-200 dark:border-gray-700 pt-2 mt-2">
+                            <span class="font-bold">Total Amount:</span>
+                            <span class="font-bold text-lg text-primary-600 dark:text-primary-400">₦{{ number_format($this->finalAmount, 2) }}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end gap-3">
                     <x-filament::button 
                         type="button"
                         color="gray" 
@@ -202,7 +255,7 @@
                     >
                         Cancel
                     </x-filament::button>
-                    <x-filament::button type="submit" color="primary">
+                    <x-filament::button type="submit" color="primary" size="lg">
                         Pay ₦{{ number_format($this->finalAmount, 2) }}
                     </x-filament::button>
                 </div>
