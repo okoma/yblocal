@@ -32,3 +32,9 @@ Route::prefix('payment')->name('payment.')->group(function () {
     Route::get('/paystack/callback', [\App\Http\Controllers\PaymentController::class, 'paystackCallback'])->name('paystack.callback');
     Route::get('/flutterwave/callback', [\App\Http\Controllers\PaymentController::class, 'flutterwaveCallback'])->name('flutterwave.callback');
 });
+
+// Transaction Receipt (Business Panel)
+Route::middleware(['auth'])->group(function () {
+    Route::get('/business/transaction/{transaction}/receipt', [\App\Http\Controllers\PaymentController::class, 'downloadReceipt'])
+        ->name('business.transaction.receipt');
+});

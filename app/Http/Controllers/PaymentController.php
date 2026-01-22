@@ -403,4 +403,59 @@ class PaymentController extends Controller
         return redirect()->to($this->getRedirectUrl($transaction))
             ->with('error', $message);
     }
+
+    // ==========================================
+    // RECEIPT GENERATION
+    // ==========================================
+    
+    /**
+     * Download transaction receipt as PDF
+     */
+    public function downloadReceipt(Transaction $transaction)
+    {
+        // Ensure user owns this transaction
+        $user = auth()->user();
+        
+        // Check if user owns the transaction or owns the business associated with it
+        $isOwner = $transaction->user_id === $user->id;
+        
+        if ($transaction->transactionable_type === 'App\Models\Subscription') {
+            $subscription = $transaction->transactionable;
+            if ($subscription && $subscription->business_id) {
+                $business = $subscription->business;
+                $isOwner = $isOwner || ($business && $business->user_id === $user->id);
+            }
+        }
+        
+        if ($transaction->transactionable_type === 'App\Models\AdCampaign') {
+            $campaign = $transaction->transactionable;
+            if ($campaign && $campaign->business_id) {
+                $business = $campaign->business;
+                $isOwner = $isOwner || ($business && $business->user_id === $user->id);
+            }
+        }
+        
+        if (!$isOwner) {
+            abort(403, 'Unauthorized access to this receipt.');
+        }
+        
+        // Only allow receipt for completed transactions
+        if ($transaction->status !== 'completed') {
+            abort(403, 'Receipt is only available for completed transactions.');
+        }
+        
+        // Load relationships
+        $transaction->load(['user', 'transactionable', 'gateway']);
+        
+        // Generate PDF
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('receipts.transaction', [
+            'transaction' => $transaction,
+        ]);
+        
+        // Generate filename
+        $filename = 'receipt-' . $transaction->reference . '.pdf';
+        
+        // Download PDF
+        return $pdf->download($filename);
+    }
 }
