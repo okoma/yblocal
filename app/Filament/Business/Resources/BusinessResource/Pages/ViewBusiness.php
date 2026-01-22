@@ -217,10 +217,9 @@ class ViewBusiness extends ViewRecord
                             ->badge()
                             ->formatStateUsing(function ($state) {
                                 if (empty($state)) {
-                                    return [];
+                                    return null;
                                 }
-                                // Ensure it's an array and all values are strings
-                                return is_array($state) ? array_filter(array_map('strval', $state)) : [];
+                                return is_array($state) ? $state : null;
                             })
                             ->separator(',')
                             ->visible(fn ($state) => !empty($state)),
