@@ -18,6 +18,7 @@ use Filament\Notifications\Notification;
 use Filament\Forms;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\HtmlString;
 
 class ViewSubscription extends ViewRecord
 {
@@ -50,7 +51,7 @@ class ViewSubscription extends ViewRecord
                             $newEndDate = clone $this->record->ends_at;
                             $newEnd = $newEndDate->addDays($this->record->isYearly() ? 365 : 30)->format('M j, Y');
                             
-                            return <<<HTML
+                            return new HtmlString(<<<HTML
                                 <div class="space-y-2 text-sm">
                                     <div class="flex justify-between">
                                         <span class="text-gray-600 dark:text-gray-400">Plan:</span>
@@ -73,7 +74,7 @@ class ViewSubscription extends ViewRecord
                                         <span class="text-lg font-bold text-primary-600">₦{$price}</span>
                                     </div>
                                 </div>
-                            HTML;
+                            HTML);
                         }),
                     
                     Forms\Components\Select::make('payment_gateway_id')
