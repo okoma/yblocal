@@ -42,14 +42,12 @@ class PaymentSettings extends Page implements HasForms
                 'is_enabled' => $gateways->get('paystack')?->is_enabled ?? false,
                 'public_key' => $gateways->get('paystack')?->public_key ?? '',
                 'secret_key' => $gateways->get('paystack')?->secret_key ?? '',
-                'callback_url' => $gateways->get('paystack')?->callback_url ?? '',
             ],
             'flutterwave' => [
                 'is_active' => $gateways->get('flutterwave')?->is_active ?? false,
                 'is_enabled' => $gateways->get('flutterwave')?->is_enabled ?? false,
                 'public_key' => $gateways->get('flutterwave')?->public_key ?? '',
                 'secret_key' => $gateways->get('flutterwave')?->secret_key ?? '',
-                'callback_url' => $gateways->get('flutterwave')?->callback_url ?? '',
             ],
             'bank_transfer' => [
                 'is_active' => $gateways->get('bank_transfer')?->is_active ?? false,
@@ -103,11 +101,10 @@ class PaymentSettings extends Page implements HasForms
                                             ->required(fn (Forms\Get $get) => $get('paystack.is_enabled'))
                                             ->helperText('Your Paystack secret key (starts with sk_)'),
                                         
-                                        Forms\Components\TextInput::make('paystack.callback_url')
+                                        Forms\Components\Placeholder::make('paystack_callback_info')
                                             ->label('Callback URL')
-                                            ->url()
-                                            ->maxLength(500)
-                                            ->helperText('URL where users are redirected after payment (optional). Default: ' . route('payment.paystack.callback') . '. Webhooks handle payment confirmation automatically.'),
+                                            ->content(fn () => url('/payment/paystack/callback'))
+                                            ->helperText('URL where users are redirected after payment. This is automatically used when initializing payments.'),
                                         
                                         Forms\Components\Placeholder::make('paystack_webhook_info')
                                             ->label('Webhook URL')
@@ -143,11 +140,10 @@ class PaymentSettings extends Page implements HasForms
                                             ->required(fn (Forms\Get $get) => $get('flutterwave.is_enabled'))
                                             ->helperText('Your Flutterwave secret key'),
                                         
-                                        Forms\Components\TextInput::make('flutterwave.callback_url')
+                                        Forms\Components\Placeholder::make('flutterwave_callback_info')
                                             ->label('Callback URL')
-                                            ->url()
-                                            ->maxLength(500)
-                                            ->helperText('URL where users are redirected after payment (optional). Default: ' . route('payment.flutterwave.callback') . '. Webhooks handle payment confirmation automatically.'),
+                                            ->content(fn () => url('/payment/flutterwave/callback'))
+                                            ->helperText('URL where users are redirected after payment. This is automatically used when initializing payments.'),
                                         
                                         Forms\Components\Placeholder::make('flutterwave_webhook_info')
                                             ->label('Webhook URL')
@@ -265,7 +261,8 @@ class PaymentSettings extends Page implements HasForms
         if ($slug === 'paystack') {
             $gateway->public_key = $data['public_key'] ?? null;
             $gateway->secret_key = $data['secret_key'] ?? null;
-            $gateway->callback_url = $data['callback_url'] ?? null;
+            // Callback URL is always the default route, no need to store it
+            $gateway->callback_url = null;
             // Clear unused fields
             $gateway->merchant_id = null;
             $gateway->webhook_url = null;
@@ -274,7 +271,8 @@ class PaymentSettings extends Page implements HasForms
         if ($slug === 'flutterwave') {
             $gateway->public_key = $data['public_key'] ?? null;
             $gateway->secret_key = $data['secret_key'] ?? null;
-            $gateway->callback_url = $data['callback_url'] ?? null;
+            // Callback URL is always the default route, no need to store it
+            $gateway->callback_url = null;
             // Clear unused fields
             $gateway->merchant_id = null;
             $gateway->webhook_url = null;
