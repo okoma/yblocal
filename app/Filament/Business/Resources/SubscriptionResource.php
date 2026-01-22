@@ -16,6 +16,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\HtmlString;
 
 class SubscriptionResource extends Resource
 {
@@ -126,20 +127,11 @@ class SubscriptionResource extends Resource
                     Tables\Actions\ViewAction::make(),
 
                     Tables\Actions\Action::make('renew')
+                        ->label('Renew')
                         ->icon('heroicon-o-arrow-path')
                         ->color('success')
-                        ->requiresConfirmation()
-                        ->action(function (Subscription $record) {
-                            $record->renew();
-                            
-                            $duration = $record->isYearly() ? '1 year' : '1 month';
-                            
-                            Notification::make()
-                                ->success()
-                                ->title('Subscription Renewed')
-                                ->body("Your subscription has been extended by {$duration}.")
-                                ->send();
-                        })
+                        ->url(fn (Subscription $record) => static::getUrl('view', ['record' => $record->id]))
+                        ->tooltip('Renew this subscription with payment')
                         ->visible(fn (Subscription $record) => $record->isActive()),
 
                     Tables\Actions\Action::make('toggle_auto_renew')
