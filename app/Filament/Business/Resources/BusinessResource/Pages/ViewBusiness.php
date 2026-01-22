@@ -107,8 +107,7 @@ class ViewBusiness extends ViewRecord
                             ->columnSpanFull(),
                     ])
                     ->visible(fn ($record) => !empty($record->business_hours))
-                    ->collapsible()
-                    ->collapsed(),
+                    ->collapsible(),
                 
                 Components\Section::make('Business Status')
                     ->schema([

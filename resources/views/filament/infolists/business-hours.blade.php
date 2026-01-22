@@ -17,7 +17,7 @@
         No business hours set.
     </div>
 @else
-    <div class="space-y-2">
+    <div class="space-y-3">
         @foreach ($days as $key => $dayName)
             @if (isset($hours[$key]))
                 @php
@@ -25,18 +25,33 @@
                     $isClosed = isset($dayHours['closed']) && $dayHours['closed'];
                 @endphp
                 
-                <div class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700">
-                    <span class="font-medium text-gray-900 dark:text-white">{{ $dayName }}</span>
+                <div class="flex items-center justify-between p-4 rounded-lg border-2 {{ $isClosed ? 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50' : 'border-success-300 dark:border-success-600 bg-success-50 dark:bg-success-900/20' }}">
+                    <div class="flex items-center gap-3">
+                        <span class="font-semibold text-lg text-gray-900 dark:text-white">{{ $dayName }}</span>
+                        
+                        @if ($isClosed)
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                                Closed
+                            </span>
+                        @else
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-success-200 dark:bg-success-800 text-success-800 dark:text-success-200">
+                                Open
+                            </span>
+                        @endif
+                    </div>
                     
-                    @if ($isClosed)
-                        <span class="text-sm text-gray-500 dark:text-gray-400">Closed</span>
-                    @elseif (isset($dayHours['open']) && isset($dayHours['close']))
-                        <span class="text-sm text-gray-700 dark:text-gray-300">
-                            {{ date('g:i A', strtotime($dayHours['open'])) }} - {{ date('g:i A', strtotime($dayHours['close'])) }}
-                        </span>
-                    @else
-                        <span class="text-sm text-gray-500 dark:text-gray-400">Not set</span>
-                    @endif
+                    <div class="text-right">
+                        @if (!$isClosed && isset($dayHours['open']) && isset($dayHours['close']))
+                            <div class="text-base font-medium text-gray-900 dark:text-white">
+                                {{ date('g:i A', strtotime($dayHours['open'])) }}
+                            </div>
+                            <div class="text-sm text-gray-500 dark:text-gray-400">
+                                to {{ date('g:i A', strtotime($dayHours['close'])) }}
+                            </div>
+                        @elseif (!$isClosed)
+                            <span class="text-sm text-gray-500 dark:text-gray-400">Not set</span>
+                        @endif
+                    </div>
                 </div>
             @endif
         @endforeach
