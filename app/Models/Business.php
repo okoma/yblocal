@@ -73,6 +73,7 @@ class Business extends Model
     protected $casts = [
         'gallery' => 'array',
         'business_hours' => 'array',
+        'unique_features' => 'array',
         'is_claimed' => 'boolean',
         'is_verified' => 'boolean',
         'is_premium' => 'boolean',
