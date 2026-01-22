@@ -322,15 +322,17 @@ class ViewAdCampaign extends ViewRecord
                     ->schema([
                         Components\ViewEntry::make('traffic_breakdown')
                             ->label('Impressions by Source')
-                            ->view('filament.infolists.campaign-traffic-breakdown', [
-                                'impressions' => fn ($record) => $record->impressions_by_source ?? [],
+                            ->view('filament.infolists.campaign-traffic-breakdown')
+                            ->viewData(fn ($record) => [
+                                'impressions' => $record->impressions_by_source ?? [],
                                 'type' => 'impressions',
                             ]),
 
                         Components\ViewEntry::make('clicks_breakdown')
                             ->label('Clicks by Source')
-                            ->view('filament.infolists.campaign-traffic-breakdown', [
-                                'impressions' => fn ($record) => $record->clicks_by_source ?? [],
+                            ->view('filament.infolists.campaign-traffic-breakdown')
+                            ->viewData(fn ($record) => [
+                                'impressions' => $record->clicks_by_source ?? [],
                                 'type' => 'clicks',
                             ]),
                     ])

@@ -32,9 +32,10 @@ class SubscriptionResource extends Resource
     {
         return $form->schema([
             Forms\Components\Section::make('Subscription Details')->schema([
-                Forms\Components\Select::make('user_id')->relationship('user', 'name')->required()->searchable()->preload()->disabled(fn ($context) => $context !== 'create'),
+                Forms\Components\Select::make('business_id')->relationship('business', 'business_name')->required()->searchable()->preload()->helperText('Subscriptions belong to businesses'),
+                Forms\Components\Select::make('user_id')->relationship('user', 'name')->searchable()->preload()->helperText('Optional: Who initiated the subscription'),
                 Forms\Components\Select::make('subscription_plan_id')->relationship('plan', 'name')->required()->searchable()->preload(),
-                Forms\Components\Select::make('business_id')->relationship('business', 'business_name')->searchable()->preload()->helperText('Optional: Link to specific business'),
+                Forms\Components\Select::make('billing_interval')->options(['monthly' => 'Monthly', 'yearly' => 'Yearly'])->required()->default('monthly')->native(false)->helperText('Billing cycle'),
                 Forms\Components\TextInput::make('subscription_code')->maxLength(255)->disabled()->helperText('Auto-generated'),
             ])->columns(2),
             
@@ -67,9 +68,9 @@ class SubscriptionResource extends Resource
     {
         return $table->columns([
             Tables\Columns\TextColumn::make('subscription_code')->searchable()->copyable()->label('Code'),
-            Tables\Columns\TextColumn::make('user.name')->searchable()->sortable()->url(fn ($r) => route('filament.admin.resources.users.view', $r->user)),
+            Tables\Columns\TextColumn::make('business.business_name')->searchable()->sortable()->limit(30)->description(fn ($r) => $r->user?->name),
             Tables\Columns\TextColumn::make('plan.name')->searchable()->sortable()->badge()->color('info'),
-            Tables\Columns\TextColumn::make('business.business_name')->searchable()->toggleable()->limit(30),
+            Tables\Columns\TextColumn::make('billing_interval')->badge()->colors(['info' => 'monthly', 'success' => 'yearly'])->formatStateUsing(fn ($s) => ucfirst($s)),
             Tables\Columns\TextColumn::make('status')->badge()->colors(['success' => 'active', 'danger' => 'cancelled', 'warning' => 'expired', 'gray' => 'paused', 'info' => 'trialing'])->formatStateUsing(fn ($s) => ucfirst($s))->sortable(),
             Tables\Columns\TextColumn::make('starts_at')->dateTime()->sortable()->toggleable(),
             Tables\Columns\TextColumn::make('ends_at')->dateTime()->sortable()->since()->description(fn ($r) => $r->ends_at->format('M d, Y')),

@@ -109,6 +109,50 @@ class Business extends Model
     }
 
     /**
+     * Business Subscriptions
+     */
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(Subscription::class);
+    }
+
+    /**
+     * Active Subscription
+     */
+    public function subscription(): HasMany
+    {
+        return $this->subscriptions()->where('status', 'active')->latest();
+    }
+
+    /**
+     * Get the active subscription
+     */
+    public function activeSubscription()
+    {
+        return $this->subscriptions()
+            ->where('status', 'active')
+            ->where('ends_at', '>', now())
+            ->first();
+    }
+
+    /**
+     * Check if business has an active subscription
+     */
+    public function hasActiveSubscription(): bool
+    {
+        return $this->activeSubscription() !== null;
+    }
+
+    /**
+     * Check if subscription is expired
+     */
+    public function isSubscriptionExpired(): bool
+    {
+        $subscription = $this->activeSubscription();
+        return $subscription && $subscription->isExpired();
+    }
+
+    /**
      * User who claimed this business
      */
     public function claimedBy(): BelongsTo

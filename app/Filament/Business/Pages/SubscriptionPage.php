@@ -44,7 +44,17 @@ class SubscriptionPage extends Page implements HasForms, HasActions
     
     public function getCurrentSubscription()
     {
-        return Auth::user()->subscription()->with('plan')->first();
+        $business = Auth::user()->businesses()->first();
+        
+        if (!$business) {
+            return null;
+        }
+        
+        return $business->subscriptions()
+            ->with('plan')
+            ->where('status', 'active')
+            ->where('ends_at', '>', now())
+            ->first();
     }
     
     public function getAllPlans()
@@ -302,16 +312,26 @@ class SubscriptionPage extends Page implements HasForms, HasActions
             $user = Auth::user();
             $billingInterval = $data['billing_interval'] ?? 'monthly';
             
-            // Check for existing active subscription
-            $existingSubscription = $user->subscription()
-                ->whereIn('status', ['active', 'pending'])
-                ->first();
+            // Get the user's business (first business if multiple)
+            $business = $user->businesses()->first();
             
-            if ($existingSubscription && $existingSubscription->status === 'active') {
+            if (!$business) {
+                Notification::make()
+                    ->danger()
+                    ->title('No Business Found')
+                    ->body('You need to create a business before subscribing to a plan.')
+                    ->send();
+                return null;
+            }
+            
+            // Check for existing active subscription for this business
+            $existingSubscription = $business->activeSubscription();
+            
+            if ($existingSubscription) {
                 Notification::make()
                     ->warning()
                     ->title('Existing Subscription')
-                    ->body('You already have an active subscription. Please cancel it first before subscribing to a new plan.')
+                    ->body('This business already has an active subscription. Please cancel it first before subscribing to a new plan.')
                     ->send();
                 return null;
             }
@@ -335,11 +355,13 @@ class SubscriptionPage extends Page implements HasForms, HasActions
             DB::beginTransaction();
             
             try {
-                // Create subscription
+                // Create subscription (subscriptions belong to businesses)
                 $duration = $billingInterval === 'yearly' ? 12 : 1;
                 $subscription = Subscription::create([
-                    'user_id' => $user->id,
+                    'business_id' => $business->id,
+                    'user_id' => $user->id, // Who initiated the subscription
                     'subscription_plan_id' => $plan->id,
+                    'billing_interval' => $billingInterval,
                     'status' => 'pending',
                     'starts_at' => now(),
                     'ends_at' => now()->addMonths($duration),

@@ -2,7 +2,7 @@
 
 // ============================================
 // app/Models/Subscription.php
-// User's active subscription
+// Business subscription (subscriptions belong to businesses, not users)
 // ============================================
 
 namespace App\Models;
@@ -16,9 +16,10 @@ class Subscription extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
+        'business_id',
         'user_id',
         'subscription_plan_id',
-        'business_id',
+        'billing_interval',
         'subscription_code',
         'status',
         'starts_at',
@@ -47,6 +48,11 @@ class Subscription extends Model
     ];
 
     // Relationships
+    public function business()
+    {
+        return $this->belongsTo(Business::class);
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -55,11 +61,6 @@ class Subscription extends Model
     public function plan()
     {
         return $this->belongsTo(SubscriptionPlan::class, 'subscription_plan_id');
-    }
-
-    public function business()
-    {
-        return $this->belongsTo(Business::class);
     }
 
     public function transactions()
@@ -132,11 +133,31 @@ class Subscription extends Model
         ]);
     }
 
-    public function renew($duration = 30)
+    public function renew()
     {
+        // Renew based on billing interval
+        $duration = $this->billing_interval === 'yearly' ? 365 : 30;
+        
         $this->update([
             'ends_at' => $this->ends_at->addDays($duration),
         ]);
+    }
+    
+    public function getPrice()
+    {
+        return $this->billing_interval === 'yearly' 
+            ? $this->plan->yearly_price 
+            : $this->plan->price;
+    }
+    
+    public function isYearly()
+    {
+        return $this->billing_interval === 'yearly';
+    }
+    
+    public function isMonthly()
+    {
+        return $this->billing_interval === 'monthly';
     }
 
     public function canAddFaq()
