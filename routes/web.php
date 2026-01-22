@@ -20,3 +20,12 @@ Route::prefix('manager/invitation')->name('manager.invitation.')->group(function
     Route::post('/{token}/decline', [ManagerInvitationController::class, 'decline'])
         ->name('decline');
 });
+
+// Payment Webhook Routes (Public, but verified via signatures)
+Route::prefix('webhooks')->name('webhooks.')->group(function () {
+    Route::post('/paystack', [App\Http\Controllers\PaystackWebhookController::class, 'handle'])
+        ->name('paystack');
+    
+    Route::post('/flutterwave', [App\Http\Controllers\FlutterwaveWebhookController::class, 'handle'])
+        ->name('flutterwave');
+});

@@ -42,18 +42,12 @@ class PaymentSettings extends Page implements HasForms
                 'is_enabled' => $gateways->get('paystack')?->is_enabled ?? false,
                 'public_key' => $gateways->get('paystack')?->public_key ?? '',
                 'secret_key' => $gateways->get('paystack')?->secret_key ?? '',
-                'merchant_id' => $gateways->get('paystack')?->merchant_id ?? '',
-                'webhook_url' => $gateways->get('paystack')?->webhook_url ?? '',
-                'callback_url' => $gateways->get('paystack')?->callback_url ?? '',
             ],
             'flutterwave' => [
                 'is_active' => $gateways->get('flutterwave')?->is_active ?? false,
                 'is_enabled' => $gateways->get('flutterwave')?->is_enabled ?? false,
                 'public_key' => $gateways->get('flutterwave')?->public_key ?? '',
                 'secret_key' => $gateways->get('flutterwave')?->secret_key ?? '',
-                'merchant_id' => $gateways->get('flutterwave')?->merchant_id ?? '',
-                'webhook_url' => $gateways->get('flutterwave')?->webhook_url ?? '',
-                'callback_url' => $gateways->get('flutterwave')?->callback_url ?? '',
             ],
             'bank_transfer' => [
                 'is_active' => $gateways->get('bank_transfer')?->is_active ?? false,
@@ -81,6 +75,7 @@ class PaymentSettings extends Page implements HasForms
                         Tabs\Tab::make('Paystack')
                             ->schema([
                                 Forms\Components\Section::make('Paystack Configuration')
+                                    ->description('Configure Paystack payment gateway. Webhooks are automatically handled at /webhooks/paystack')
                                     ->schema([
                                         Forms\Components\Toggle::make('paystack.is_active')
                                             ->label('Active')
@@ -92,28 +87,21 @@ class PaymentSettings extends Page implements HasForms
                                         
                                         Forms\Components\TextInput::make('paystack.public_key')
                                             ->label('Public Key')
-                                            ->maxLength(255),
+                                            ->maxLength(255)
+                                            ->required(fn (Forms\Get $get) => $get('paystack.is_enabled'))
+                                            ->helperText('Your Paystack public key (starts with pk_)'),
                                         
                                         Forms\Components\TextInput::make('paystack.secret_key')
                                             ->label('Secret Key')
                                             ->password()
-                                            ->maxLength(255),
+                                            ->maxLength(255)
+                                            ->required(fn (Forms\Get $get) => $get('paystack.is_enabled'))
+                                            ->helperText('Your Paystack secret key (starts with sk_)'),
                                         
-                                        Forms\Components\TextInput::make('paystack.merchant_id')
-                                            ->label('Merchant ID')
-                                            ->maxLength(255),
-                                        
-                                        Forms\Components\TextInput::make('paystack.webhook_url')
+                                        Forms\Components\Placeholder::make('paystack_webhook_info')
                                             ->label('Webhook URL')
-                                            ->url()
-                                            ->maxLength(500)
-                                            ->helperText('URL for payment notifications'),
-                                        
-                                        Forms\Components\TextInput::make('paystack.callback_url')
-                                            ->label('Callback URL')
-                                            ->url()
-                                            ->maxLength(500)
-                                            ->helperText('URL after payment completion'),
+                                            ->content(fn () => url('/webhooks/paystack'))
+                                            ->helperText('Configure this URL in your Paystack dashboard'),
                                     ])
                                     ->columns(2),
                             ]),
@@ -121,6 +109,7 @@ class PaymentSettings extends Page implements HasForms
                         Tabs\Tab::make('Flutterwave')
                             ->schema([
                                 Forms\Components\Section::make('Flutterwave Configuration')
+                                    ->description('Configure Flutterwave payment gateway. Webhooks are automatically handled at /webhooks/flutterwave')
                                     ->schema([
                                         Forms\Components\Toggle::make('flutterwave.is_active')
                                             ->label('Active')
@@ -132,26 +121,21 @@ class PaymentSettings extends Page implements HasForms
                                         
                                         Forms\Components\TextInput::make('flutterwave.public_key')
                                             ->label('Public Key')
-                                            ->maxLength(255),
+                                            ->maxLength(255)
+                                            ->required(fn (Forms\Get $get) => $get('flutterwave.is_enabled'))
+                                            ->helperText('Your Flutterwave public key'),
                                         
                                         Forms\Components\TextInput::make('flutterwave.secret_key')
                                             ->label('Secret Key')
                                             ->password()
-                                            ->maxLength(255),
+                                            ->maxLength(255)
+                                            ->required(fn (Forms\Get $get) => $get('flutterwave.is_enabled'))
+                                            ->helperText('Your Flutterwave secret key'),
                                         
-                                        Forms\Components\TextInput::make('flutterwave.merchant_id')
-                                            ->label('Merchant ID')
-                                            ->maxLength(255),
-                                        
-                                        Forms\Components\TextInput::make('flutterwave.webhook_url')
+                                        Forms\Components\Placeholder::make('flutterwave_webhook_info')
                                             ->label('Webhook URL')
-                                            ->url()
-                                            ->maxLength(500),
-                                        
-                                        Forms\Components\TextInput::make('flutterwave.callback_url')
-                                            ->label('Callback URL')
-                                            ->url()
-                                            ->maxLength(500),
+                                            ->content(fn () => url('/webhooks/flutterwave'))
+                                            ->helperText('Configure this URL in your Flutterwave dashboard'),
                                     ])
                                     ->columns(2),
                             ]),
@@ -264,9 +248,10 @@ class PaymentSettings extends Page implements HasForms
         if (in_array($slug, ['paystack', 'flutterwave'])) {
             $gateway->public_key = $data['public_key'] ?? null;
             $gateway->secret_key = $data['secret_key'] ?? null;
-            $gateway->merchant_id = $data['merchant_id'] ?? null;
-            $gateway->webhook_url = $data['webhook_url'] ?? null;
-            $gateway->callback_url = $data['callback_url'] ?? null;
+            // Clear unused fields
+            $gateway->merchant_id = null;
+            $gateway->webhook_url = null;
+            $gateway->callback_url = null;
         }
         
         if ($slug === 'bank_transfer') {
