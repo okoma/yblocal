@@ -203,8 +203,9 @@ class ViewSubscription extends ViewRecord
                     ->schema([
                         Components\ViewEntry::make('plan_features')
                             ->label('')
-                            ->view('filament.infolists.subscription-features', [
-                                'plan' => fn ($record) => $record->plan,
+                            ->view('filament.infolists.subscription-features')
+                            ->viewData(fn ($record) => [
+                                'plan' => $record->plan,
                             ]),
                     ]),
 

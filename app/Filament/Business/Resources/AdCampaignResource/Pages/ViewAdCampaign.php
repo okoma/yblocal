@@ -357,13 +357,27 @@ class ViewAdCampaign extends ViewRecord
                             ->label('Target Locations')
                             ->badge()
                             ->placeholder('All locations')
-                            ->visible(fn ($record) => $record->target_locations),
+                            ->formatStateUsing(function ($state) {
+                                if (empty($state) || !is_array($state)) {
+                                    return null;
+                                }
+                                $locations = \App\Models\Location::whereIn('id', $state)->pluck('name')->toArray();
+                                return implode(', ', $locations);
+                            })
+                            ->visible(fn ($record) => !empty($record->target_locations)),
 
                         Components\TextEntry::make('target_categories')
                             ->label('Target Categories')
                             ->badge()
                             ->placeholder('All categories')
-                            ->visible(fn ($record) => $record->target_categories),
+                            ->formatStateUsing(function ($state) {
+                                if (empty($state) || !is_array($state)) {
+                                    return null;
+                                }
+                                $categories = \App\Models\Category::whereIn('id', $state)->pluck('name')->toArray();
+                                return implode(', ', $categories);
+                            })
+                            ->visible(fn ($record) => !empty($record->target_categories)),
                     ])
                     ->columns(2)
                     ->collapsible()

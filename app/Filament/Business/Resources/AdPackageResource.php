@@ -9,6 +9,8 @@ namespace App\Filament\Business\Resources;
 use App\Filament\Business\Resources\AdPackageResource\Pages;
 use App\Models\AdPackage;
 use App\Models\Business;
+use App\Models\Category;
+use App\Models\Location;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -175,6 +177,7 @@ class AdPackageResource extends Resource
                     ->label('Purchase')
                     ->icon('heroicon-o-shopping-cart')
                     ->color('success')
+                    ->modalWidth('3xl')
                     ->form([
                         Forms\Components\Select::make('business_id')
                             ->label('Select Business')
@@ -185,7 +188,8 @@ class AdPackageResource extends Resource
                             ->required()
                             ->searchable()
                             ->preload()
-                            ->helperText('Choose which business to advertise'),
+                            ->helperText('Choose which business to advertise')
+                            ->live(),
 
                         Forms\Components\DatePicker::make('start_date')
                             ->label('Start Date')
@@ -194,6 +198,31 @@ class AdPackageResource extends Resource
                             ->required()
                             ->helperText('When should the campaign begin?'),
 
+                        Forms\Components\Select::make('target_categories')
+                            ->label('Target Categories (Optional)')
+                            ->multiple()
+                            ->options(function () {
+                                return Category::where('is_active', true)
+                                    ->orderBy('name')
+                                    ->pluck('name', 'id');
+                            })
+                            ->searchable()
+                            ->preload()
+                            ->helperText('Select categories to target (leave empty for all categories)'),
+
+                        Forms\Components\Select::make('target_locations')
+                            ->label('Target Locations (Optional)')
+                            ->multiple()
+                            ->options(function () {
+                                return Location::where('is_active', true)
+                                    ->whereIn('type', ['state', 'city'])
+                                    ->orderBy('name')
+                                    ->pluck('name', 'id');
+                            })
+                            ->searchable()
+                            ->preload()
+                            ->helperText('Select locations to target (leave empty for all locations)'),
+
                         Forms\Components\Textarea::make('notes')
                             ->label('Campaign Notes (Optional)')
                             ->rows(2)
@@ -201,15 +230,28 @@ class AdPackageResource extends Resource
                     ])
                     ->action(function (AdPackage $record, array $data) {
                         try {
+                            // Prepare custom data
+                            $customData = [
+                                'starts_at' => $data['start_date'],
+                                'ends_at' => now()->parse($data['start_date'])->addDays($record->duration_days),
+                                'description' => $data['notes'] ?? null,
+                            ];
+
+                            // Add target categories if selected
+                            if (!empty($data['target_categories'])) {
+                                $customData['target_categories'] = $data['target_categories'];
+                            }
+
+                            // Add target locations if selected
+                            if (!empty($data['target_locations'])) {
+                                $customData['target_locations'] = $data['target_locations'];
+                            }
+
                             // Create the campaign
                             $campaign = $record->createCampaign(
                                 $data['business_id'],
                                 auth()->id(),
-                                [
-                                    'starts_at' => $data['start_date'],
-                                    'ends_at' => now()->parse($data['start_date'])->addDays($record->duration_days),
-                                    'description' => $data['notes'] ?? null,
-                                ]
+                                $customData
                             );
 
                             // TODO: Integrate with payment gateway here
