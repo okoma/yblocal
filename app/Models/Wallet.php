@@ -30,9 +30,22 @@ class Wallet extends Model
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * Wallet activity log - All wallet activities (deposit, withdrawal, purchase)
+     * Includes balance before/after for complete audit trail
+     */
     public function transactions()
     {
         return $this->hasMany(WalletTransaction::class);
+    }
+
+    /**
+     * Payment gateway transactions - For wallet funding via Paystack, Flutterwave, etc.
+     * Links to the unified payment system
+     */
+    public function paymentTransactions()
+    {
+        return $this->morphMany(Transaction::class, 'transactionable');
     }
 
     // Helper methods

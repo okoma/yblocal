@@ -87,4 +87,9 @@ class PaymentGateway extends Model
         $settings[$key] = $value;
         $this->settings = $settings;
     }
+
+    public function getSettings(): array
+    {
+        return $this->settings ?? [];
+    }
 }

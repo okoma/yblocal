@@ -234,6 +234,24 @@ class AdPackageResource extends Resource
                             ->label('Campaign Notes (Optional)')
                             ->rows(2)
                             ->maxLength(500),
+
+                        Forms\Components\Section::make('Payment Method')
+                            ->schema([
+                                Forms\Components\Select::make('payment_gateway_id')
+                                    ->label('Select Payment Method')
+                                    ->options(function () {
+                                        return \App\Models\PaymentGateway::enabled()
+                                            ->ordered()
+                                            ->get()
+                                            ->mapWithKeys(function ($gateway) {
+                                                return [$gateway->id => $gateway->display_name];
+                                            });
+                                    })
+                                    ->required()
+                                    ->searchable()
+                                    ->preload()
+                                    ->helperText('Choose how you want to pay for this campaign'),
+                            ]),
                     ])
                     ->action(function (AdPackage $record, array $data) {
                         try {
@@ -261,22 +279,48 @@ class AdPackageResource extends Resource
                                 $customData
                             );
 
-                            // TODO: Integrate with payment gateway here
-                            // For now, we'll mark it as unpaid
+                            // Initialize payment through service
+                            $result = app(\App\Services\PaymentService::class)->initializePayment(
+                                user: auth()->user(),
+                                amount: $record->price,
+                                gatewayId: $data['payment_gateway_id'],
+                                payable: $campaign,
+                                metadata: [
+                                    'package_id' => $record->id,
+                                    'package_name' => $record->name,
+                                    'business_id' => $data['business_id'],
+                                ]
+                            );
 
-                            Notification::make()
-                                ->success()
-                                ->title('Campaign Created!')
-                                ->body('Your campaign has been created. Complete payment to activate it.')
-                                ->actions([
-                                    \Filament\Notifications\Actions\Action::make('view')
-                                        ->label('View Campaign')
-                                        ->url(fn () => static::getUrl('../ad-campaigns/view', ['record' => $campaign])),
-                                ])
-                                ->send();
-
-                            // Redirect to payment or campaign details
-                            // redirect()->route('payment.process', $campaign);
+                            // Handle payment result
+                            if ($result->requiresRedirect()) {
+                                return redirect()->away($result->redirectUrl);
+                            } elseif ($result->isBankTransfer()) {
+                                Notification::make()
+                                    ->info()
+                                    ->title('Bank Transfer Details')
+                                    ->body($result->instructions)
+                                    ->persistent()
+                                    ->actions([
+                                        \Filament\Notifications\Actions\Action::make('view')
+                                            ->label('View Campaign')
+                                            ->url(fn () => static::getUrl('../ad-campaigns/view', ['record' => $campaign])),
+                                    ])
+                                    ->send();
+                            } elseif ($result->isSuccess()) {
+                                Notification::make()
+                                    ->success()
+                                    ->title('Campaign Activated!')
+                                    ->body($result->message)
+                                    ->actions([
+                                        \Filament\Notifications\Actions\Action::make('view')
+                                            ->label('View Campaign')
+                                            ->url(fn () => static::getUrl('../ad-campaigns/view', ['record' => $campaign])),
+                                    ])
+                                    ->send();
+                            } else {
+                                throw new \Exception($result->message);
+                            }
 
                         } catch (\Exception $e) {
                             Notification::make()

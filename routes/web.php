@@ -21,20 +21,14 @@ Route::prefix('manager/invitation')->name('manager.invitation.')->group(function
         ->name('decline');
 });
 
-// Payment Webhook Routes (Public, but verified via signatures)
+// Payment Webhooks (Server-to-Server notifications)
 Route::prefix('webhooks')->name('webhooks.')->group(function () {
-    Route::post('/paystack', [App\Http\Controllers\PaystackWebhookController::class, 'handle'])
-        ->name('paystack');
-    
-    Route::post('/flutterwave', [App\Http\Controllers\FlutterwaveWebhookController::class, 'handle'])
-        ->name('flutterwave');
+    Route::post('/paystack', [\App\Http\Controllers\PaymentController::class, 'paystackWebhook'])->name('paystack');
+    Route::post('/flutterwave', [\App\Http\Controllers\PaymentController::class, 'flutterwaveWebhook'])->name('flutterwave');
 });
 
-// Payment Callback Routes (Public - user redirects after payment)
+// Payment Callbacks (User redirects after payment)
 Route::prefix('payment')->name('payment.')->group(function () {
-    Route::get('/paystack/callback', [App\Http\Controllers\PaymentCallbackController::class, 'paystackCallback'])
-        ->name('paystack.callback');
-    
-    Route::get('/flutterwave/callback', [App\Http\Controllers\PaymentCallbackController::class, 'flutterwaveCallback'])
-        ->name('flutterwave.callback');
+    Route::get('/paystack/callback', [\App\Http\Controllers\PaymentController::class, 'paystackCallback'])->name('paystack.callback');
+    Route::get('/flutterwave/callback', [\App\Http\Controllers\PaymentController::class, 'flutterwaveCallback'])->name('flutterwave.callback');
 });
