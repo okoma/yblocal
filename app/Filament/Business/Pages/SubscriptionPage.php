@@ -159,7 +159,7 @@ class SubscriptionPage extends Page implements HasForms, HasActions
             Forms\Components\Section::make('Billing Period')
                 ->schema([
                     Forms\Components\Select::make('billing_interval')
-                        ->label('')
+                        ->label('Billing Period')
                         ->options([
                             'monthly' => 'Monthly',
                             'yearly' => 'Yearly',
@@ -167,8 +167,7 @@ class SubscriptionPage extends Page implements HasForms, HasActions
                         ->default('monthly')
                         ->required()
                         ->native(false)
-                        ->live()
-                        ->inline(),
+                        ->live(),
                 ])
                 ->visible(fn () => $plan->yearly_price !== null),
             
