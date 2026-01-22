@@ -17,13 +17,15 @@ use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Actions\Action;
+use Filament\Actions\Concerns\InteractsWithActions;
+use Filament\Actions\Contracts\HasActions;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 
-class SubscriptionPage extends Page implements HasForms
+class SubscriptionPage extends Page implements HasForms, HasActions
 {
-    use InteractsWithForms;
+    use InteractsWithForms, InteractsWithActions;
 
     protected static ?string $navigationIcon = 'heroicon-o-credit-card';
     
@@ -52,6 +54,80 @@ class SubscriptionPage extends Page implements HasForms
             ->get();
     }
     
+    public function openSubscriptionModal(int $planId): void
+    {
+        $this->mountAction('subscribe', ['planId' => $planId]);
+    }
+    
+    public function subscribeAction(): Action
+    {
+        return Action::make('subscribe')
+            ->label('Subscribe Now')
+            ->icon('heroicon-o-credit-card')
+            ->modalWidth('3xl')
+            ->fillForm(function (array $arguments): array {
+                return [
+                    'plan_id' => $arguments['planId'] ?? null,
+                ];
+            })
+            ->modalHeading(function (array $arguments) {
+                $planId = $arguments['planId'] ?? null;
+                if (!$planId) {
+                    return 'Subscribe to Plan';
+                }
+                
+                $plan = SubscriptionPlan::find($planId);
+                if (!$plan) {
+                    return 'Subscribe to Plan';
+                }
+                
+                return view('filament.business.pages.subscription-modal-heading', ['plan' => $plan]);
+            })
+            ->form(function (array $arguments) {
+                $planId = $arguments['planId'] ?? null;
+                if (!$planId) {
+                    return [];
+                }
+                
+                $plan = SubscriptionPlan::find($planId);
+                if (!$plan) {
+                    return [];
+                }
+                
+                return [
+                    Forms\Components\Hidden::make('plan_id')
+                        ->default($plan->id),
+                    
+                    ...$this->getPaymentFormSchema($plan),
+                ];
+            })
+            ->action(function (array $data) {
+                $planId = $data['plan_id'] ?? null;
+                if (!$planId) {
+                    Notification::make()
+                        ->danger()
+                        ->title('Error')
+                        ->body('Invalid plan selected.')
+                        ->send();
+                    return;
+                }
+                
+                $plan = SubscriptionPlan::find($planId);
+                if (!$plan) {
+                    Notification::make()
+                        ->danger()
+                        ->title('Error')
+                        ->body('Plan not found.')
+                        ->send();
+                    return;
+                }
+                
+                return $this->processPayment($plan, $data);
+            })
+            ->requiresConfirmation(false);
+    }
+    
+    // Old method - keeping for reference but not used anymore
     public function getSubscribeAction(int $planId): Action
     {
         $plan = SubscriptionPlan::where('id', $planId)

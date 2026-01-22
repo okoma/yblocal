@@ -106,17 +106,17 @@ class PaymentController extends Controller
         $reference = $request->query('reference');
         
         if (!$reference) {
-            return $this->redirectWithError('Invalid payment reference.');
+            return $this->redirectWithError('Invalid payment reference.', null);
         }
 
         $transaction = $this->findTransaction($reference, 'paystack');
         if (!$transaction) {
-            return $this->redirectWithError('Transaction not found.');
+            return $this->redirectWithError('Transaction not found.', null);
         }
 
         $gateway = $this->getGateway('paystack');
         if (!$gateway) {
-            return $this->redirectWithError('Payment gateway not configured.');
+            return $this->redirectWithError('Payment gateway not configured.', $transaction);
         }
 
         // Verify with Paystack API
@@ -131,7 +131,7 @@ class PaymentController extends Controller
                 $transaction->markAsPaid();
                 $this->activatePayable($transaction);
             }
-            return $this->redirectWithSuccess('Payment successful! Your purchase has been activated.');
+            return $this->redirectWithSuccess('Payment successful! Your purchase has been activated.', $transaction);
         }
 
         // Failed
@@ -139,7 +139,7 @@ class PaymentController extends Controller
             $transaction->update(['gateway_response' => $verified ?? ['error' => 'Verification failed']]);
             $transaction->markAsFailed();
         }
-        return $this->redirectWithError('Payment failed. Please try again.');
+        return $this->redirectWithError('Payment failed. Please try again.', $transaction);
     }
 
     /**
@@ -151,17 +151,17 @@ class PaymentController extends Controller
         $status = $request->query('status');
         
         if (!$txRef) {
-            return $this->redirectWithError('Invalid payment reference.');
+            return $this->redirectWithError('Invalid payment reference.', null);
         }
 
         $transaction = $this->findTransaction($txRef, 'flutterwave');
         if (!$transaction) {
-            return $this->redirectWithError('Transaction not found.');
+            return $this->redirectWithError('Transaction not found.', null);
         }
 
         $gateway = $this->getGateway('flutterwave');
         if (!$gateway) {
-            return $this->redirectWithError('Payment gateway not configured.');
+            return $this->redirectWithError('Payment gateway not configured.', $transaction);
         }
 
         // Verify with Flutterwave API
@@ -176,7 +176,7 @@ class PaymentController extends Controller
                 $transaction->markAsPaid();
                 $this->activatePayable($transaction);
             }
-            return $this->redirectWithSuccess('Payment successful! Your purchase has been activated.');
+            return $this->redirectWithSuccess('Payment successful! Your purchase has been activated.', $transaction);
         }
 
         // Failed
@@ -184,7 +184,7 @@ class PaymentController extends Controller
             $transaction->update(['gateway_response' => $verified ?? ['error' => 'Verification failed', 'status' => $status]]);
             $transaction->markAsFailed();
         }
-        return $this->redirectWithError('Payment failed. Please try again.');
+        return $this->redirectWithError('Payment failed. Please try again.', $transaction);
     }
 
     // ==========================================
@@ -336,20 +336,38 @@ class PaymentController extends Controller
     }
 
     /**
+     * Get redirect URL based on transaction type
+     */
+    protected function getRedirectUrl(?Transaction $transaction = null): string
+    {
+        if (!$transaction || !$transaction->transactionable_type) {
+            return route('filament.business.pages.dashboard');
+        }
+
+        // Redirect to the relevant page based on what was paid for
+        return match ($transaction->transactionable_type) {
+            'App\Models\Subscription', \App\Models\Subscription::class => route('filament.business.pages.subscription-page'),
+            'App\Models\AdCampaign', \App\Models\AdCampaign::class => \App\Filament\Business\Resources\AdCampaignResource::getUrl('index'),
+            'App\Models\Wallet', \App\Models\Wallet::class => route('filament.business.pages.wallet-page'),
+            default => route('filament.business.pages.dashboard'),
+        };
+    }
+
+    /**
      * Redirect with success message
      */
-    protected function redirectWithSuccess(string $message)
+    protected function redirectWithSuccess(string $message, ?Transaction $transaction = null)
     {
-        return redirect()->route('filament.business.pages.subscription')
+        return redirect()->to($this->getRedirectUrl($transaction))
             ->with('success', $message);
     }
 
     /**
      * Redirect with error message
      */
-    protected function redirectWithError(string $message)
+    protected function redirectWithError(string $message, ?Transaction $transaction = null)
     {
-        return redirect()->route('filament.business.pages.subscription')
+        return redirect()->to($this->getRedirectUrl($transaction))
             ->with('error', $message);
     }
 }

@@ -1,7 +1,11 @@
 {{-- resources/views/filament/infolists/campaign-traffic-breakdown.blade.php --}}
 
 @php
-    $data = $impressions ?? [];
+    // Resolve Closure if needed
+    $rawData = $impressions ?? [];
+    $data = is_callable($rawData) ? $rawData() : $rawData;
+    $data = is_array($data) ? $data : [];
+    
     $total = array_sum($data);
     $type = $type ?? 'impressions';
     
