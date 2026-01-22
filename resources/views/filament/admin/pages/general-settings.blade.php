@@ -4,8 +4,13 @@
             {{ $this->form }}
 
             <div class="mt-6 flex items-center justify-end">
-                <x-filament::button type="submit">
-                    Save Settings
+                <x-filament::button 
+                    type="submit"
+                    wire:loading.attr="disabled"
+                    wire:target="save"
+                >
+                    <span wire:loading.remove wire:target="save">Save Settings</span>
+                    <span wire:loading wire:target="save">Save Settings</span>
                 </x-filament::button>
             </div>
         </form>

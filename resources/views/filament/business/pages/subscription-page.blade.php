@@ -277,8 +277,15 @@
                     >
                         Cancel
                     </x-filament::button>
-                    <x-filament::button type="submit" color="primary" size="lg">
-                        Pay ₦{{ number_format($this->finalAmount, 2) }}
+                    <x-filament::button 
+                        type="submit" 
+                        color="primary" 
+                        size="lg"
+                        wire:loading.attr="disabled"
+                        wire:target="processPayment"
+                    >
+                        <span wire:loading.remove wire:target="processPayment">Pay ₦{{ number_format($this->finalAmount, 2) }}</span>
+                        <span wire:loading wire:target="processPayment">Pay ₦{{ number_format($this->finalAmount, 2) }}</span>
                     </x-filament::button>
                 </div>
             </form>

@@ -6,8 +6,13 @@
                 {{ $this->profileForm }}
 
                 <div class="mt-6">
-                    <x-filament::button type="submit">
-                        Save Profile
+                    <x-filament::button 
+                        type="submit"
+                        wire:loading.attr="disabled"
+                        wire:target="updateProfile"
+                    >
+                        <span wire:loading.remove wire:target="updateProfile">Save Profile</span>
+                        <span wire:loading wire:target="updateProfile">Save Profile</span>
                     </x-filament::button>
                 </div>
             </form>
@@ -19,8 +24,14 @@
                 {{ $this->passwordForm }}
 
                 <div class="mt-6">
-                    <x-filament::button type="submit" color="warning">
-                        Update Password
+                    <x-filament::button 
+                        type="submit" 
+                        color="warning"
+                        wire:loading.attr="disabled"
+                        wire:target="updatePassword"
+                    >
+                        <span wire:loading.remove wire:target="updatePassword">Update Password</span>
+                        <span wire:loading wire:target="updatePassword">Update Password</span>
                     </x-filament::button>
                 </div>
             </form>
