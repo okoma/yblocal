@@ -21,7 +21,7 @@ class TransactionResource extends Resource
 
     protected static ?string $navigationLabel = 'Transactions';
 
-    protected static ?string $navigationGroup = 'Billing';
+    protected static ?string $navigationGroup = 'Billing & Marketing';
 
     protected static ?int $navigationSort = 2;
 
@@ -172,14 +172,13 @@ class TransactionResource extends Resource
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 
-                // TODO: Implement receipt generation system
-                // Tables\Actions\Action::make('download_receipt')
-                //     ->label('Receipt')
-                //     ->icon('heroicon-o-arrow-down-tray')
-                //     ->color('gray')
-                //     ->visible(fn (Transaction $record) => $record->status === 'completed')
-                //     ->url(fn (Transaction $record) => route('business.transaction.receipt', $record))
-                //     ->openUrlInNewTab(),
+                Tables\Actions\Action::make('download_receipt')
+                    ->label('Receipt')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('gray')
+                    ->visible(fn (Transaction $record) => $record->status === 'completed')
+                    ->url(fn (Transaction $record) => route('business.transaction.receipt', $record))
+                    ->openUrlInNewTab(),
             ])
             ->bulkActions([
                 // No bulk actions for business users
