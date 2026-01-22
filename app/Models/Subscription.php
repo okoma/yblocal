@@ -2,7 +2,7 @@
 
 // ============================================
 // app/Models/Subscription.php
-// Business subscription (subscriptions belong to businesses, not users)
+// Business subscriptions - Each subscription is linked to a specific business
 // ============================================
 
 namespace App\Models;

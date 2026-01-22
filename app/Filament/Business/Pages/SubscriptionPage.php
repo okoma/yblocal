@@ -80,21 +80,9 @@ class SubscriptionPage extends Page implements HasForms, HasActions
                     'plan_id' => $arguments['planId'] ?? null,
                 ];
             })
-            ->modalHeading(function (array $arguments) {
-                $planId = $arguments['planId'] ?? null;
-                if (!$planId) {
-                    return 'Subscribe to Plan';
-                }
-                
-                $plan = SubscriptionPlan::find($planId);
-                if (!$plan) {
-                    return 'Subscribe to Plan';
-                }
-                
-                return new \Illuminate\Support\HtmlString(
-                    view('filament.business.pages.subscription-modal-heading', ['plan' => $plan])->render()
-                );
-            })
+            ->modalHeading(fn () => 'Subscribe to Plan')
+            ->modalDescription('Choose your business and billing period')
+            ->modalIcon('heroicon-o-sparkles')
             ->form(function (array $arguments) {
                 $planId = $arguments['planId'] ?? null;
                 if (!$planId) {
@@ -106,9 +94,60 @@ class SubscriptionPage extends Page implements HasForms, HasActions
                     return [];
                 }
                 
+                $user = Auth::user();
+                
                 return [
+                    // Plan Info Header
+                    Forms\Components\Section::make()
+                        ->schema([
+                            Forms\Components\Placeholder::make('plan_info')
+                                ->label('')
+                                ->content(fn () => new \Illuminate\Support\HtmlString(
+                                    '<div class="text-center py-4">
+                                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary-100 dark:bg-primary-900 mb-3">
+                                            <svg class="w-8 h-8 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                            </svg>
+                                        </div>
+                                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">' . e($plan->name) . '</h3>
+                                        <p class="text-gray-600 dark:text-gray-400 text-sm max-w-md mx-auto">' . e($plan->description) . '</p>
+                                    </div>'
+                                )),
+                        ])
+                        ->columnSpanFull(),
+                    
                     Forms\Components\Hidden::make('plan_id')
                         ->default($plan->id),
+                    
+                    // Business Selection
+                    Forms\Components\Section::make('Select Business')
+                        ->description('Choose which business this subscription is for')
+                        ->icon('heroicon-o-building-office')
+                        ->schema([
+                            Forms\Components\Select::make('business_id')
+                                ->label('Business')
+                                ->options($user->businesses()->pluck('business_name', 'id'))
+                                ->required()
+                                ->searchable()
+                                ->native(false)
+                                ->placeholder('Select your business')
+                                ->helperText('Subscriptions are assigned to individual businesses')
+                                ->live()
+                                ->afterStateUpdated(function ($state) {
+                                    if ($state) {
+                                        $business = \App\Models\Business::find($state);
+                                        if ($business && $business->activeSubscription()) {
+                                            \Filament\Notifications\Notification::make()
+                                                ->warning()
+                                                ->title('Existing Subscription')
+                                                ->body('This business already has an active subscription.')
+                                                ->send();
+                                        }
+                                    }
+                                }),
+                        ])
+                        ->columnSpanFull()
+                        ->collapsed(false),
                     
                     ...$this->getPaymentFormSchema($plan),
                 ];
@@ -312,14 +351,24 @@ class SubscriptionPage extends Page implements HasForms, HasActions
             $user = Auth::user();
             $billingInterval = $data['billing_interval'] ?? 'monthly';
             
-            // Get the user's business (first business if multiple)
-            $business = $user->businesses()->first();
+            // Validate business_id is provided
+            if (empty($data['business_id'])) {
+                Notification::make()
+                    ->danger()
+                    ->title('Business Required')
+                    ->body('Please select a business for this subscription.')
+                    ->send();
+                return null;
+            }
+            
+            // Get and verify the selected business
+            $business = $user->businesses()->find($data['business_id']);
             
             if (!$business) {
                 Notification::make()
                     ->danger()
-                    ->title('No Business Found')
-                    ->body('You need to create a business before subscribing to a plan.')
+                    ->title('Invalid Business')
+                    ->body('The selected business was not found or you do not have access to it.')
                     ->send();
                 return null;
             }

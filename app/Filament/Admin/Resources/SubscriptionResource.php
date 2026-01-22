@@ -32,7 +32,7 @@ class SubscriptionResource extends Resource
     {
         return $form->schema([
             Forms\Components\Section::make('Subscription Details')->schema([
-                Forms\Components\Select::make('business_id')->relationship('business', 'business_name')->required()->searchable()->preload()->helperText('Subscriptions belong to businesses'),
+                Forms\Components\Select::make('business_id')->relationship('business', 'business_name')->required()->searchable()->preload()->helperText('Select the business for this subscription'),
                 Forms\Components\Select::make('user_id')->relationship('user', 'name')->searchable()->preload()->helperText('Optional: Who initiated the subscription'),
                 Forms\Components\Select::make('subscription_plan_id')->relationship('plan', 'name')->required()->searchable()->preload(),
                 Forms\Components\Select::make('billing_interval')->options(['monthly' => 'Monthly', 'yearly' => 'Yearly'])->required()->default('monthly')->native(false)->helperText('Billing cycle'),
