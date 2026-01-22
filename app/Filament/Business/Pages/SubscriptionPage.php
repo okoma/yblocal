@@ -36,6 +36,7 @@ class SubscriptionPage extends Page implements HasForms
     public float $discountAmount = 0;
     public float $finalAmount = 0;
     public string $billingInterval = 'monthly'; // 'monthly' or 'yearly'
+    public ?string $couponError = null;
     
     public function getTitle(): string
     {
@@ -103,6 +104,7 @@ class SubscriptionPage extends Page implements HasForms
                             )
                             ->live(onBlur: true)
                             ->afterStateUpdated(function ($state) {
+                                $this->couponError = null;
                                 if (empty($state)) {
                                     $this->appliedCoupon = null;
                                     $this->discountAmount = 0;
@@ -139,6 +141,7 @@ class SubscriptionPage extends Page implements HasForms
     public function applyCoupon(): void
     {
         $couponCode = $this->paymentData['coupon_code'] ?? null;
+        $this->couponError = null;
         
         if (empty($couponCode)) {
             $this->appliedCoupon = null;
@@ -150,11 +153,7 @@ class SubscriptionPage extends Page implements HasForms
         $coupon = Coupon::where('code', strtoupper($couponCode))->first();
         
         if (!$coupon) {
-            Notification::make()
-                ->danger()
-                ->title('Invalid Coupon')
-                ->body('The coupon code you entered is invalid.')
-                ->send();
+            $this->couponError = 'The coupon code you entered is invalid.';
             $this->appliedCoupon = null;
             $this->discountAmount = 0;
             $this->updateFinalAmount();
@@ -163,11 +162,7 @@ class SubscriptionPage extends Page implements HasForms
         
         // Check if coupon applies to subscriptions
         if (!in_array($coupon->applies_to, ['all', 'subscriptions'])) {
-            Notification::make()
-                ->danger()
-                ->title('Coupon Not Applicable')
-                ->body('This coupon cannot be used for subscriptions.')
-                ->send();
+            $this->couponError = 'This coupon cannot be used for subscriptions.';
             $this->appliedCoupon = null;
             $this->discountAmount = 0;
             $this->updateFinalAmount();
@@ -177,11 +172,7 @@ class SubscriptionPage extends Page implements HasForms
         // Check if coupon applies to this specific plan
         if ($coupon->applies_to === 'subscriptions' && $coupon->applicable_plans) {
             if (!in_array($this->selectedPlanId, $coupon->applicable_plans)) {
-                Notification::make()
-                    ->danger()
-                    ->title('Coupon Not Applicable')
-                    ->body('This coupon cannot be used for the selected plan.')
-                    ->send();
+                $this->couponError = 'This coupon cannot be used for the selected plan.';
                 $this->appliedCoupon = null;
                 $this->discountAmount = 0;
                 $this->updateFinalAmount();
@@ -191,11 +182,17 @@ class SubscriptionPage extends Page implements HasForms
         
         // Check if coupon is valid
         if (!$coupon->isValid()) {
-            Notification::make()
-                ->danger()
-                ->title('Coupon Expired')
-                ->body('This coupon is no longer valid.')
-                ->send();
+            $this->couponError = 'This coupon is no longer valid or has expired.';
+            $this->appliedCoupon = null;
+            $this->discountAmount = 0;
+            $this->updateFinalAmount();
+            return;
+        }
+        
+        // Check minimum purchase amount
+        $basePrice = $this->getCurrentPlanPrice();
+        if ($coupon->min_purchase_amount && $basePrice < $coupon->min_purchase_amount) {
+            $this->couponError = 'This coupon requires a minimum purchase of ₦' . number_format($coupon->min_purchase_amount, 2) . '.';
             $this->appliedCoupon = null;
             $this->discountAmount = 0;
             $this->updateFinalAmount();
@@ -204,28 +201,20 @@ class SubscriptionPage extends Page implements HasForms
         
         // Check if user can use this coupon
         if (!$coupon->canBeUsedBy(Auth::id())) {
-            Notification::make()
-                ->danger()
-                ->title('Coupon Usage Limit')
-                ->body('You have reached the usage limit for this coupon.')
-                ->send();
+            $this->couponError = 'You have reached the usage limit for this coupon.';
             $this->appliedCoupon = null;
             $this->discountAmount = 0;
             $this->updateFinalAmount();
             return;
         }
         
-        // Apply coupon
+        // Clear any previous errors and apply coupon
+        $this->couponError = null;
+        
         $basePrice = $this->getCurrentPlanPrice();
         $this->appliedCoupon = $coupon;
         $this->discountAmount = $coupon->calculateDiscount($basePrice);
         $this->updateFinalAmount();
-        
-        Notification::make()
-            ->success()
-            ->title('Coupon Applied')
-            ->body('Your discount has been applied!')
-            ->send();
     }
     
     protected function updateFinalAmount(): void
