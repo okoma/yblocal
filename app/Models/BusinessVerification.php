@@ -127,12 +127,14 @@ class BusinessVerification extends Model
             'verified_at' => now(),
         ]);
 
-        // Update business
+        // Update business - Verification = Premium
         $this->business->update([
             'is_verified' => true,
             'verification_level' => $level,
             'verification_score' => $this->verification_score,
             'current_verification_id' => $this->id,
+            'is_premium' => true, // ✅ Verified businesses are automatically premium
+            'premium_until' => null, // null = permanent premium while verified
         ]);
     }
 
@@ -143,6 +145,16 @@ class BusinessVerification extends Model
             'verified_by' => $adminId,
             'rejection_reason' => $reason,
             'admin_feedback' => $feedback,
+        ]);
+
+        // Remove verification and premium status from business
+        $this->business->update([
+            'is_verified' => false,
+            'verification_level' => 'none',
+            'verification_score' => 0,
+            'current_verification_id' => null,
+            'is_premium' => false, // ❌ Lost premium when verification rejected
+            'premium_until' => null,
         ]);
     }
 
