@@ -215,6 +215,13 @@ class ViewBusiness extends ViewRecord
                     ->schema([
                         Components\TextEntry::make('unique_features')
                             ->badge()
+                            ->formatStateUsing(function ($state) {
+                                if (empty($state)) {
+                                    return [];
+                                }
+                                // Ensure it's an array and all values are strings
+                                return is_array($state) ? array_filter(array_map('strval', $state)) : [];
+                            })
                             ->separator(',')
                             ->visible(fn ($state) => !empty($state)),
                         
