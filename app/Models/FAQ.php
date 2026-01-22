@@ -10,6 +10,8 @@ class FAQ extends Model
 {
     use HasFactory;
 
+    protected $table = 'faqs'; // Override Laravel's incorrect pluralization
+
     protected $fillable = [
         'business_id',
         'question',
