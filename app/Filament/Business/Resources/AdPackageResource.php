@@ -198,30 +198,37 @@ class AdPackageResource extends Resource
                             ->required()
                             ->helperText('When should the campaign begin?'),
 
-                        Forms\Components\Select::make('target_categories')
-                            ->label('Target Categories (Optional)')
-                            ->multiple()
-                            ->options(function () {
-                                return Category::where('is_active', true)
-                                    ->orderBy('name')
-                                    ->pluck('name', 'id');
-                            })
-                            ->searchable()
-                            ->preload()
-                            ->helperText('Select categories to target (leave empty for all categories)'),
+                        Forms\Components\Section::make('Targeting (Optional)')
+                            ->description('Leave empty to target all categories and locations')
+                            ->schema([
+                                Forms\Components\Select::make('target_categories')
+                                    ->label('Target Categories')
+                                    ->multiple()
+                                    ->options(function () {
+                                        return Category::where('is_active', true)
+                                            ->orderBy('name')
+                                            ->pluck('name', 'id');
+                                    })
+                                    ->searchable()
+                                    ->preload()
+                                    ->helperText('Select categories to target (leave empty for all categories)'),
 
-                        Forms\Components\Select::make('target_locations')
-                            ->label('Target Locations (Optional)')
-                            ->multiple()
-                            ->options(function () {
-                                return Location::where('is_active', true)
-                                    ->whereIn('type', ['state', 'city'])
-                                    ->orderBy('name')
-                                    ->pluck('name', 'id');
-                            })
-                            ->searchable()
-                            ->preload()
-                            ->helperText('Select locations to target (leave empty for all locations)'),
+                                Forms\Components\Select::make('target_locations')
+                                    ->label('Target Locations')
+                                    ->multiple()
+                                    ->options(function () {
+                                        return Location::where('is_active', true)
+                                            ->whereIn('type', ['state', 'city'])
+                                            ->orderBy('name')
+                                            ->pluck('name', 'id');
+                                    })
+                                    ->searchable()
+                                    ->preload()
+                                    ->helperText('Select locations to target (leave empty for all locations)'),
+                            ])
+                            ->columns(2)
+                            ->collapsible()
+                            ->collapsed(),
 
                         Forms\Components\Textarea::make('notes')
                             ->label('Campaign Notes (Optional)')

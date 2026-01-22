@@ -154,11 +154,17 @@
                                 Current Plan
                             </x-filament::button>
                         @else
-                            {{ $this->getSubscribeAction($plan->id) }}
+                            @php
+                                $subscribeAction = $this->getSubscribeAction($plan->id);
+                            @endphp
+                            
+                            {{ $subscribeAction }}
                         @endif
                     </div>
                 @endforeach
             </div>
         </x-filament::section>
     </div>
+    
+    <x-filament-actions::modals />
 </x-filament-panels::page>

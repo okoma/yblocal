@@ -83,7 +83,8 @@ class SubscriptionPage extends Page implements HasForms
             })
             ->action(function (array $data) use ($plan) {
                 return $this->processPaymentFromAction($plan, $data);
-            });
+            })
+            ->modalId('subscribe-modal-' . $planId);
     }
     
     protected function getPaymentFormSchema($plan): array
