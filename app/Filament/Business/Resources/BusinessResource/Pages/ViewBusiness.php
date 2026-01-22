@@ -104,6 +104,8 @@ class ViewBusiness extends ViewRecord
             ->modalHeading('Claim Business Ownership')
             ->modalDescription('Submit a claim to become the verified owner of this business.')
             ->modalWidth('3xl')
+            ->modalSubmitActionLabel('Claim Business')
+            ->modalFooterActionsAlignment('right')
             ->form([
                 Forms\Components\Section::make('Claim Information')
                     ->description('Tell us why you are claiming this business')
@@ -193,6 +195,8 @@ class ViewBusiness extends ViewRecord
             ->modalHeading('Verify Business Ownership')
             ->modalDescription('Submit documents to verify your business and increase trust.')
             ->modalWidth('5xl')
+            ->modalSubmitActionLabel('Verify Business')
+            ->modalFooterActionsAlignment('right')
             ->form([
                 // CAC Verification
                 Forms\Components\Section::make('CAC Registration')

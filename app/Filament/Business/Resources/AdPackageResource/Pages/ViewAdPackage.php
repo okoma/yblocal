@@ -87,7 +87,8 @@ class ViewAdPackage extends ViewRecord
                 ->requiresConfirmation()
                 ->modalHeading('Purchase Ad Package')
                 ->modalDescription(fn () => 'You are about to purchase the "' . $this->getRecord()->name . '" package for ₦' . number_format($this->getRecord()->price, 2))
-                ->modalSubmitActionLabel('Create Campaign'),
+                ->modalSubmitActionLabel('Purchase & Pay')
+                ->modalFooterActionsAlignment('right'),
 
             Actions\Action::make('back')
                 ->label('Back to Packages')

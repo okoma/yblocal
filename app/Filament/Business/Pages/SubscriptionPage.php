@@ -75,6 +75,8 @@ class SubscriptionPage extends Page implements HasForms, HasActions
             ->label('Subscribe Now')
             ->icon('heroicon-o-credit-card')
             ->modalWidth('3xl')
+            ->modalSubmitActionLabel('Pay Now')
+            ->modalFooterActionsAlignment('right')
             ->fillForm(function (array $arguments): array {
                 return [
                     'plan_id' => $arguments['planId'] ?? null,

@@ -333,7 +333,8 @@ class AdPackageResource extends Resource
                     ->requiresConfirmation()
                     ->modalHeading('Purchase Ad Package')
                     ->modalDescription(fn ($record) => 'You are about to purchase the "' . $record->name . '" package for ₦' . number_format($record->price, 2))
-                    ->modalSubmitActionLabel('Create Campaign'),
+                    ->modalSubmitActionLabel('Purchase & Pay')
+                    ->modalFooterActionsAlignment('right'),
             ])
             ->bulkActions([
                 // No bulk actions needed for business users

@@ -231,7 +231,8 @@ class ManagerInvitationResource extends Resource
                     ->requiresConfirmation()
                     ->modalHeading('Invitation Link')
                     ->modalDescription(fn($record) => route('manager.invitation.accept', $record->invitation_token))
-                    ->modalSubmitActionLabel('Copy Link'),
+                    ->modalSubmitActionLabel('Copy Link')
+                    ->modalFooterActionsAlignment('right'),
                 
                 Tables\Actions\DeleteAction::make(),
             ])
