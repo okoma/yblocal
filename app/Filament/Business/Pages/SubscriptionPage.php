@@ -75,6 +75,8 @@ class SubscriptionPage extends Page implements HasForms
         $this->discountAmount = 0;
         $this->finalAmount = $plan->price;
         $this->form->fill($this->paymentData);
+        
+        // Use $dispatch with proper syntax for Filament 3
         $this->dispatch('open-modal', id: 'subscribe-modal');
     }
     
@@ -105,6 +107,10 @@ class SubscriptionPage extends Page implements HasForms
                                     $this->appliedCoupon = null;
                                     $this->discountAmount = 0;
                                     $this->updateFinalAmount();
+                                } else {
+                                    // Auto-validate and apply coupon when code is entered
+                                    $this->paymentData['coupon_code'] = $state;
+                                    $this->applyCoupon();
                                 }
                             }),
                     ]),
@@ -210,9 +216,9 @@ class SubscriptionPage extends Page implements HasForms
         }
         
         // Apply coupon
-        $plan = \App\Models\SubscriptionPlan::findOrFail($this->selectedPlanId);
+        $basePrice = $this->getCurrentPlanPrice();
         $this->appliedCoupon = $coupon;
-        $this->discountAmount = $coupon->calculateDiscount($plan->price);
+        $this->discountAmount = $coupon->calculateDiscount($basePrice);
         $this->updateFinalAmount();
         
         Notification::make()
@@ -314,22 +320,137 @@ class SubscriptionPage extends Page implements HasForms
     
     protected function redirectToPaystack($transaction, $gateway): void
     {
-        // TODO: Implement Paystack payment redirect
-        Notification::make()
-            ->info()
-            ->title('Paystack Integration')
-            ->body('Paystack payment integration will be implemented here.')
-            ->send();
+        if (!$gateway->public_key || !$gateway->secret_key) {
+            Notification::make()
+                ->danger()
+                ->title('Payment Gateway Error')
+                ->body('Paystack is not properly configured. Please contact support.')
+                ->send();
+            return;
+        }
+
+        // Initialize Paystack payment
+        $callbackUrl = $gateway->callback_url ?? route('payment.paystack.callback');
+        
+        $curl = curl_init();
+        curl_setopt_array($curl, [
+            CURLOPT_URL => "https://api.paystack.co/transaction/initialize",
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_HTTPHEADER => [
+                "Authorization: Bearer " . $gateway->secret_key,
+                "Content-Type: application/json",
+            ],
+            CURLOPT_POSTFIELDS => json_encode([
+                'email' => Auth::user()->email,
+                'amount' => $this->finalAmount * 100, // Convert to kobo
+                'reference' => $transaction->transaction_ref,
+                'callback_url' => $callbackUrl,
+                'metadata' => [
+                    'transaction_id' => $transaction->id,
+                    'user_id' => Auth::id(),
+                    'plan_id' => $transaction->transactionable_id,
+                ],
+            ]),
+        ]);
+
+        $response = curl_exec($curl);
+        $err = curl_error($curl);
+        curl_close($curl);
+
+        if ($err) {
+            Notification::make()
+                ->danger()
+                ->title('Payment Error')
+                ->body('Failed to initialize payment: ' . $err)
+                ->send();
+            return;
+        }
+
+        $result = json_decode($response, true);
+
+        if ($result && $result['status'] && isset($result['data']['authorization_url'])) {
+            // Redirect to Paystack payment page
+            redirect($result['data']['authorization_url'])->send();
+        } else {
+            Notification::make()
+                ->danger()
+                ->title('Payment Error')
+                ->body($result['message'] ?? 'Failed to initialize payment.')
+                ->send();
+        }
     }
     
     protected function redirectToFlutterwave($transaction, $gateway): void
     {
-        // TODO: Implement Flutterwave payment redirect
-        Notification::make()
-            ->info()
-            ->title('Flutterwave Integration')
-            ->body('Flutterwave payment integration will be implemented here.')
-            ->send();
+        if (!$gateway->public_key || !$gateway->secret_key) {
+            Notification::make()
+                ->danger()
+                ->title('Payment Gateway Error')
+                ->body('Flutterwave is not properly configured. Please contact support.')
+                ->send();
+            return;
+        }
+
+        // Initialize Flutterwave payment
+        $callbackUrl = $gateway->callback_url ?? route('payment.flutterwave.callback');
+        
+        $curl = curl_init();
+        curl_setopt_array($curl, [
+            CURLOPT_URL => "https://api.flutterwave.com/v3/payments",
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_HTTPHEADER => [
+                "Authorization: Bearer " . $gateway->secret_key,
+                "Content-Type: application/json",
+            ],
+            CURLOPT_POSTFIELDS => json_encode([
+                'tx_ref' => $transaction->transaction_ref,
+                'amount' => $this->finalAmount,
+                'currency' => 'NGN',
+                'payment_options' => 'card,banktransfer,ussd',
+                'redirect_url' => $callbackUrl,
+                'customer' => [
+                    'email' => Auth::user()->email,
+                    'name' => Auth::user()->name,
+                ],
+                'customizations' => [
+                    'title' => 'Subscription Payment',
+                    'description' => $transaction->description,
+                ],
+                'meta' => [
+                    'transaction_id' => $transaction->id,
+                    'user_id' => Auth::id(),
+                    'plan_id' => $transaction->transactionable_id,
+                ],
+            ]),
+        ]);
+
+        $response = curl_exec($curl);
+        $err = curl_error($curl);
+        curl_close($curl);
+
+        if ($err) {
+            Notification::make()
+                ->danger()
+                ->title('Payment Error')
+                ->body('Failed to initialize payment: ' . $err)
+                ->send();
+            return;
+        }
+
+        $result = json_decode($response, true);
+
+        if ($result && $result['status'] === 'success' && isset($result['data']['link'])) {
+            // Redirect to Flutterwave payment page
+            redirect($result['data']['link'])->send();
+        } else {
+            Notification::make()
+                ->danger()
+                ->title('Payment Error')
+                ->body($result['message'] ?? 'Failed to initialize payment.')
+                ->send();
+        }
     }
     
     protected function showBankTransferDetails($transaction, $gateway): void
