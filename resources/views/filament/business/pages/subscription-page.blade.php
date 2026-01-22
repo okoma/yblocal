@@ -172,7 +172,7 @@
             </x-slot>
             
             <form wire:submit="processPayment">
-                {{ $this->paymentForm }}
+                {{ $this->form }}
                 
                 @if($this->appliedCoupon)
                     <div class="mt-4 p-3 bg-success-50 dark:bg-success-900/20 rounded-lg">

@@ -53,6 +53,14 @@ class SubscriptionPage extends Page implements HasForms
             ->get();
     }
     
+    public function mount(): void
+    {
+        $this->form->fill([
+            'payment_gateway_id' => null,
+            'coupon_code' => null,
+        ]);
+    }
+    
     public function openPaymentModal(int $planId): void
     {
         $this->selectedPlanId = $planId;
@@ -68,7 +76,7 @@ class SubscriptionPage extends Page implements HasForms
         $this->dispatch('open-modal', id: 'subscribe-modal');
     }
     
-    public function paymentForm(Form $form): Form
+    public function form(Form $form): Form
     {
         return $form
             ->schema([
