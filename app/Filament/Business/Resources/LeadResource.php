@@ -251,9 +251,9 @@ class LeadResource extends Resource
     {
         return [
             'index' => Pages\ListLeads::route('/'),
-            'create' => Pages\CreateLead::route('/create'),
+            // 'create' => Pages\CreateLead::route('/create'), // Business owners can't create leads - leads come from customers
             'view' => Pages\ViewLead::route('/{record}'),
-            'edit' => Pages\EditLead::route('/{record}/edit'),
+            // 'edit' => Pages\EditLead::route('/{record}/edit'), // Business owners can only view leads, not edit them
         ];
     }
 
@@ -286,5 +286,17 @@ class LeadResource extends Resource
         }
         
         return $query;
+    }
+
+    public static function canCreate(): bool
+    {
+        // Business owners cannot create leads - leads come from customer inquiries
+        return false;
+    }
+
+    public static function canEdit($record): bool
+    {
+        // Business owners can only view leads, not edit them
+        return false;
     }
 }

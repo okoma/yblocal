@@ -32,7 +32,7 @@ class EditBusiness extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\ViewAction::make(),
+            // Removed ViewAction - redundant since user is already editing
             Actions\DeleteAction::make(),
         ];
     }

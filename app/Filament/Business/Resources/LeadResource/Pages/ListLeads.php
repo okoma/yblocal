@@ -19,7 +19,7 @@ class ListLeads extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            // Business owners cannot create leads - leads come from customer inquiries
         ];
     }
     
