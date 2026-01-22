@@ -162,6 +162,30 @@ class Business extends Model
     }
 
     /**
+     * All claim requests for this business
+     */
+    public function claims(): HasMany
+    {
+        return $this->hasMany(BusinessClaim::class);
+    }
+
+    /**
+     * All verification attempts for this business
+     */
+    public function verifications(): HasMany
+    {
+        return $this->hasMany(BusinessVerification::class);
+    }
+
+    /**
+     * Current active verification
+     */
+    public function currentVerification(): BelongsTo
+    {
+        return $this->belongsTo(BusinessVerification::class, 'current_verification_id');
+    }
+
+    /**
      * Business Type (e.g., Restaurant, Hotel, etc.)
      */
     public function businessType(): BelongsTo

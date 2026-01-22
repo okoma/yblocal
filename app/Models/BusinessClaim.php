@@ -61,6 +61,11 @@ class BusinessClaim extends Model
         return $query->where('status', 'pending');
     }
 
+    public function scopeDocumentsSubmitted($query)
+    {
+        return $query->where('status', 'documents_submitted');
+    }
+
     public function scopeUnderReview($query)
     {
         return $query->where('status', 'under_review');
@@ -69,6 +74,16 @@ class BusinessClaim extends Model
     public function scopeApproved($query)
     {
         return $query->where('status', 'approved');
+    }
+
+    public function scopeRejected($query)
+    {
+        return $query->where('status', 'rejected');
+    }
+
+    public function scopeDisputed($query)
+    {
+        return $query->where('status', 'disputed');
     }
 
     // Helper methods
@@ -81,8 +96,9 @@ class BusinessClaim extends Model
             'approved_at' => now(),
         ]);
 
-        // Update business
+        // Update business - TRANSFER OWNERSHIP
         $this->business->update([
+            'user_id' => $this->user_id, // Transfer ownership to claimant
             'is_claimed' => true,
             'claimed_by' => $this->user_id,
             'claimed_at' => now(),
@@ -107,5 +123,37 @@ class BusinessClaim extends Model
     public function isApproved()
     {
         return $this->status === 'approved';
+    }
+
+    public function isRejected()
+    {
+        return $this->status === 'rejected';
+    }
+
+    public function isUnderReview()
+    {
+        return $this->status === 'under_review';
+    }
+
+    public function isDisputed()
+    {
+        return $this->status === 'disputed';
+    }
+
+    // Check if user already has a pending/approved claim for this business
+    public static function hasExistingClaim($userId, $businessId)
+    {
+        return static::where('user_id', $userId)
+            ->where('business_id', $businessId)
+            ->whereIn('status', ['pending', 'under_review', 'approved'])
+            ->exists();
+    }
+
+    // Check if business has any pending/approved claims
+    public static function businessHasPendingClaims($businessId)
+    {
+        return static::where('business_id', $businessId)
+            ->whereIn('status', ['pending', 'under_review', 'approved'])
+            ->exists();
     }
 }
