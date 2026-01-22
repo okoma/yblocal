@@ -280,7 +280,7 @@ class PaymentController extends Controller
         }
 
         match (true) {
-            $payable instanceof Subscription => $payable->update(['status' => 'active']),
+            $payable instanceof Subscription => $this->activateSubscription($payable),
             $payable instanceof AdCampaign => $payable->update(['is_paid' => true, 'is_active' => true]),
             $payable instanceof Wallet => $payable->deposit($transaction->amount, 'Payment gateway funding', $transaction),
             default => Log::warning('Unknown payable type', ['type' => get_class($payable)]),
@@ -291,6 +291,39 @@ class PaymentController extends Controller
             'type' => get_class($payable),
             'payable_id' => $payable->id,
         ]);
+    }
+
+    /**
+     * Activate subscription and grant premium if verified
+     */
+    protected function activateSubscription(Subscription $subscription): void
+    {
+        // Activate the subscription
+        $subscription->update(['status' => 'active']);
+
+        // Get the business
+        $business = $subscription->business;
+
+        if ($business) {
+            // Grant premium ONLY if business is verified
+            if ($business->is_verified) {
+                $business->update([
+                    'is_premium' => true,
+                    'premium_until' => $subscription->ends_at,
+                ]);
+
+                Log::info('Premium granted', [
+                    'subscription_id' => $subscription->id,
+                    'business_id' => $business->id,
+                    'reason' => 'Verified + Active Subscription',
+                ]);
+            } else {
+                Log::info('Subscription active but no premium (not verified)', [
+                    'subscription_id' => $subscription->id,
+                    'business_id' => $business->id,
+                ]);
+            }
+        }
     }
 
     /**
