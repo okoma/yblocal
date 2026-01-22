@@ -59,6 +59,16 @@ class SubscriptionResource extends Resource
                     ->searchable()
                     ->toggleable(),
 
+                Tables\Columns\TextColumn::make('billing_interval')
+                    ->label('Billing')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => ucfirst($state))
+                    ->color(fn (string $state): string => match ($state) {
+                        'yearly' => 'success',
+                        'monthly' => 'info',
+                        default => 'gray',
+                    }),
+
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
@@ -87,9 +97,10 @@ class SubscriptionResource extends Resource
                     ->boolean()
                     ->toggleable(),
 
-                Tables\Columns\TextColumn::make('plan.price')
+                Tables\Columns\TextColumn::make('price')
                     ->label('Price')
                     ->money('NGN')
+                    ->state(fn ($record) => $record->getPrice())
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
@@ -119,12 +130,14 @@ class SubscriptionResource extends Resource
                         ->color('success')
                         ->requiresConfirmation()
                         ->action(function (Subscription $record) {
-                            $record->renew(30);
+                            $record->renew();
+                            
+                            $duration = $record->isYearly() ? '1 year' : '1 month';
                             
                             Notification::make()
                                 ->success()
                                 ->title('Subscription Renewed')
-                                ->body('Your subscription has been extended by 30 days.')
+                                ->body("Your subscription has been extended by {$duration}.")
                                 ->send();
                         })
                         ->visible(fn (Subscription $record) => $record->isActive()),

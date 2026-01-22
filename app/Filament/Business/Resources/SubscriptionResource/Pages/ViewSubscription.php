@@ -29,12 +29,14 @@ class ViewSubscription extends ViewRecord
                 ->modalDescription('Extend your subscription by 30 days.')
                 ->modalSubmitActionLabel('Renew')
                 ->action(function () {
-                    $this->record->renew(30);
+                    $this->record->renew();
+                    
+                    $duration = $this->record->isYearly() ? '1 year' : '1 month';
                     
                     Notification::make()
                         ->success()
                         ->title('Subscription Renewed')
-                        ->body('Your subscription has been extended by 30 days.')
+                        ->body("Your subscription has been extended by {$duration}.")
                         ->send();
 
                     $this->refreshFormData(['ends_at']);
@@ -260,14 +262,21 @@ class ViewSubscription extends ViewRecord
 
                 Components\Section::make('Payment Information')
                     ->schema([
-                        Components\TextEntry::make('plan.price')
-                            ->label('Plan Price')
+                        Components\TextEntry::make('price')
+                            ->label('Subscription Price')
                             ->money('NGN')
+                            ->state(fn ($record) => $record->getPrice())
                             ->icon('heroicon-o-currency-dollar'),
 
-                        Components\TextEntry::make('plan.billing_interval')
+                        Components\TextEntry::make('billing_interval')
                             ->label('Billing Cycle')
                             ->formatStateUsing(fn (string $state): string => ucfirst($state))
+                            ->badge()
+                            ->color(fn (string $state): string => match ($state) {
+                                'yearly' => 'success',
+                                'monthly' => 'info',
+                                default => 'gray',
+                            })
                             ->icon('heroicon-o-calendar-days'),
 
                         Components\TextEntry::make('payment_method')

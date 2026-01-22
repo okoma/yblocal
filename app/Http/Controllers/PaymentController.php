@@ -346,8 +346,8 @@ class PaymentController extends Controller
 
         // Redirect to the relevant page based on what was paid for
         return match ($transaction->transactionable_type) {
-            'App\Models\Subscription', \App\Models\Subscription::class => route('filament.business.pages.subscription-page'),
-            'App\Models\AdCampaign', \App\Models\AdCampaign::class => \App\Filament\Business\Resources\AdCampaignResource::getUrl('index', panel: 'business'),
+            'App\Models\Subscription', \App\Models\Subscription::class => \App\Filament\Business\Resources\SubscriptionResource::getUrl('view', ['record' => $transaction->transactionable_id], panel: 'business'),
+            'App\Models\AdCampaign', \App\Models\AdCampaign::class => \App\Filament\Business\Resources\AdCampaignResource::getUrl('view', ['record' => $transaction->transactionable_id], panel: 'business'),
             'App\Models\Wallet', \App\Models\Wallet::class => route('filament.business.pages.wallet-page'),
             default => route('filament.business.pages.dashboard'),
         };

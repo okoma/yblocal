@@ -27,70 +27,8 @@
     
     <div class="space-y-6">
         @php
-            $subscription = $this->getCurrentSubscription();
             $plans = $this->getAllPlans();
         @endphp
-        
-        @if($subscription)
-            <x-filament::section>
-                <x-slot name="heading">
-                    Current Subscription
-                </x-slot>
-                
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
-                        <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400">Plan</h4>
-                        <p class="mt-1 text-lg font-semibold">{{ $subscription->plan->name }}</p>
-                    </div>
-                    <div>
-                        <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400">Status</h4>
-                        <x-filament::badge 
-                            :color="$subscription->status === 'active' ? 'success' : 'danger'"
-                            class="mt-1"
-                        >
-                            {{ ucfirst($subscription->status) }}
-                        </x-filament::badge>
-                    </div>
-                    <div>
-                        <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400">Expires</h4>
-                        <p class="mt-1 text-lg">{{ $subscription->ends_at->format('M d, Y') }}</p>
-                        <p class="text-sm text-gray-500">{{ $subscription->daysRemaining() }} days left</p>
-                    </div>
-                </div>
-                
-                <div class="mt-6 space-y-4">
-                    <h4 class="font-medium">Usage Statistics</h4>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <div class="text-sm text-gray-500 dark:text-gray-400">FAQs</div>
-                            <div class="text-2xl font-bold mt-1">
-                                {{ $subscription->faqs_used }} / {{ $subscription->plan->max_faqs ?? '∞' }}
-                            </div>
-                        </div>
-                        <div class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <div class="text-sm text-gray-500 dark:text-gray-400">Leads Viewed</div>
-                            <div class="text-2xl font-bold mt-1">
-                                {{ $subscription->leads_viewed_used }} / {{ $subscription->plan->max_leads_view ?? '∞' }}
-                            </div>
-                            <div class="text-xs text-gray-400 mt-1">Unlimited receiving</div>
-                        </div>
-                        <div class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <div class="text-sm text-gray-500 dark:text-gray-400">Products</div>
-                            <div class="text-2xl font-bold mt-1">
-                                {{ $subscription->products_used }} / {{ $subscription->plan->max_products ?? '∞' }}
-                            </div>
-                        </div>
-                        <div class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <div class="text-sm text-gray-500 dark:text-gray-400">Photos</div>
-                            <div class="text-2xl font-bold mt-1">
-                                {{ $subscription->photos_used }} / {{ $subscription->plan->max_photos ?? '∞' }}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </x-filament::section>
-        @endif
         
         <x-filament::section>
             <x-slot name="heading">
