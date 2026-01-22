@@ -81,7 +81,9 @@ class SubscriptionPage extends Page implements HasForms, HasActions
                     return 'Subscribe to Plan';
                 }
                 
-                return view('filament.business.pages.subscription-modal-heading', ['plan' => $plan]);
+                return new \Illuminate\Support\HtmlString(
+                    view('filament.business.pages.subscription-modal-heading', ['plan' => $plan])->render()
+                );
             })
             ->form(function (array $arguments) {
                 $planId = $arguments['planId'] ?? null;
@@ -294,7 +296,7 @@ class SubscriptionPage extends Page implements HasForms, HasActions
         return true;
     }
     
-    protected function processPayment($plan, array $data): \Illuminate\Http\RedirectResponse | null
+    protected function processPayment($plan, array $data): mixed
     {
         try {
             $user = Auth::user();
