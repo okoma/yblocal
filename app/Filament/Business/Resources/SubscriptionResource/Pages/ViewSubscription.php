@@ -6,12 +6,19 @@
 namespace App\Filament\Business\Resources\SubscriptionResource\Pages;
 
 use App\Filament\Business\Resources\SubscriptionResource;
+use App\Models\PaymentGateway;
+use App\Models\Subscription;
+use App\Models\SubscriptionPlan;
+use App\Services\PaymentService;
 use Filament\Actions;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Infolists\Infolist;
 use Filament\Infolists\Components;
 use Filament\Notifications\Notification;
 use Filament\Forms;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Filament\Support\Enums\Alignment;
 
 class ViewSubscription extends ViewRecord
 {
@@ -21,26 +28,68 @@ class ViewSubscription extends ViewRecord
     {
         return [
             Actions\Action::make('renew')
-                ->label('Renew Now')
+                ->label('Renew Subscription')
                 ->icon('heroicon-o-arrow-path')
                 ->color('success')
-                ->requiresConfirmation()
-                ->modalHeading('Renew Subscription')
-                ->modalDescription('Extend your subscription by 30 days.')
-                ->modalSubmitActionLabel('Renew')
-                ->action(function () {
-                    $this->record->renew();
-                    
-                    $duration = $this->record->isYearly() ? '1 year' : '1 month';
-                    
-                    Notification::make()
-                        ->success()
-                        ->title('Subscription Renewed')
-                        ->body("Your subscription has been extended by {$duration}.")
-                        ->send();
-
-                    $this->refreshFormData(['ends_at']);
+                ->modalWidth('md')
+                ->modalHeading('Renew Your Subscription')
+                ->modalDescription(function () {
+                    $period = $this->record->isYearly() ? '1 year' : '1 month';
+                    $price = number_format($this->record->getPrice(), 2);
+                    return "Renew for {$period} - ₦{$price}";
                 })
+                ->form([
+                    Forms\Components\Placeholder::make('renewal_summary')
+                        ->label('Renewal Details')
+                        ->content(function () {
+                            $plan = $this->record->plan->name;
+                            $period = $this->record->isYearly() ? '1 Year' : '1 Month';
+                            $price = number_format($this->record->getPrice(), 2);
+                            $currentEnd = $this->record->ends_at->format('M j, Y');
+                            $newEnd = $this->record->ends_at->addDays($this->record->isYearly() ? 365 : 30)->format('M j, Y');
+                            
+                            return <<<HTML
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600 dark:text-gray-400">Plan:</span>
+                                        <span class="font-semibold">{$plan}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600 dark:text-gray-400">Billing Cycle:</span>
+                                        <span class="font-semibold">{$period}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600 dark:text-gray-400">Current End Date:</span>
+                                        <span class="font-semibold">{$currentEnd}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600 dark:text-gray-400">New End Date:</span>
+                                        <span class="font-semibold text-success-600">{$newEnd}</span>
+                                    </div>
+                                    <div class="border-t pt-2 mt-2 flex justify-between">
+                                        <span class="text-gray-900 dark:text-white font-bold">Total Amount:</span>
+                                        <span class="text-lg font-bold text-primary-600">₦{$price}</span>
+                                    </div>
+                                </div>
+                            HTML;
+                        }),
+                    
+                    Forms\Components\Select::make('payment_gateway_id')
+                        ->label('Payment Method')
+                        ->options(function () {
+                            return PaymentGateway::where('is_active', true)
+                                ->where('is_enabled', true)
+                                ->pluck('name', 'id');
+                        })
+                        ->native(false)
+                        ->required()
+                        ->helperText('Select your preferred payment method'),
+                ])
+                ->action(function (array $data) {
+                    return $this->processRenewal($data);
+                })
+                ->modalSubmitActionLabel('Pay & Renew')
+                ->modalActionsAlignment(Alignment::Right)
                 ->visible(fn () => $this->record->isActive()),
 
             Actions\Action::make('toggle_auto_renew')
@@ -313,5 +362,94 @@ class ViewSubscription extends ViewRecord
                     ->collapsible()
                     ->collapsed(),
             ]);
+    }
+    
+    /**
+     * Process subscription renewal with payment
+     */
+    protected function processRenewal(array $data): mixed
+    {
+        try {
+            $user = auth()->user();
+            $subscription = $this->record;
+            $amount = $subscription->getPrice();
+            $gatewayId = $data['payment_gateway_id'];
+            
+            // Validate subscription is still active
+            if (!$subscription->isActive()) {
+                Notification::make()
+                    ->danger()
+                    ->title('Subscription Not Active')
+                    ->body('This subscription is not active and cannot be renewed.')
+                    ->send();
+                return null;
+            }
+            
+            DB::beginTransaction();
+            
+            try {
+                // Initialize payment through service
+                $result = app(PaymentService::class)->initializePayment(
+                    user: $user,
+                    amount: $amount,
+                    gatewayId: $gatewayId,
+                    payable: $subscription,
+                    metadata: [
+                        'type' => 'subscription_renewal',
+                        'subscription_id' => $subscription->id,
+                        'plan_id' => $subscription->subscription_plan_id,
+                        'billing_interval' => $subscription->billing_interval,
+                    ]
+                );
+                
+                DB::commit();
+                
+                // Handle payment result
+                if ($result->requiresRedirect()) {
+                    return redirect()->away($result->redirectUrl);
+                } elseif ($result->isBankTransfer()) {
+                    Notification::make()
+                        ->info()
+                        ->title('Bank Transfer Details')
+                        ->body($result->instructions)
+                        ->persistent()
+                        ->send();
+                    return null;
+                } elseif ($result->isSuccess()) {
+                    // For wallet payments, extend immediately
+                    $subscription->renew();
+                    
+                    Notification::make()
+                        ->success()
+                        ->title('Subscription Renewed!')
+                        ->body('Your subscription has been successfully renewed.')
+                        ->send();
+                    
+                    $this->refreshFormData(['ends_at']);
+                    return null;
+                } else {
+                    throw new \Exception($result->message);
+                }
+                
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
+            }
+            
+        } catch (\Exception $e) {
+            Log::error('Subscription renewal failed', [
+                'user_id' => auth()->id(),
+                'subscription_id' => $this->record->id,
+                'error' => $e->getMessage(),
+            ]);
+            
+            Notification::make()
+                ->danger()
+                ->title('Renewal Failed')
+                ->body($e->getMessage() ?: 'Unable to process renewal. Please try again.')
+                ->send();
+            
+            return null;
+        }
     }
 }

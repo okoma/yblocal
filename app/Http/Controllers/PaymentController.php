@@ -298,8 +298,24 @@ class PaymentController extends Controller
      */
     protected function activateSubscription(Subscription $subscription): void
     {
-        // Activate the subscription
-        $subscription->update(['status' => 'active']);
+        // Check if this is a renewal (existing subscription with ends_at close to expiring or expired)
+        $isRenewal = $subscription->status === 'active' && $subscription->ends_at->lte(now()->addDays(30));
+        
+        if ($isRenewal) {
+            // This is a renewal - extend the subscription
+            $subscription->renew();
+            Log::info('Subscription renewed', [
+                'subscription_id' => $subscription->id,
+                'new_end_date' => $subscription->ends_at,
+            ]);
+        } else {
+            // This is a new subscription - just activate it
+            $subscription->update(['status' => 'active']);
+            Log::info('Subscription activated', [
+                'subscription_id' => $subscription->id,
+                'end_date' => $subscription->ends_at,
+            ]);
+        }
 
         // Get the business
         $business = $subscription->business;
