@@ -26,10 +26,6 @@ class ViewBusiness extends ViewRecord
         $business = $this->record;
         $actions = [];
 
-        // Edit and Delete actions (always available)
-        $actions[] = Actions\EditAction::make();
-        $actions[] = Actions\DeleteAction::make();
-
         // === CLAIM WORKFLOW ===
         // Check if business is claimed by current user
         $isClaimed = $business->is_claimed && $business->user_id === Auth::id();
@@ -91,6 +87,12 @@ class ViewBusiness extends ViewRecord
                     ->badge();
             }
         }
+
+        // Edit and Delete actions (moved to the end with icons)
+        $actions[] = Actions\EditAction::make()
+            ->icon('heroicon-o-pencil-square');
+        $actions[] = Actions\DeleteAction::make()
+            ->icon('heroicon-o-trash');
 
         return $actions;
     }
