@@ -353,20 +353,7 @@ Action::make('add_funds')
                 if ($result->requiresRedirect()) {
                     return redirect()->away($result->redirectUrl);
                 } elseif ($result->isBankTransfer()) {
-                    // For bank transfer, get the transaction to show reference
-                    $transaction = $wallet->paymentTransactions()
-                        ->latest()
-                        ->first();
-                    
-                    $reference = $transaction ? $transaction->transaction_ref : 'N/A';
-                    
-                    Notification::make()
-                        ->info()
-                        ->title('Bank Transfer Instructions')
-                        ->body($result->instructions . "\n\nReference: " . $reference)
-                        ->persistent()
-                        ->send();
-                    
+            
                     // Show additional message about proof upload
                     if (!empty($data['payment_proof'])) {
                         Notification::make()
@@ -377,6 +364,7 @@ Action::make('add_funds')
                     }
                     
                     return null;
+
                 } elseif ($result->isSuccess()) {
                     Notification::make()
                         ->success()
