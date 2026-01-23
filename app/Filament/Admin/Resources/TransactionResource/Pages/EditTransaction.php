@@ -14,10 +14,6 @@ class EditTransaction extends EditRecord
 
     protected ?string $statusBeforeSave = null;
 
-    public function __construct(
-        protected ActivationService $activationService
-    ) {}
-
     protected function getHeaderActions(): array
     {
         return [
@@ -42,12 +38,15 @@ class EditTransaction extends EditRecord
     {
         $record = $this->record;
 
+        // Only activate if status changed from pending to completed
         if (
             $this->statusBeforeSave === 'pending'
             && $record->status === 'completed'
         ) {
             try {
-                $this->activationService->completeAndActivate($record);
+                // Resolve ActivationService from the container
+                $activationService = app(ActivationService::class);
+                $activationService->completeAndActivate($record);
 
                 Notification::make()
                     ->title('Transaction completed and payable activated')
