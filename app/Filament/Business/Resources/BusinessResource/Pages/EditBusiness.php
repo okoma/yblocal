@@ -98,6 +98,7 @@ class EditBusiness extends EditRecord
                                 ->required()
                                 ->rows(4)
                                 ->maxLength(1000)
+                                ->placeholder('Tell customers about your business, services, and what makes you unique...')
                                 ->helperText('Describe your business in detail')
                                 ->columnSpanFull(),
                         ])
@@ -131,6 +132,7 @@ class EditBusiness extends EditRecord
                             Forms\Components\TextInput::make('registration_number')
                                 ->label('CAC/RC Number')
                                 ->maxLength(50)
+                                ->placeholder('e.g., RC123456')
                                 ->helperText('Business registration number'),
                             
                             Forms\Components\Select::make('entity_type')
@@ -157,102 +159,127 @@ class EditBusiness extends EditRecord
             
             // Step 2: Location & Contact
             Wizard\Step::make('Location & Contact')
-                ->description('Where is your business located?')
+                ->description('Where is your business located and how can customers reach you?')
                 ->schema([
-                    Forms\Components\Select::make('state_location_id')
-                        ->label('State')
-                        ->required()
-                        ->searchable()
-                        ->preload()
-                        ->options(function () {
-                            return Location::where('type', 'state')
-                                ->where('is_active', true)
-                                ->orderBy('name')
-                                ->pluck('name', 'id');
-                        })
-                        ->live()
-                        ->afterStateUpdated(function (Forms\Set $set, $state) {
-                            $set('city_location_id', null);
-                            $stateName = Location::find($state)?->name;
-                            $set('state', $stateName);
-                        }),
-                    
-                    Forms\Components\Select::make('city_location_id')
-                        ->label('City')
-                        ->required()
-                        ->searchable()
-                        ->preload()
-                        ->options(function (Forms\Get $get) {
-                            $stateId = $get('state_location_id');
-                            if (!$stateId) return [];
-                            
-                            return Location::where('type', 'city')
-                                ->where('parent_id', $stateId)
-                                ->where('is_active', true)
-                                ->orderBy('name')
-                                ->pluck('name', 'id');
-                        })
-                        ->disabled(fn (Forms\Get $get): bool => !$get('state_location_id'))
-                        ->helperText('Select state first')
-                        ->live()
-                        ->afterStateUpdated(function (Forms\Set $set, $state) {
-                            $cityName = Location::find($state)?->name;
-                            $set('city', $cityName);
-                        }),
-                    
-                    Forms\Components\Hidden::make('state'),
-                    Forms\Components\Hidden::make('city'),
-                    
-                    Forms\Components\TextInput::make('address')
-                        ->required()
-                        ->maxLength(255)
-                        ->columnSpanFull()
-                        ->helperText('Street address or building name'),
-                    
-                    Forms\Components\TextInput::make('area')
-                        ->label('Area/Neighborhood')
-                        ->maxLength(100)
-                        ->helperText('Optional: Specific area or neighborhood'),
-                    
-                    Forms\Components\Grid::make(2)
+                    Forms\Components\Section::make('Business Location')
+                        ->description('Provide your physical business address')
                         ->schema([
-                            Forms\Components\TextInput::make('latitude')
-                                ->numeric()
-                                ->step(0.0000001)
-                                ->helperText('Optional: For map display'),
+                            Forms\Components\Select::make('state_location_id')
+                                ->label('State')
+                                ->required()
+                                ->searchable()
+                                ->preload()
+                                ->placeholder('Select your state')
+                                ->options(function () {
+                                    return Location::where('type', 'state')
+                                        ->where('is_active', true)
+                                        ->orderBy('name')
+                                        ->pluck('name', 'id');
+                                })
+                                ->live()
+                                ->afterStateUpdated(function (Forms\Set $set, $state) {
+                                    $set('city_location_id', null);
+                                    $stateName = Location::find($state)?->name;
+                                    $set('state', $stateName);
+                                }),
                             
-                            Forms\Components\TextInput::make('longitude')
-                                ->numeric()
-                                ->step(0.0000001)
-                                ->helperText('Optional: For map display'),
-                        ]),
+                            Forms\Components\Select::make('city_location_id')
+                                ->label('City')
+                                ->required()
+                                ->searchable()
+                                ->preload()
+                                ->placeholder('Select your city')
+                                ->options(function (Forms\Get $get) {
+                                    $stateId = $get('state_location_id');
+                                    if (!$stateId) return [];
+                                    
+                                    return Location::where('type', 'city')
+                                        ->where('parent_id', $stateId)
+                                        ->where('is_active', true)
+                                        ->orderBy('name')
+                                        ->pluck('name', 'id');
+                                })
+                                ->disabled(fn (Forms\Get $get): bool => !$get('state_location_id'))
+                                ->helperText('Select state first')
+                                ->live()
+                                ->afterStateUpdated(function (Forms\Set $set, $state) {
+                                    $cityName = Location::find($state)?->name;
+                                    $set('city', $cityName);
+                                }),
+                            
+                            Forms\Components\Hidden::make('state'),
+                            Forms\Components\Hidden::make('city'),
+                            
+                            Forms\Components\TextInput::make('address')
+                                ->required()
+                                ->maxLength(255)
+                                ->placeholder('e.g., 123 Main Street, Suite 100')
+                                ->columnSpanFull()
+                                ->helperText('Street address or building name'),
+                            
+                            Forms\Components\TextInput::make('area')
+                                ->label('Area/Neighborhood')
+                                ->maxLength(100)
+                                ->placeholder('e.g., Ikeja, Victoria Island')
+                                ->helperText('Optional: Specific area or neighborhood'),
+                            
+                            Forms\Components\Grid::make(2)
+                                ->schema([
+                                    Forms\Components\TextInput::make('latitude')
+                                        ->label('Latitude (GPS)')
+                                        ->numeric()
+                                        ->step(0.0000001)
+                                        ->placeholder('e.g., 6.5244')
+                                        ->helperText('Optional: For map display'),
+                                    
+                                    Forms\Components\TextInput::make('longitude')
+                                        ->label('Longitude (GPS)')
+                                        ->numeric()
+                                        ->step(0.0000001)
+                                        ->placeholder('e.g., 3.3792')
+                                        ->helperText('Optional: For map display'),
+                                ]),
+                        ])
+                        ->columns(2),
                     
                     Forms\Components\Section::make('Contact Information')
+                        ->description('How can customers reach you?')
                         ->schema([
                             Forms\Components\TextInput::make('phone')
+                                ->label('Phone Number')
                                 ->tel()
-                                ->maxLength(20),
+                                ->maxLength(20)
+                                ->placeholder('+234 800 123 4567'),
                             
                             Forms\Components\TextInput::make('email')
+                                ->label('Email Address')
                                 ->email()
-                                ->maxLength(255),
+                                ->maxLength(255)
+                                ->placeholder('contact@yourbusiness.com'),
                             
                             Forms\Components\TextInput::make('whatsapp')
+                                ->label('WhatsApp Number')
                                 ->tel()
-                                ->maxLength(20),
+                                ->maxLength(20)
+                                ->placeholder('+234 800 123 4567'),
                             
                             Forms\Components\TextInput::make('website')
+                                ->label('Website URL')
                                 ->url()
-                                ->maxLength(255),
+                                ->maxLength(255)
+                                ->placeholder('https://www.yourbusiness.com'),
                             
                             Forms\Components\Textarea::make('whatsapp_message')
+                                ->label('Default WhatsApp Message')
                                 ->maxLength(500)
+                                ->placeholder('Hello! I would like to inquire about your services...')
                                 ->helperText('Pre-filled message when customers click WhatsApp')
-                                ->rows(3),
+                                ->rows(3)
+                                ->columnSpanFull(),
                         ])
                         ->columns(2),
                 ])
-                ->columns(2),
+                ->columns(1),
             
             // Step 3: Business Hours (Monday-Friday Required)
             Wizard\Step::make('Business Hours')
