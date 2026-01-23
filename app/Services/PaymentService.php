@@ -110,6 +110,7 @@ class PaymentService
         
         return Transaction::create([
             'user_id' => $user->id,
+            'payment_gateway_id' => $gateway->id,
             'transaction_ref' => $this->generateReference($prefix),
             'transactionable_type' => get_class($payable),
             'transactionable_id' => $payable->id,
