@@ -75,7 +75,7 @@ class SubscriptionPage extends Page implements HasForms, HasActions
             ->label('Subscribe Now')
             ->icon('heroicon-o-credit-card')
             ->modalWidth('3xl')
-            ->modalSubmitActionLabel('Pay Now')
+            ->modalSubmitActionLabel('Subscribe')
             ->modalFooterActionsAlignment('right')
             ->fillForm(function (array $arguments): array {
                 return [
@@ -120,6 +120,36 @@ class SubscriptionPage extends Page implements HasForms, HasActions
                     
                     Forms\Components\Hidden::make('plan_id')
                         ->default($plan->id),
+                    
+                    // Billing Period
+                    Forms\Components\Section::make('Billing Period')
+                        ->description('Choose how often you want to be billed')
+                        ->icon('heroicon-o-calendar')
+                        ->schema([
+                            Forms\Components\Select::make('billing_interval')
+                                ->label('Billing Period')
+                                ->options(function () use ($plan) {
+                                    $options = ['monthly' => 'Monthly'];
+                                    
+                                    if ($plan->yearly_price !== null && $plan->price > 0) {
+                                        $monthlyTotal = $plan->price * 12;
+                                        $yearlyPrice = $plan->yearly_price;
+                                        $savings = $monthlyTotal - $yearlyPrice;
+                                        $savingsPercent = round(($savings / $monthlyTotal) * 100);
+                                        
+                                        $options['yearly'] = 'Yearly (Save ' . $savingsPercent . '% - ₦' . number_format($savings, 2) . ')';
+                                    }
+                                    
+                                    return $options;
+                                })
+                                ->default('monthly')
+                                ->required()
+                                ->native(false)
+                                ->live(),
+                        ])
+                        ->columnSpanFull()
+                        ->collapsed(false)
+                        ->visible(fn () => $plan->yearly_price !== null),
                     
                     // Business Selection
                     Forms\Components\Section::make('Select Business')
@@ -209,22 +239,11 @@ class SubscriptionPage extends Page implements HasForms, HasActions
     protected function getPaymentFormSchema($plan): array
     {
         return [
-            Forms\Components\Section::make('Billing Period')
-                ->schema([
-                    Forms\Components\Select::make('billing_interval')
-                        ->label('Billing Period')
-                        ->options([
-                            'monthly' => 'Monthly',
-                            'yearly' => 'Yearly',
-                        ])
-                        ->default('monthly')
-                        ->required()
-                        ->native(false)
-                        ->live(),
-                ])
-                ->visible(fn () => $plan->yearly_price !== null),
-            
-            Forms\Components\Section::make('Coupon Code (Optional)')
+            Forms\Components\Section::make('Coupon Code')
+                ->description('Have a discount code? Apply it here')
+                ->icon('heroicon-o-ticket')
+                ->collapsible()
+                ->collapsed()
                 ->schema([
                     Forms\Components\TextInput::make('coupon_code')
                         ->label('Coupon Code')
@@ -269,6 +288,8 @@ class SubscriptionPage extends Page implements HasForms, HasActions
                 ]),
             
             Forms\Components\Section::make('Payment Method')
+                ->description('Select your preferred payment method')
+                ->icon('heroicon-o-credit-card')
                 ->schema([
                     Forms\Components\Select::make('payment_gateway_id')
                         ->label('Select Payment Method')
@@ -286,6 +307,8 @@ class SubscriptionPage extends Page implements HasForms, HasActions
                 ]),
             
             Forms\Components\Section::make('Order Summary')
+                ->description('Review your subscription details')
+                ->icon('heroicon-o-clipboard-document-list')
                 ->schema([
                     Forms\Components\Placeholder::make('summary')
                         ->label('')
