@@ -40,6 +40,7 @@ class CreateBusiness extends CreateRecord
                             Forms\Components\TextInput::make('business_name')
                                 ->required()
                                 ->maxLength(255)
+                                ->placeholder('e.g., Okoma Technologies Ltd')
                                 ->live(onBlur: true)
                                 ->afterStateUpdated(fn ($state, Forms\Set $set) => 
                                     $set('slug', \Illuminate\Support\Str::slug($state))
@@ -51,6 +52,7 @@ class CreateBusiness extends CreateRecord
                                 ->unique(ignoreRecord: true)
                                 ->disabled()
                                 ->dehydrated()
+                                ->placeholder('auto-generated-from-business-name')
                                 ->helperText('URL-friendly version of your business name (auto-generated)'),
                             
                             Forms\Components\Select::make('business_type_id')
@@ -82,6 +84,7 @@ class CreateBusiness extends CreateRecord
                                 ->required()
                                 ->rows(4)
                                 ->maxLength(1000)
+                                ->placeholder('Tell customers about your business, services, and what makes you unique...')
                                 ->helperText('Describe your business in detail')
                                 ->columnSpanFull(),
                         ])
@@ -115,6 +118,7 @@ class CreateBusiness extends CreateRecord
                             Forms\Components\TextInput::make('registration_number')
                                 ->label('CAC/RC Number')
                                 ->maxLength(50)
+                                ->placeholder('e.g., RC123456')
                                 ->helperText('Business registration number'),
                             
                             Forms\Components\Select::make('entity_type')
@@ -141,112 +145,136 @@ class CreateBusiness extends CreateRecord
             
             // Step 2: Location & Contact
             Wizard\Step::make('Location & Contact')
-                ->description('Where is your business located?')
+                ->description('Where is your business located and how can customers reach you?')
                 ->schema([
-                    // ✅ FIXED: Changed state_id to state_location_id
-                    Forms\Components\Select::make('state_location_id')
-                        ->label('State')
-                        ->required()
-                        ->searchable()
-                        ->preload()
-                        ->options(function () {
-                            return Location::where('type', 'state')
-                                ->where('is_active', true)
-                                ->orderBy('name')
-                                ->pluck('name', 'id');
-                        })
-                        ->live()
-                        ->afterStateUpdated(function (Forms\Set $set, $state) {
-                            $set('city_location_id', null);
-                            // Auto-fill state name
-                            $stateName = Location::find($state)?->name;
-                            $set('state', $stateName);
-                        }),
-                    
-                    // ✅ FIXED: Changed city_id to city_location_id
-                    Forms\Components\Select::make('city_location_id')
-                        ->label('City')
-                        ->required()
-                        ->searchable()
-                        ->preload()
-                        ->options(function (Forms\Get $get) {
-                            $stateId = $get('state_location_id');
-                            if (!$stateId) return [];
+                    Forms\Components\Section::make('Business Location')
+                        ->description('Provide your physical business address')
+                        ->schema([
+                            // ✅ FIXED: Changed state_id to state_location_id
+                            Forms\Components\Select::make('state_location_id')
+                                ->label('State')
+                                ->required()
+                                ->searchable()
+                                ->preload()
+                                ->placeholder('Select your state')
+                                ->options(function () {
+                                    return Location::where('type', 'state')
+                                        ->where('is_active', true)
+                                        ->orderBy('name')
+                                        ->pluck('name', 'id');
+                                })
+                                ->live()
+                                ->afterStateUpdated(function (Forms\Set $set, $state) {
+                                    $set('city_location_id', null);
+                                    // Auto-fill state name
+                                    $stateName = Location::find($state)?->name;
+                                    $set('state', $stateName);
+                                }),
                             
-                            return Location::where('type', 'city')
-                                ->where('parent_id', $stateId)
-                                ->where('is_active', true)
-                                ->orderBy('name')
-                                ->pluck('name', 'id');
-                        })
-                        ->disabled(fn (Forms\Get $get): bool => !$get('state_location_id'))
-                        ->helperText('Select state first')
-                        ->live()
-                        ->afterStateUpdated(function (Forms\Set $set, $state) {
-                            // Auto-fill city name
-                            $cityName = Location::find($state)?->name;
-                            $set('city', $cityName);
-                        }),
-                    
-                    // ✅ ADDED: Hidden fields for state and city names (auto-filled)
-                    Forms\Components\Hidden::make('state'),
-                    Forms\Components\Hidden::make('city'),
-                    
-                    Forms\Components\TextInput::make('address')
-                        ->required()
-                        ->maxLength(255)
-                        ->columnSpanFull()
-                        ->helperText('Street address or building name'),
-                    
-                    Forms\Components\TextInput::make('area')
-                        ->label('Area/Neighborhood')
-                        ->maxLength(100)
-                        ->helperText('Optional: Specific area or neighborhood'),
-                    
-Forms\Components\Grid::make(2)
-    ->schema([
-        Forms\Components\TextInput::make('latitude')
-            ->numeric()
-            ->step(0.0000001)
-            ->minValue(-90)
-            ->maxValue(90)
-            ->helperText('Latitude must be between -90 and 90'),
-        
-        Forms\Components\TextInput::make('longitude')
-            ->numeric()
-            ->step(0.0000001)
-            ->minValue(-180)
-            ->maxValue(180)
-            ->helperText('Longitude must be between -180 and 180'),
-    ]),
-
+                            // ✅ FIXED: Changed city_id to city_location_id
+                            Forms\Components\Select::make('city_location_id')
+                                ->label('City')
+                                ->required()
+                                ->searchable()
+                                ->preload()
+                                ->placeholder('Select your city')
+                                ->options(function (Forms\Get $get) {
+                                    $stateId = $get('state_location_id');
+                                    if (!$stateId) return [];
+                                    
+                                    return Location::where('type', 'city')
+                                        ->where('parent_id', $stateId)
+                                        ->where('is_active', true)
+                                        ->orderBy('name')
+                                        ->pluck('name', 'id');
+                                })
+                                ->disabled(fn (Forms\Get $get): bool => !$get('state_location_id'))
+                                ->helperText('Select state first')
+                                ->live()
+                                ->afterStateUpdated(function (Forms\Set $set, $state) {
+                                    // Auto-fill city name
+                                    $cityName = Location::find($state)?->name;
+                                    $set('city', $cityName);
+                                }),
+                            
+                            // ✅ ADDED: Hidden fields for state and city names (auto-filled)
+                            Forms\Components\Hidden::make('state'),
+                            Forms\Components\Hidden::make('city'),
+                            
+                            Forms\Components\TextInput::make('address')
+                                ->required()
+                                ->maxLength(255)
+                                ->placeholder('e.g., 123 Main Street, Suite 100')
+                                ->columnSpanFull()
+                                ->helperText('Street address or building name'),
+                            
+                            Forms\Components\TextInput::make('area')
+                                ->label('Area/Neighborhood')
+                                ->maxLength(100)
+                                ->placeholder('e.g., Ikeja, Victoria Island')
+                                ->helperText('Optional: Specific area or neighborhood'),
+                            
+                            Forms\Components\Grid::make(2)
+                                ->schema([
+                                    Forms\Components\TextInput::make('latitude')
+                                        ->label('Latitude (GPS)')
+                                        ->numeric()
+                                        ->step(0.0000001)
+                                        ->minValue(-90)
+                                        ->maxValue(90)
+                                        ->placeholder('e.g., 6.5244')
+                                        ->helperText('Latitude must be between -90 and 90'),
+                                    
+                                    Forms\Components\TextInput::make('longitude')
+                                        ->label('Longitude (GPS)')
+                                        ->numeric()
+                                        ->step(0.0000001)
+                                        ->minValue(-180)
+                                        ->maxValue(180)
+                                        ->placeholder('e.g., 3.3792')
+                                        ->helperText('Longitude must be between -180 and 180'),
+                                ]),
+                        ])
+                        ->columns(2),
                     
                     Forms\Components\Section::make('Contact Information')
+                        ->description('How can customers reach you?')
                         ->schema([
                             Forms\Components\TextInput::make('phone')
+                                ->label('Phone Number')
                                 ->tel()
-                                ->maxLength(20),
+                                ->maxLength(20)
+                                ->placeholder('+234 800 123 4567'),
                             
                             Forms\Components\TextInput::make('email')
+                                ->label('Email Address')
                                 ->email()
-                                ->maxLength(255),
+                                ->maxLength(255)
+                                ->placeholder('contact@yourbusiness.com'),
                             
                             Forms\Components\TextInput::make('whatsapp')
+                                ->label('WhatsApp Number')
                                 ->tel()
-                                ->maxLength(20),
+                                ->maxLength(20)
+                                ->placeholder('+234 800 123 4567'),
                             
                             Forms\Components\TextInput::make('website')
+                                ->label('Website URL')
                                 ->url()
-                                ->maxLength(255),
+                                ->maxLength(255)
+                                ->placeholder('https://www.yourbusiness.com'),
                             
                             Forms\Components\Textarea::make('whatsapp_message')
+                                ->label('Default WhatsApp Message')
                                 ->maxLength(500)
+                                ->placeholder('Hello! I would like to inquire about your services...')
                                 ->helperText('Pre-filled message when customers click WhatsApp')
-                                ->rows(3),
+                                ->rows(3)
+                                ->columnSpanFull(),
                         ])
                         ->columns(2),
                 ])
-                ->columns(2),
+                ->columns(1),
             
             // Step 3: Business Hours (Monday-Friday Required)
             Wizard\Step::make('Business Hours')
@@ -462,58 +490,65 @@ Forms\Components\Grid::make(2)
             Wizard\Step::make('FAQs')
                 ->description('Add frequently asked questions (optional - you can skip this step)')
                 ->schema([
-                    Forms\Components\Repeater::make('faqs_temp')
-                        ->label('Frequently Asked Questions')
+                    Forms\Components\Section::make('Frequently Asked Questions')
+                        ->description(function () {
+                            $user = Auth::user();
+                            $subscription = $user->subscription;
+                            $maxFaqs = $subscription?->plan?->max_faqs;
+                            
+                            if ($maxFaqs === null) {
+                                return 'Help customers by answering common questions about your business (Unlimited)';
+                            }
+                            
+                            return "Help customers by answering common questions about your business (Limit: {$maxFaqs} FAQs)";
+                        })
                         ->schema([
-                            Forms\Components\TextInput::make('question')
-                                ->label('Question')
-                                ->required()
-                                ->maxLength(255)
-                                ->columnSpanFull(),
-                            
-                            Forms\Components\Textarea::make('answer')
-                                ->label('Answer')
-                                ->required()
-                                ->rows(3)
-                                ->maxLength(1000)
-                                ->columnSpanFull(),
-                            
-                            Forms\Components\Toggle::make('is_active')
-                                ->label('Active')
-                                ->default(true),
-                            
-                            Forms\Components\TextInput::make('order')
-                                ->label('Order')
-                                ->numeric()
-                                ->default(0)
-                                ->helperText('Display order (lower numbers appear first)'),
-                        ])
-                        ->columns(2)
-                        ->defaultItems(0)
-                        ->collapsible()
-                        ->itemLabel(fn (array $state): ?string => $state['question'] ?? 'New FAQ')
-                        ->helperText(function () {
-                            $user = Auth::user();
-                            $subscription = $user->subscription;
-                            $maxFaqs = $subscription?->plan?->max_faqs;
-                            
-                            if ($maxFaqs === null) {
-                                return 'Add frequently asked questions about your business (Unlimited)';
-                            }
-                            
-                            return "Add frequently asked questions about your business (Max: {$maxFaqs})";
-                        })
-                        ->maxItems(function () {
-                            $user = Auth::user();
-                            $subscription = $user->subscription;
-                            $maxFaqs = $subscription?->plan?->max_faqs;
-                            
-                            if ($maxFaqs === null) {
-                                return null; // Unlimited
-                            }
-                            
-                            return $maxFaqs;
-                        })
+                            Forms\Components\Repeater::make('faqs_temp')
+                                ->label('')
+                                ->schema([
+                                    Forms\Components\TextInput::make('question')
+                                        ->label('Question')
+                                        ->required()
+                                        ->maxLength(255)
+                                        ->placeholder('e.g., What are your business hours?')
+                                        ->columnSpanFull(),
+                                    
+                                    Forms\Components\Textarea::make('answer')
+                                        ->label('Answer')
+                                        ->required()
+                                        ->rows(3)
+                                        ->maxLength(1000)
+                                        ->placeholder('Provide a clear and detailed answer to this question...')
+                                        ->columnSpanFull(),
+                                    
+                                    Forms\Components\Toggle::make('is_active')
+                                        ->label('Active')
+                                        ->default(true)
+                                        ->helperText('Show this FAQ on your business page'),
+                                    
+                                    Forms\Components\TextInput::make('order')
+                                        ->label('Display Order')
+                                        ->numeric()
+                                        ->default(0)
+                                        ->placeholder('0')
+                                        ->helperText('Lower numbers appear first'),
+                                ])
+                                ->columns(2)
+                                ->defaultItems(0)
+                                ->collapsible()
+                                ->itemLabel(fn (array $state): ?string => $state['question'] ?? 'New FAQ')
+                                ->addActionLabel('Add FAQ')
+                                ->maxItems(function () {
+                                    $user = Auth::user();
+                                    $subscription = $user->subscription;
+                                    $maxFaqs = $subscription?->plan?->max_faqs;
+                                    
+                                    if ($maxFaqs === null) {
+                                        return null; // Unlimited
+                                    }
+                                    
+                                    return $maxFaqs;
+                                })
                         ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
                             // Validate FAQ limit
                             $user = Auth::user();
@@ -532,6 +567,7 @@ Forms\Components\Grid::make(2)
                             }
                         })
                         ->columnSpanFull(),
+                        ]),
                 ])
                 ->columns(1),
             
@@ -539,40 +575,47 @@ Forms\Components\Grid::make(2)
             Wizard\Step::make('Social Media')
                 ->description('Connect your social media profiles (optional - you can skip this step)')
                 ->schema([
-                    Forms\Components\Repeater::make('social_accounts_temp')
-                        ->label('Social Media Accounts')
+                    Forms\Components\Section::make('Social Media Profiles')
+                        ->description('Add your social media accounts to increase your online presence')
                         ->schema([
-                            Forms\Components\Select::make('platform')
-                                ->options([
-                                    'facebook' => 'Facebook',
-                                    'instagram' => 'Instagram',
-                                    'twitter' => 'Twitter (X)',
-                                    'linkedin' => 'LinkedIn',
-                                    'youtube' => 'YouTube',
-                                    'tiktok' => 'TikTok',
-                                    'pinterest' => 'Pinterest',
-                                    'whatsapp' => 'WhatsApp Business',
+                            Forms\Components\Repeater::make('social_accounts_temp')
+                                ->label('')
+                                ->schema([
+                                    Forms\Components\Select::make('platform')
+                                        ->label('Platform')
+                                        ->options([
+                                            'facebook' => 'Facebook',
+                                            'instagram' => 'Instagram',
+                                            'twitter' => 'Twitter (X)',
+                                            'linkedin' => 'LinkedIn',
+                                            'youtube' => 'YouTube',
+                                            'tiktok' => 'TikTok',
+                                            'pinterest' => 'Pinterest',
+                                            'whatsapp' => 'WhatsApp Business',
+                                        ])
+                                        ->required()
+                                        ->searchable()
+                                        ->placeholder('Select platform'),
+                                    
+                                    Forms\Components\TextInput::make('url')
+                                        ->label('Profile URL')
+                                        ->url()
+                                        ->required()
+                                        ->maxLength(255)
+                                        ->placeholder('https://facebook.com/yourbusiness'),
+                                    
+                                    Forms\Components\Toggle::make('is_active')
+                                        ->label('Active')
+                                        ->default(true)
+                                        ->helperText('Show on business page'),
                                 ])
-                                ->required()
-                                ->searchable(),
-                            
-                            Forms\Components\TextInput::make('url')
-                                ->label('Profile URL')
-                                ->url()
-                                ->required()
-                                ->maxLength(255)
-                                ->placeholder('https://facebook.com/yourbusiness'),
-                            
-                            Forms\Components\Toggle::make('is_active')
-                                ->label('Active')
-                                ->default(true),
-                        ])
-                        ->columns(3)
-                        ->defaultItems(0)
-                        ->collapsible()
-                        ->itemLabel(fn (array $state): ?string => ucfirst($state['platform'] ?? 'New Account'))
-                        ->helperText('Add your social media profiles to increase your online presence')
-                        ->columnSpanFull(),
+                                ->columns(3)
+                                ->defaultItems(0)
+                                ->collapsible()
+                                ->itemLabel(fn (array $state): ?string => ucfirst($state['platform'] ?? 'New Account'))
+                                ->addActionLabel('Add Social Account')
+                                ->columnSpanFull(),
+                        ]),
                 ])
                 ->columns(1),
             
@@ -580,69 +623,107 @@ Forms\Components\Grid::make(2)
             Wizard\Step::make('Team Members')
                 ->description('Add your team members and staff (optional - you can skip this step)')
                 ->schema([
-                    Forms\Components\Repeater::make('officials_temp')
-                        ->label('Team Members')
+                    Forms\Components\Section::make('Team Members & Staff')
+                        ->description(function () {
+                            $user = Auth::user();
+                            $subscription = $user->subscription;
+                            $maxTeamMembers = $subscription?->plan?->max_team_members;
+                            
+                            if ($maxTeamMembers === null) {
+                                return 'Showcase your team members and staff (Unlimited)';
+                            }
+                            
+                            return "Showcase your team members and staff (Limit: {$maxTeamMembers} members)";
+                        })
                         ->schema([
-                            Forms\Components\FileUpload::make('photo')
-                                ->image()
-                                ->directory('official-photos')
-                                ->maxSize(2048)
-                                ->imageEditor()
-                                ->avatar()
-                                ->columnSpanFull(),
-                            
-                            Forms\Components\TextInput::make('name')
-                                ->required()
-                                ->maxLength(255),
-                            
-                            Forms\Components\TextInput::make('position')
-                                ->required()
-                                ->maxLength(255)
-                                ->helperText('e.g., CEO, Manager, Chef, etc.'),
-                            
-                            Forms\Components\TextInput::make('order')
-                                ->label('Display Order')
-                                ->numeric()
-                                ->default(0)
-                                ->helperText('Lower numbers appear first'),
-                            
-                            Forms\Components\Toggle::make('is_active')
-                                ->label('Active')
-                                ->default(true),
-                            
-                            Forms\Components\Repeater::make('social_accounts')
-                                ->label('Social Media')
+                            Forms\Components\Repeater::make('officials_temp')
+                                ->label('')
                                 ->schema([
-                                    Forms\Components\Select::make('platform')
-                                        ->options([
-                                            'linkedin' => 'LinkedIn',
-                                            'twitter' => 'Twitter (X)',
-                                            'facebook' => 'Facebook',
-                                            'instagram' => 'Instagram',
-                                            'youtube' => 'YouTube',
-                                            'tiktok' => 'TikTok',
-                                            'github' => 'GitHub',
-                                            'website' => 'Personal Website',
-                                        ])
-                                        ->required(),
+                                    Forms\Components\FileUpload::make('photo')
+                                        ->label('Profile Photo')
+                                        ->image()
+                                        ->directory('official-photos')
+                                        ->maxSize(2048)
+                                        ->imageEditor()
+                                        ->avatar()
+                                        ->helperText('Upload a professional photo')
+                                        ->columnSpanFull(),
                                     
-                                    Forms\Components\TextInput::make('url')
-                                        ->url()
+                                    Forms\Components\TextInput::make('name')
+                                        ->label('Full Name')
                                         ->required()
-                                        ->maxLength(255),
+                                        ->maxLength(255)
+                                        ->placeholder('e.g., John Doe'),
+                                    
+                                    Forms\Components\TextInput::make('position')
+                                        ->label('Job Title/Position')
+                                        ->required()
+                                        ->maxLength(255)
+                                        ->placeholder('e.g., CEO, Manager, Chef')
+                                        ->helperText('Their role in your business'),
+                                    
+                                    Forms\Components\TextInput::make('order')
+                                        ->label('Display Order')
+                                        ->numeric()
+                                        ->default(0)
+                                        ->placeholder('0')
+                                        ->helperText('Lower numbers appear first'),
+                                    
+                                    Forms\Components\Toggle::make('is_active')
+                                        ->label('Active')
+                                        ->default(true)
+                                        ->helperText('Show on business page'),
+                                    
+                                    Forms\Components\Repeater::make('social_accounts')
+                                        ->label('Social Media (Optional)')
+                                        ->schema([
+                                            Forms\Components\Select::make('platform')
+                                                ->label('Platform')
+                                                ->options([
+                                                    'linkedin' => 'LinkedIn',
+                                                    'twitter' => 'Twitter (X)',
+                                                    'facebook' => 'Facebook',
+                                                    'instagram' => 'Instagram',
+                                                    'youtube' => 'YouTube',
+                                                    'tiktok' => 'TikTok',
+                                                    'github' => 'GitHub',
+                                                    'website' => 'Personal Website',
+                                                ])
+                                                ->required()
+                                                ->placeholder('Select platform'),
+                                            
+                                            Forms\Components\TextInput::make('url')
+                                                ->label('Profile URL')
+                                                ->url()
+                                                ->required()
+                                                ->maxLength(255)
+                                                ->placeholder('https://linkedin.com/in/username'),
+                                        ])
+                                        ->columns(2)
+                                        ->defaultItems(0)
+                                        ->collapsible()
+                                        ->itemLabel(fn (array $state): ?string => ucfirst($state['platform'] ?? 'Social Link'))
+                                        ->addActionLabel('Add Social Link')
+                                        ->columnSpanFull(),
                                 ])
                                 ->columns(2)
                                 ->defaultItems(0)
                                 ->collapsible()
-                                ->itemLabel(fn (array $state): ?string => $state['platform'] ?? null)
+                                ->itemLabel(fn (array $state): ?string => $state['name'] ?? 'New Team Member')
+                                ->addActionLabel('Add Team Member')
+                                ->maxItems(function () {
+                                    $user = Auth::user();
+                                    $subscription = $user->subscription;
+                                    $maxTeamMembers = $subscription?->plan?->max_team_members;
+                                    
+                                    if ($maxTeamMembers === null) {
+                                        return null; // Unlimited
+                                    }
+                                    
+                                    return $maxTeamMembers;
+                                })
                                 ->columnSpanFull(),
-                        ])
-                        ->columns(2)
-                        ->defaultItems(0)
-                        ->collapsible()
-                        ->itemLabel(fn (array $state): ?string => $state['name'] ?? 'New Team Member')
-                        ->helperText('Add your team members to showcase your business team')
-                        ->columnSpanFull(),
+                        ]),
                 ])
                 ->columns(1),
             
@@ -650,62 +731,118 @@ Forms\Components\Grid::make(2)
             Wizard\Step::make('Media & Branding')
                 ->description('Upload your business images (optional - you can skip this step)')
                 ->schema([
-                    Forms\Components\FileUpload::make('logo')
-                        ->image()
-                        ->directory('business-logos')
-                        ->maxSize(2048)
-                        ->imageEditor()
-                        ->helperText('Square logo works best'),
+                    Forms\Components\Section::make('Brand Assets')
+                        ->description('Upload your logo and cover photo to build brand recognition')
+                        ->schema([
+                            Forms\Components\FileUpload::make('logo')
+                                ->label('Business Logo')
+                                ->image()
+                                ->directory('business-logos')
+                                ->maxSize(2048)
+                                ->imageEditor()
+                                ->helperText('Square logo works best (PNG with transparent background recommended)'),
+                            
+                            Forms\Components\FileUpload::make('cover_photo')
+                                ->label('Cover Photo')
+                                ->image()
+                                ->directory('business-covers')
+                                ->maxSize(5120)
+                                ->imageEditor()
+                                ->helperText('Wide banner image (1200x400px recommended)'),
+                        ])
+                        ->columns(2),
                     
-                    Forms\Components\FileUpload::make('cover_photo')
-                        ->image()
-                        ->directory('business-covers')
-                        ->maxSize(5120)
-                        ->imageEditor()
-                        ->helperText('Wide banner image'),
-                    
-                    Forms\Components\FileUpload::make('gallery')
-                        ->image()
-                        ->directory('business-gallery')
-                        ->multiple()
-                        ->maxFiles(10)
-                        ->maxSize(3072)
-                        ->imageEditor()
-                        ->helperText('Upload up to 10 images')
-                        ->columnSpanFull(),
+                    Forms\Components\Section::make('Photo Gallery')
+                        ->description(function () {
+                            $user = Auth::user();
+                            $subscription = $user->subscription;
+                            $maxPhotos = $subscription?->plan?->max_photos;
+                            
+                            if ($maxPhotos === null) {
+                                return 'Showcase your business with photos (Unlimited)';
+                            }
+                            
+                            return "Showcase your business with photos (Limit: {$maxPhotos} photos)";
+                        })
+                        ->schema([
+                            Forms\Components\FileUpload::make('gallery')
+                                ->label('Gallery Images')
+                                ->image()
+                                ->directory('business-gallery')
+                                ->multiple()
+                                ->maxFiles(function () {
+                                    $user = Auth::user();
+                                    $subscription = $user->subscription;
+                                    $maxPhotos = $subscription?->plan?->max_photos;
+                                    
+                                    if ($maxPhotos === null) {
+                                        return 50; // Default max if unlimited
+                                    }
+                                    
+                                    return $maxPhotos;
+                                })
+                                ->maxSize(3072)
+                                ->imageEditor()
+                                ->helperText(function () {
+                                    $user = Auth::user();
+                                    $subscription = $user->subscription;
+                                    $maxPhotos = $subscription?->plan?->max_photos;
+                                    
+                                    if ($maxPhotos === null) {
+                                        return 'Upload photos of your business, products, or services';
+                                    }
+                                    
+                                    return "Upload up to {$maxPhotos} photos of your business, products, or services";
+                                })
+                                ->columnSpanFull(),
+                        ]),
                 ])
-                ->columns(2),
+                ->columns(1),
             
             // Step 8: SEO Settings (Optional) - LAST STEP
             Wizard\Step::make('SEO Settings')
                 ->description('Search engine optimization (optional - you can skip this step)')
                 ->schema([
-                    Forms\Components\Select::make('canonical_strategy')
-                        ->label('Indexing Strategy')
-                        ->options([
-                            'self' => 'Index Separately (Unique business with own SEO)',
-                            'parent' => 'Standard Business',
+                    Forms\Components\Section::make('Search Engine Optimization')
+                        ->description('Optimize your business listing for search engines')
+                        ->schema([
+                            Forms\Components\Select::make('canonical_strategy')
+                                ->label('Indexing Strategy')
+                                ->options([
+                                    'self' => 'Index Separately (Unique business with own SEO)',
+                                    'parent' => 'Standard Business',
+                                ])
+                                ->default('self')
+                                ->required()
+                                ->helperText('Most businesses should use "Index Separately"'),
+                            
+                            Forms\Components\TextInput::make('meta_title')
+                                ->label('SEO Title')
+                                ->maxLength(255)
+                                ->placeholder('e.g., Best Restaurant in Lagos | Your Business Name')
+                                ->helperText('Custom page title (auto-generated if empty)'),
+                            
+                            Forms\Components\Textarea::make('meta_description')
+                                ->label('SEO Description')
+                                ->maxLength(255)
+                                ->rows(3)
+                                ->placeholder('Describe your business in a way that appears in search results...')
+                                ->helperText('Custom meta description (auto-generated if empty)'),
+                            
+                            Forms\Components\TagsInput::make('unique_features')
+                                ->label('Unique Features')
+                                ->helperText('What makes your business unique? Press Enter after each feature')
+                                ->placeholder('e.g., 24/7 Service, Award Winning, Free Delivery')
+                                ->columnSpanFull(),
+                            
+                            Forms\Components\Textarea::make('nearby_landmarks')
+                                ->label('Nearby Landmarks')
+                                ->rows(3)
+                                ->placeholder('e.g., Near Ikeja City Mall, Opposite GTBank, Behind National Stadium...')
+                                ->helperText('Mention nearby landmarks to help customers find you')
+                                ->columnSpanFull(),
                         ])
-                        ->default('self')
-                        ->required()
-                        ->helperText('Most businesses should use "Index Separately"'),
-                    
-                    Forms\Components\TextInput::make('meta_title')
-                        ->maxLength(255)
-                        ->helperText('Custom page title (auto-generated if empty)'),
-                    
-                    Forms\Components\Textarea::make('meta_description')
-                        ->maxLength(255)
-                        ->rows(3)
-                        ->helperText('Custom meta description (auto-generated if empty)'),
-                    
-                    Forms\Components\TagsInput::make('unique_features')
-                        ->helperText('What makes your business unique? (e.g., "24/7 Service", "Award Winning")')
-                        ->placeholder('Add unique features'),
-                    
-                    Forms\Components\Textarea::make('nearby_landmarks')
-                        ->rows(3)
-                        ->helperText('Mention nearby landmarks to help customers find you'),
+                        ->columns(2),
                 ])
                 ->columns(1),
         ];

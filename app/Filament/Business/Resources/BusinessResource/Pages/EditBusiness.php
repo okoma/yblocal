@@ -54,6 +54,7 @@ class EditBusiness extends EditRecord
                             Forms\Components\TextInput::make('business_name')
                                 ->required()
                                 ->maxLength(255)
+                                ->placeholder('e.g., Okoma Technologies Ltd')
                                 ->live(onBlur: true)
                                 ->afterStateUpdated(fn ($state, Forms\Set $set, $old) => 
                                     $old !== $state ? $set('slug', \Illuminate\Support\Str::slug($state)) : null
@@ -65,6 +66,7 @@ class EditBusiness extends EditRecord
                                 ->unique(ignoreRecord: true)
                                 ->disabled()
                                 ->dehydrated()
+                                ->placeholder('auto-generated-from-business-name')
                                 ->helperText('URL-friendly version of your business name (auto-generated)'),
                             
                             Forms\Components\Select::make('business_type_id')
