@@ -50,59 +50,59 @@ class EditBusiness extends EditRecord
                 ->description('Enter your business details, amenities, and legal information')
                 ->schema([
                     Forms\Components\Section::make('Business Details')
-                        ->schema([
-                            Forms\Components\TextInput::make('business_name')
-                                ->required()
-                                ->maxLength(255)
+                ->schema([
+                    Forms\Components\TextInput::make('business_name')
+                        ->required()
+                        ->maxLength(255)
                                 ->placeholder('e.g., Okoma Technologies Ltd')
-                                ->live(onBlur: true)
-                                ->afterStateUpdated(fn ($state, Forms\Set $set, $old) => 
-                                    $old !== $state ? $set('slug', \Illuminate\Support\Str::slug($state)) : null
-                                ),
-                            
-                            Forms\Components\TextInput::make('slug')
-                                ->required()
-                                ->maxLength(255)
-                                ->unique(ignoreRecord: true)
-                                ->disabled()
-                                ->dehydrated()
+                        ->live(onBlur: true)
+                        ->afterStateUpdated(fn ($state, Forms\Set $set, $old) => 
+                            $old !== $state ? $set('slug', \Illuminate\Support\Str::slug($state)) : null
+                        ),
+                    
+                    Forms\Components\TextInput::make('slug')
+                        ->required()
+                        ->maxLength(255)
+                        ->unique(ignoreRecord: true)
+                        ->disabled()
+                        ->dehydrated()
                                 ->placeholder('auto-generated-from-business-name')
-                                ->helperText('URL-friendly version of your business name (auto-generated)'),
+                        ->helperText('URL-friendly version of your business name (auto-generated)'),
+                    
+                    Forms\Components\Select::make('business_type_id')
+                        ->label('Business Type')
+                        ->required()
+                        ->searchable()
+                        ->preload()
+                        ->relationship('businessType', 'name')
+                        ->live()
+                        ->afterStateUpdated(fn (Forms\Set $set) => $set('categories', [])),
+                    
+                    Forms\Components\Select::make('categories')
+                        ->label('Categories')
+                        ->multiple()
+                        ->options(function (Forms\Get $get) {
+                            $businessTypeId = $get('business_type_id');
+                            if (!$businessTypeId) return [];
                             
-                            Forms\Components\Select::make('business_type_id')
-                                ->label('Business Type')
-                                ->required()
-                                ->searchable()
-                                ->preload()
-                                ->relationship('businessType', 'name')
-                                ->live()
-                                ->afterStateUpdated(fn (Forms\Set $set) => $set('categories', [])),
-                            
-                            Forms\Components\Select::make('categories')
-                                ->label('Categories')
-                                ->multiple()
-                                ->options(function (Forms\Get $get) {
-                                    $businessTypeId = $get('business_type_id');
-                                    if (!$businessTypeId) return [];
-                                    
-                                    return Category::where('business_type_id', $businessTypeId)
-                                        ->where('is_active', true)
-                                        ->pluck('name', 'id');
-                                })
-                                ->searchable()
-                                ->preload()
-                                ->disabled(fn (Forms\Get $get): bool => !$get('business_type_id'))
-                                ->helperText('Select one or more categories for your business (select business type first)'),
-                            
-                            Forms\Components\Textarea::make('description')
-                                ->required()
-                                ->rows(4)
-                                ->maxLength(1000)
+                            return Category::where('business_type_id', $businessTypeId)
+                                ->where('is_active', true)
+                                ->pluck('name', 'id');
+                        })
+                        ->searchable()
+                        ->preload()
+                        ->disabled(fn (Forms\Get $get): bool => !$get('business_type_id'))
+                        ->helperText('Select one or more categories for your business (select business type first)'),
+                    
+                    Forms\Components\Textarea::make('description')
+                        ->required()
+                        ->rows(4)
+                        ->maxLength(1000)
                                 ->placeholder('Tell customers about your business, services, and what makes you unique...')
-                                ->helperText('Describe your business in detail')
-                                ->columnSpanFull(),
-                        ])
-                        ->columns(2),
+                        ->helperText('Describe your business in detail')
+                        ->columnSpanFull(),
+                ])
+                ->columns(2),
                     
                     Forms\Components\Section::make('Amenities & Payment')
                         ->description('What facilities and payment methods do you offer?')
@@ -163,82 +163,82 @@ class EditBusiness extends EditRecord
                 ->schema([
                     Forms\Components\Section::make('Business Location')
                         ->description('Provide your physical business address')
-                        ->schema([
-                            Forms\Components\Select::make('state_location_id')
-                                ->label('State')
-                                ->required()
-                                ->searchable()
-                                ->preload()
+                ->schema([
+                    Forms\Components\Select::make('state_location_id')
+                        ->label('State')
+                        ->required()
+                        ->searchable()
+                        ->preload()
                                 ->placeholder('Select your state')
-                                ->options(function () {
-                                    return Location::where('type', 'state')
-                                        ->where('is_active', true)
-                                        ->orderBy('name')
-                                        ->pluck('name', 'id');
-                                })
-                                ->live()
-                                ->afterStateUpdated(function (Forms\Set $set, $state) {
-                                    $set('city_location_id', null);
-                                    $stateName = Location::find($state)?->name;
-                                    $set('state', $stateName);
-                                }),
-                            
-                            Forms\Components\Select::make('city_location_id')
-                                ->label('City')
-                                ->required()
-                                ->searchable()
-                                ->preload()
+                        ->options(function () {
+                            return Location::where('type', 'state')
+                                ->where('is_active', true)
+                                ->orderBy('name')
+                                ->pluck('name', 'id');
+                        })
+                        ->live()
+                        ->afterStateUpdated(function (Forms\Set $set, $state) {
+                            $set('city_location_id', null);
+                            $stateName = Location::find($state)?->name;
+                            $set('state', $stateName);
+                        }),
+                    
+                    Forms\Components\Select::make('city_location_id')
+                        ->label('City')
+                        ->required()
+                        ->searchable()
+                        ->preload()
                                 ->placeholder('Select your city')
-                                ->options(function (Forms\Get $get) {
-                                    $stateId = $get('state_location_id');
-                                    if (!$stateId) return [];
-                                    
-                                    return Location::where('type', 'city')
-                                        ->where('parent_id', $stateId)
-                                        ->where('is_active', true)
-                                        ->orderBy('name')
-                                        ->pluck('name', 'id');
-                                })
-                                ->disabled(fn (Forms\Get $get): bool => !$get('state_location_id'))
-                                ->helperText('Select state first')
-                                ->live()
-                                ->afterStateUpdated(function (Forms\Set $set, $state) {
-                                    $cityName = Location::find($state)?->name;
-                                    $set('city', $cityName);
-                                }),
+                        ->options(function (Forms\Get $get) {
+                            $stateId = $get('state_location_id');
+                            if (!$stateId) return [];
                             
-                            Forms\Components\Hidden::make('state'),
-                            Forms\Components\Hidden::make('city'),
-                            
-                            Forms\Components\TextInput::make('address')
-                                ->required()
-                                ->maxLength(255)
+                            return Location::where('type', 'city')
+                                ->where('parent_id', $stateId)
+                                ->where('is_active', true)
+                                ->orderBy('name')
+                                ->pluck('name', 'id');
+                        })
+                        ->disabled(fn (Forms\Get $get): bool => !$get('state_location_id'))
+                        ->helperText('Select state first')
+                        ->live()
+                        ->afterStateUpdated(function (Forms\Set $set, $state) {
+                            $cityName = Location::find($state)?->name;
+                            $set('city', $cityName);
+                        }),
+                    
+                    Forms\Components\Hidden::make('state'),
+                    Forms\Components\Hidden::make('city'),
+                    
+                    Forms\Components\TextInput::make('address')
+                        ->required()
+                        ->maxLength(255)
                                 ->placeholder('e.g., 123 Main Street, Suite 100')
-                                ->columnSpanFull()
-                                ->helperText('Street address or building name'),
-                            
-                            Forms\Components\TextInput::make('area')
-                                ->label('Area/Neighborhood')
-                                ->maxLength(100)
+                        ->columnSpanFull()
+                        ->helperText('Street address or building name'),
+                    
+                    Forms\Components\TextInput::make('area')
+                        ->label('Area/Neighborhood')
+                        ->maxLength(100)
                                 ->placeholder('e.g., Ikeja, Victoria Island')
-                                ->helperText('Optional: Specific area or neighborhood'),
-                            
-                            Forms\Components\Grid::make(2)
-                                ->schema([
-                                    Forms\Components\TextInput::make('latitude')
+                        ->helperText('Optional: Specific area or neighborhood'),
+                    
+                    Forms\Components\Grid::make(2)
+                        ->schema([
+                            Forms\Components\TextInput::make('latitude')
                                         ->label('Latitude (GPS)')
-                                        ->numeric()
-                                        ->step(0.0000001)
+                                ->numeric()
+                                ->step(0.0000001)
                                         ->placeholder('e.g., 6.5244')
-                                        ->helperText('Optional: For map display'),
-                                    
-                                    Forms\Components\TextInput::make('longitude')
+                                ->helperText('Optional: For map display'),
+                            
+                            Forms\Components\TextInput::make('longitude')
                                         ->label('Longitude (GPS)')
-                                        ->numeric()
-                                        ->step(0.0000001)
+                                ->numeric()
+                                ->step(0.0000001)
                                         ->placeholder('e.g., 3.3792')
-                                        ->helperText('Optional: For map display'),
-                                ]),
+                                ->helperText('Optional: For map display'),
+                        ]),
                         ])
                         ->columns(2),
                     
@@ -495,59 +495,66 @@ class EditBusiness extends EditRecord
             Wizard\Step::make('FAQs')
                 ->description('Add frequently asked questions (optional - you can skip this step)')
                 ->schema([
-                    Forms\Components\Repeater::make('faqs_temp')
-                        ->label('Frequently Asked Questions')
-                        ->schema([
-                            Forms\Components\TextInput::make('question')
-                                ->label('Question')
-                                ->required()
-                                ->maxLength(255)
-                                ->columnSpanFull(),
-                            
-                            Forms\Components\Textarea::make('answer')
-                                ->label('Answer')
-                                ->required()
-                                ->rows(3)
-                                ->maxLength(1000)
-                                ->columnSpanFull(),
-                            
-                            Forms\Components\Toggle::make('is_active')
-                                ->label('Active')
-                                ->default(true),
-                            
-                            Forms\Components\TextInput::make('order')
-                                ->label('Order')
-                                ->numeric()
-                                ->default(0)
-                                ->helperText('Display order (lower numbers appear first)'),
-                        ])
-                        ->columns(2)
-                        ->defaultItems(0)
-                        ->collapsible()
-                        ->itemLabel(fn (array $state): ?string => $state['question'] ?? 'New FAQ')
-                        ->helperText(function () {
+                    Forms\Components\Section::make('Frequently Asked Questions')
+                        ->description(function () {
                             $user = Auth::user();
                             $subscription = $user->subscription;
                             $maxFaqs = $subscription?->plan?->max_faqs;
                             $currentCount = $this->record->faqs()->count();
                             
                             if ($maxFaqs === null) {
-                                return "Add frequently asked questions about your business (Unlimited - {$currentCount} added)";
+                                return "Help customers by answering common questions (Unlimited - {$currentCount} added)";
                             }
                             
-                            return "Add frequently asked questions about your business ({$currentCount} / {$maxFaqs} used)";
+                            return "Help customers by answering common questions ({$currentCount} / {$maxFaqs} used)";
                         })
-                        ->maxItems(function () {
-                            $user = Auth::user();
-                            $subscription = $user->subscription;
-                            $maxFaqs = $subscription?->plan?->max_faqs;
-                            
-                            if ($maxFaqs === null) {
-                                return null; // Unlimited
-                            }
-                            
-                            return $maxFaqs;
-                        })
+                        ->schema([
+                            Forms\Components\Repeater::make('faqs_temp')
+                                ->label('')
+                                ->schema([
+                                    Forms\Components\TextInput::make('question')
+                                        ->label('Question')
+                                        ->required()
+                                        ->maxLength(255)
+                                        ->placeholder('e.g., What are your business hours?')
+                                        ->columnSpanFull(),
+                                    
+                                    Forms\Components\Textarea::make('answer')
+                                        ->label('Answer')
+                                        ->required()
+                                        ->rows(3)
+                                        ->maxLength(1000)
+                                        ->placeholder('Provide a clear and detailed answer to this question...')
+                                        ->columnSpanFull(),
+                                    
+                                    Forms\Components\Toggle::make('is_active')
+                                        ->label('Active')
+                                        ->default(true)
+                                        ->helperText('Show this FAQ on your business page'),
+                                    
+                                    Forms\Components\TextInput::make('order')
+                                        ->label('Display Order')
+                                        ->numeric()
+                                        ->default(0)
+                                        ->placeholder('0')
+                                        ->helperText('Lower numbers appear first'),
+                                ])
+                                ->columns(2)
+                                ->defaultItems(0)
+                                ->collapsible()
+                                ->itemLabel(fn (array $state): ?string => $state['question'] ?? 'New FAQ')
+                                ->addActionLabel('Add FAQ')
+                                ->maxItems(function () {
+                                    $user = Auth::user();
+                                    $subscription = $user->subscription;
+                                    $maxFaqs = $subscription?->plan?->max_faqs;
+                                    
+                                    if ($maxFaqs === null) {
+                                        return null; // Unlimited
+                                    }
+                                    
+                                    return $maxFaqs;
+                                })
                         ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
                             // Validate FAQ limit
                             $user = Auth::user();
@@ -566,6 +573,7 @@ class EditBusiness extends EditRecord
                             }
                         })
                         ->columnSpanFull(),
+                        ]),
                 ])
                 ->columns(1),
             
@@ -801,7 +809,7 @@ class EditBusiness extends EditRecord
     protected function mutateFormDataBeforeSave(array $data): array
     {
         // Transform business_hours from individual fields to keyed array
-        $businessHours = [];
+            $businessHours = [];
         $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
         
         foreach ($days as $day) {
