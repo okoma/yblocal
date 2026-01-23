@@ -145,8 +145,15 @@ class Subscription extends Model
         // Renew based on billing interval
         $duration = $this->billing_interval === 'yearly' ? 365 : 30;
         
+        // If subscription has expired, extend from today
+        // Otherwise, extend from the current end date
+        $startDate = $this->ends_at && $this->ends_at->isFuture() 
+            ? $this->ends_at 
+            : now();
+        
         $this->update([
-            'ends_at' => $this->ends_at->addDays($duration),
+            'ends_at' => $startDate->copy()->addDays($duration),
+            'status' => 'active', // Ensure status is active after renewal
         ]);
     }
     

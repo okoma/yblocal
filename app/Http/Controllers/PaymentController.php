@@ -359,8 +359,13 @@ class PaymentController extends Controller
         $isRenewalOrExtension = ($metadata['type'] ?? null) === 'subscription_renewal';
         
         if ($isRenewalOrExtension) {
-            // This is a renewal/extension - extend the subscription from current end date
-            $oldEndDate = $subscription->ends_at->copy();
+            // This is a renewal/extension - extend the subscription
+            // The renew() method will automatically extend from now() if expired, or from ends_at if still active
+            $oldEndDate = ($subscription->ends_at && $subscription->ends_at->isFuture()) 
+                ? $subscription->ends_at->copy() 
+                : now();
+            $wasExpired = $subscription->isExpired() || $subscription->status === 'expired';
+            
             $subscription->renew();
             
             // Determine if it was a renewal or extension based on time remaining
@@ -370,6 +375,7 @@ class PaymentController extends Controller
             Log::info("Subscription {$actionType} via payment", [
                 'subscription_id' => $subscription->id,
                 'transaction_id' => $transaction->id,
+                'was_expired' => $wasExpired,
                 'days_remaining_before' => max(0, $daysRemaining),
                 'old_end_date' => $oldEndDate->toDateTimeString(),
                 'new_end_date' => $subscription->ends_at->toDateTimeString(),

@@ -110,7 +110,11 @@ class ViewSubscription extends ViewRecord
                     $daysRemaining = $this->record->daysRemaining();
                     return $daysRemaining > 90 ? 'Pay & Extend' : 'Pay & Renew';
                 })
-                ->visible(fn () => $this->record->isActive()),
+                ->visible(fn () => 
+                    // Show for active subscriptions OR expired subscriptions (allow renewal)
+                    $this->record->isActive() || 
+                    ($this->record->status === 'expired' || $this->record->isExpired())
+                ),
 
             Actions\Action::make('toggle_auto_renew')
                 ->label(fn () => $this->record->auto_renew ? 'Disable Auto-Renew' : 'Enable Auto-Renew')
@@ -401,12 +405,13 @@ class ViewSubscription extends ViewRecord
             $amount = $subscription->getPrice();
             $gatewayId = $data['payment_gateway_id'];
             
-            // Validate subscription is still active
-            if (!$subscription->isActive()) {
+            // Allow renewal for active subscriptions OR expired subscriptions
+            // Only block if subscription is cancelled (not expired)
+            if ($subscription->status === 'cancelled') {
                 Notification::make()
                     ->danger()
-                    ->title('Subscription Not Active')
-                    ->body('This subscription is not active and cannot be renewed.')
+                    ->title('Subscription Cancelled')
+                    ->body('This subscription has been cancelled and cannot be renewed. Please create a new subscription.')
                     ->send();
                 return null;
             }
