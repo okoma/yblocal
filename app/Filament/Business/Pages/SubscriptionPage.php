@@ -137,7 +137,7 @@ class SubscriptionPage extends Page implements HasForms, HasActions
                                         $savings = $monthlyTotal - $yearlyPrice;
                                         $savingsPercent = round(($savings / $monthlyTotal) * 100);
                                         
-                                        $options['yearly'] = 'Yearly (Save ' . $savingsPercent . '% - ₦' . number_format($savings, 2) . ')';
+                                        $options['yearly'] = 'Yearly';
                                     }
                                     
                                     return $options;
@@ -145,11 +145,74 @@ class SubscriptionPage extends Page implements HasForms, HasActions
                                 ->default('monthly')
                                 ->required()
                                 ->native(false)
-                                ->live(),
+                                ->live()
+                                ->helperText(function () use ($plan) {
+                                    if ($plan->yearly_price !== null && $plan->price > 0) {
+                                        $monthlyTotal = $plan->price * 12;
+                                        $yearlyPrice = $plan->yearly_price;
+                                        $savings = $monthlyTotal - $yearlyPrice;
+                                        $savingsPercent = round(($savings / $monthlyTotal) * 100);
+                                        
+                                        return new \Illuminate\Support\HtmlString(
+                                            '<span class="text-success-600 dark:text-success-400 font-medium">Select yearly to save ' . $savingsPercent . '% (₦' . number_format($savings, 2) . ')</span>'
+                                        );
+                                    }
+                                    return null;
+                                }),
                         ])
                         ->columnSpanFull()
                         ->collapsed(false)
                         ->visible(fn () => $plan->yearly_price !== null),
+                    
+                    // Coupon Code
+                    Forms\Components\Section::make('Coupon Code')
+                        ->description('Have a discount code? Apply it here')
+                        ->icon('heroicon-o-ticket')
+                        ->collapsible()
+                        ->collapsed()
+                        ->schema([
+                            Forms\Components\TextInput::make('coupon_code')
+                                ->label('Coupon Code')
+                                ->placeholder('Enter coupon code')
+                                ->maxLength(50)
+                                ->live(onBlur: true),
+                            Forms\Components\Placeholder::make('coupon_message')
+                                ->label('')
+                                ->content(function (Forms\Get $get) use ($plan) {
+                                    $couponCode = $get('coupon_code');
+                                    if (empty($couponCode)) {
+                                        return null;
+                                    }
+                                    
+                                    $billingInterval = $get('billing_interval') ?? 'monthly';
+                                    $basePrice = $this->calculateBasePrice($plan, $billingInterval);
+                                    
+                                    $coupon = Coupon::where('code', strtoupper(trim($couponCode)))->first();
+                                    if (!$coupon) {
+                                        return new \Illuminate\Support\HtmlString(
+                                            '<div class="text-danger-600 dark:text-danger-400 text-sm">Invalid coupon code.</div>'
+                                        );
+                                    }
+                                    
+                                    if (!$coupon->isValid()) {
+                                        return new \Illuminate\Support\HtmlString(
+                                            '<div class="text-danger-600 dark:text-danger-400 text-sm">This coupon has expired.</div>'
+                                        );
+                                    }
+                                    
+                                    if (!$this->isCouponApplicable($coupon, $plan->id, $basePrice)) {
+                                        return new \Illuminate\Support\HtmlString(
+                                            '<div class="text-danger-600 dark:text-danger-400 text-sm">This coupon cannot be used for this plan.</div>'
+                                        );
+                                    }
+                                    
+                                    return new \Illuminate\Support\HtmlString(
+                                        '<div class="text-success-600 dark:text-success-400 text-sm">✓ Coupon valid: ' . $coupon->code . '</div>'
+                                    );
+                                })
+                                ->visible(fn (Forms\Get $get) => !empty($get('coupon_code'))),
+                        ])
+                        ->columnSpanFull(),
                     
                     // Business Selection
                     Forms\Components\Section::make('Select Business')
@@ -239,54 +302,6 @@ class SubscriptionPage extends Page implements HasForms, HasActions
     protected function getPaymentFormSchema($plan): array
     {
         return [
-            Forms\Components\Section::make('Coupon Code')
-                ->description('Have a discount code? Apply it here')
-                ->icon('heroicon-o-ticket')
-                ->collapsible()
-                ->collapsed()
-                ->schema([
-                    Forms\Components\TextInput::make('coupon_code')
-                        ->label('Coupon Code')
-                        ->placeholder('Enter coupon code')
-                        ->maxLength(50)
-                        ->live(onBlur: true),
-                    Forms\Components\Placeholder::make('coupon_message')
-                        ->label('')
-                        ->content(function (Forms\Get $get) use ($plan) {
-                            $couponCode = $get('coupon_code');
-                            if (empty($couponCode)) {
-                                return null;
-                            }
-                            
-                            $billingInterval = $get('billing_interval') ?? 'monthly';
-                            $basePrice = $this->calculateBasePrice($plan, $billingInterval);
-                            
-                            $coupon = Coupon::where('code', strtoupper(trim($couponCode)))->first();
-                            if (!$coupon) {
-                                return new \Illuminate\Support\HtmlString(
-                                    '<div class="text-danger-600 dark:text-danger-400 text-sm">Invalid coupon code.</div>'
-                                );
-                            }
-                            
-                            if (!$coupon->isValid()) {
-                                return new \Illuminate\Support\HtmlString(
-                                    '<div class="text-danger-600 dark:text-danger-400 text-sm">This coupon has expired.</div>'
-                                );
-                            }
-                            
-                            if (!$this->isCouponApplicable($coupon, $plan->id, $basePrice)) {
-                                return new \Illuminate\Support\HtmlString(
-                                    '<div class="text-danger-600 dark:text-danger-400 text-sm">This coupon cannot be used for this plan.</div>'
-                                );
-                            }
-                            
-                            return new \Illuminate\Support\HtmlString(
-                                '<div class="text-success-600 dark:text-success-400 text-sm">✓ Coupon valid: ' . $coupon->code . '</div>'
-                            );
-                        })
-                        ->visible(fn (Forms\Get $get) => !empty($get('coupon_code'))),
-                ]),
-            
             Forms\Components\Section::make('Payment Method')
                 ->description('Select your preferred payment method')
                 ->icon('heroicon-o-credit-card')
