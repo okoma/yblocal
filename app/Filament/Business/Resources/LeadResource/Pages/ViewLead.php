@@ -12,10 +12,39 @@ use Filament\Actions;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Infolists\Infolist;
 use Filament\Infolists\Components;
+use Illuminate\Support\Facades\Auth;
+use Filament\Notifications\Notification;
 
 class ViewLead extends ViewRecord
 {
     protected static string $resource = LeadResource::class;
+    
+    public function mount($record): void
+    {
+        parent::mount($record);
+        
+        // Track lead view and check subscription limit
+        $user = Auth::user();
+        $subscription = $user->subscription;
+        
+        if ($subscription && $subscription->plan->max_leads_view !== null) {
+            // Check if user can view more leads
+            if (!$subscription->canViewMoreLeads()) {
+                Notification::make()
+                    ->warning()
+                    ->title('Monthly Lead View Limit Reached')
+                    ->body("You've reached your monthly limit of {$subscription->plan->max_leads_view} lead views. Upgrade your plan to view more leads this month.")
+                    ->persistent()
+                    ->send();
+                
+                // Still allow viewing (soft limit) but show warning
+                // Alternatively, you could redirect: redirect()->route('filament.business.pages.subscription-page');
+            }
+            
+            // Increment view counter
+            $subscription->incrementLeadsViewed();
+        }
+    }
 
     protected function getHeaderActions(): array
     {

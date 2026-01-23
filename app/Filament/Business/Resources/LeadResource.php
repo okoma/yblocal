@@ -273,17 +273,11 @@ class LeadResource extends Resource
     {
         $user = Auth::user();
         $businesses = $user->businesses()->pluck('id');
+        
+        // Show ALL leads - viewing limit is enforced on individual view, not list
         $query = parent::getEloquentQuery()
             ->whereIn('business_id', $businesses)
             ->orderBy('created_at', 'desc'); // Most recent first
-        
-        // Apply viewing limit based on subscription (only for viewing, not receiving)
-        $subscription = $user->subscription;
-        if ($subscription && $subscription->plan->max_leads_view !== null) {
-            // Limit to the number of leads they can view (most recent N leads)
-            $maxLeads = $subscription->plan->max_leads_view;
-            $query->limit($maxLeads);
-        }
         
         return $query;
     }

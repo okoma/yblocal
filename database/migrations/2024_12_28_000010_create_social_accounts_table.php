@@ -17,7 +17,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('business_id')->constrained()->onDelete('cascade');
             
-            $table->string('platform'); // Changed from enum to string for flexibility
+            $table->enum('platform', ['facebook', 'instagram', 'twitter', 'linkedin', 'youtube', 'tiktok']);
             $table->string('url');
             $table->boolean('is_active')->default(true);
             

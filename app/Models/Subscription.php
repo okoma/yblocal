@@ -31,6 +31,8 @@ class Subscription extends Model
         'cancellation_reason',
         'faqs_used',
         'leads_viewed_used',
+        'monthly_leads_viewed',
+        'last_leads_reset_at',
         'products_used',
         'team_members_used',
         'photos_used',
@@ -44,6 +46,7 @@ class Subscription extends Model
         'trial_ends_at' => 'datetime',
         'cancelled_at' => 'datetime',
         'paused_at' => 'datetime',
+        'last_leads_reset_at' => 'datetime',
         'auto_renew' => 'boolean',
     ];
 
@@ -167,8 +170,80 @@ class Subscription extends Model
 
     public function canViewMoreLeads()
     {
-        // They can always receive unlimited leads, but viewing is limited
-        return $this->plan->max_leads_view === null || $this->leads_viewed_used < $this->plan->max_leads_view;
+        // Check if reset is needed first
+        $this->checkAndResetMonthlyLeads();
+        
+        // They can always receive unlimited leads, but viewing is limited monthly
+        return $this->plan->max_leads_view === null || $this->monthly_leads_viewed < $this->plan->max_leads_view;
+    }
+    
+    /**
+     * Check if monthly leads counter needs to be reset
+     * - Yearly subscriptions: Reset on calendar month (1st of month)
+     * - Monthly subscriptions: Reset on billing cycle (subscription renewal date)
+     */
+    public function checkAndResetMonthlyLeads(): void
+    {
+        $shouldReset = false;
+        
+        if ($this->billing_interval === 'yearly') {
+            // Reset on calendar month (1st of each month)
+            $lastReset = $this->last_leads_reset_at;
+            
+            if (!$lastReset || $lastReset->month !== now()->month || $lastReset->year !== now()->year) {
+                $shouldReset = true;
+            }
+        } elseif ($this->billing_interval === 'monthly') {
+            // Reset on billing cycle (based on starts_at date)
+            $lastReset = $this->last_leads_reset_at ?? $this->starts_at;
+            $dayOfMonth = $this->starts_at->day;
+            
+            // Calculate next reset date
+            $nextResetDate = $lastReset->copy()->addMonth()->startOfDay();
+            
+            if (now()->gte($nextResetDate)) {
+                $shouldReset = true;
+            }
+        }
+        
+        if ($shouldReset) {
+            $this->resetMonthlyLeads();
+        }
+    }
+    
+    /**
+     * Reset monthly leads counter
+     */
+    public function resetMonthlyLeads(): void
+    {
+        $this->update([
+            'monthly_leads_viewed' => 0,
+            'last_leads_reset_at' => now(),
+        ]);
+    }
+    
+    /**
+     * Increment monthly leads viewed counter
+     */
+    public function incrementLeadsViewed(): void
+    {
+        $this->checkAndResetMonthlyLeads();
+        $this->increment('monthly_leads_viewed');
+        $this->increment('leads_viewed_used'); // Keep total count too
+    }
+    
+    /**
+     * Get remaining leads that can be viewed this month
+     */
+    public function getRemainingLeadsView(): ?int
+    {
+        $this->checkAndResetMonthlyLeads();
+        
+        if ($this->plan->max_leads_view === null) {
+            return null; // Unlimited
+        }
+        
+        return max(0, $this->plan->max_leads_view - $this->monthly_leads_viewed);
     }
 
     public function canAddProduct()

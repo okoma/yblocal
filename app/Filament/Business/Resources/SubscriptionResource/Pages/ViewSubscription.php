@@ -274,13 +274,19 @@ class ViewSubscription extends ViewRecord
                                     : 'success'
                             ),
 
-                        Components\TextEntry::make('leads_viewed_used')
-                            ->label('Leads Viewed')
+                        Components\TextEntry::make('monthly_leads_viewed')
+                            ->label('Leads Viewed This Month')
                             ->suffix(fn ($record) => ' / ' . ($record->plan->max_leads_view ?? '∞'))
                             ->icon('heroicon-o-eye')
-                            ->helperText('Viewing limit only - unlimited receiving')
+                            ->helperText(function ($record) {
+                                $resetInfo = $record->billing_interval === 'yearly' 
+                                    ? 'Resets monthly (calendar month)' 
+                                    : 'Resets on billing cycle';
+                                $totalViewed = $record->leads_viewed_used ? " • Total: {$record->leads_viewed_used}" : '';
+                                return $resetInfo . $totalViewed;
+                            })
                             ->color(fn ($record) => 
-                                $record->plan->max_leads_view && $record->leads_viewed_used >= $record->plan->max_leads_view 
+                                $record->plan->max_leads_view && $record->monthly_leads_viewed >= $record->plan->max_leads_view 
                                     ? 'danger' 
                                     : 'success'
                             ),
