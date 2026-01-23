@@ -55,141 +55,123 @@ class WalletPage extends Page implements HasTable, HasActions
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('add_funds')
-                ->label('Add Fund')
-                ->icon('heroicon-o-plus-circle')
-                ->color('success')
-                ->modalWidth('lg')
-                ->form([
-                    Forms\Components\TextInput::make('amount')
-                        ->label('Amount (₦)')
-                        ->numeric()
-                        ->required()
-                        ->minValue(100)
-                        ->maxValue(1000000)
-                        ->prefix('₦')
-                        ->live(debounce: 500)
-                        ->helperText('Minimum: ₦100, Maximum: ₦1,000,000'),
 
-                    Forms\Components\Select::make('payment_gateway_id')
-                        ->label('Payment Method')
-                        ->options(function () {
-                            return PaymentGateway::where('is_active', true)
-                                ->where('is_enabled', true)
-                                ->where('slug', '!=', 'wallet') // Can't use wallet to fund wallet
-                                ->pluck('name', 'id');
-                        })
-                        ->native(false)
-                        ->required()
-                        ->live()
-                        ->afterStateUpdated(function (Forms\Set $set) {
-                            // Clear proof upload when payment method changes
-                            $set('payment_proof', null);
-                        })
-                        ->helperText('Select your preferred payment method'),
+        
+Action::make('add_funds')
+    ->label('Add Fund')
+    ->icon('heroicon-o-plus-circle')
+    ->color('success')
+    ->modalWidth('lg')
+    ->form([
+        Forms\Components\TextInput::make('amount')
+            ->label('Amount (₦)')
+            ->numeric()
+            ->required()
+            ->minValue(100)
+            ->maxValue(1000000)
+            ->prefix('₦')
+            ->live(debounce: 500)
+            ->helperText('Minimum: ₦100, Maximum: ₦1,000,000'),
 
-                    // Bank Transfer Details (shown only when bank transfer is selected)
-                    Forms\Components\Section::make('Bank Transfer Details')
-                        ->schema([
-                            Forms\Components\Placeholder::make('account_name')
-                                ->label('Account Name')
-                                ->content(function (Forms\Get $get) {
-                                    $gatewayId = $get('payment_gateway_id');
-                                    if (!$gatewayId) return 'N/A';
-                                    
-                                    $gateway = PaymentGateway::find($gatewayId);
-                                    if (!$gateway || !$gateway->isBankTransfer()) return 'N/A';
-                                    
-                                    $bankDetails = $gateway->bank_account_details ?? [];
-                                    return $bankDetails['account_name'] ?? 'N/A';
-                                })
-                                ->visible(fn (Forms\Get $get) => $this->isBankTransferSelected($get('payment_gateway_id'))),
+        Forms\Components\Select::make('payment_gateway_id')
+            ->label('Payment Method')
+            ->options(function () {
+                return PaymentGateway::where('is_active', true)
+                    ->where('is_enabled', true)
+                    ->where('slug', '!=', 'wallet') // Can't use wallet to fund wallet
+                    ->pluck('name', 'id');
+            })
+            ->native(false)
+            ->required()
+            ->live()
+            ->afterStateUpdated(function (Forms\Set $set) {
+                // Clear proof upload when payment method changes
+                $set('payment_proof', null);
+            })
+            ->helperText('Select your preferred payment method'),
 
-                            Forms\Components\Placeholder::make('account_number')
-                                ->label('Account Number')
-                                ->content(function (Forms\Get $get) {
-                                    $gatewayId = $get('payment_gateway_id');
-                                    if (!$gatewayId) return 'N/A';
-                                    
-                                    $gateway = PaymentGateway::find($gatewayId);
-                                    if (!$gateway || !$gateway->isBankTransfer()) return 'N/A';
-                                    
-                                    $bankDetails = $gateway->bank_account_details ?? [];
-                                    return $bankDetails['account_number'] ?? 'N/A';
-                                })
-                                ->visible(fn (Forms\Get $get) => $this->isBankTransferSelected($get('payment_gateway_id'))),
+        // Bank Transfer Details (shown only when bank transfer is selected)
+        Forms\Components\Section::make('Bank Transfer Details')
+            ->schema([
+                Forms\Components\Placeholder::make('amount_to_pay')
+                    ->label('Amount to Transfer')
+                    ->content(fn (Forms\Get $get) => '₦' . number_format($get('amount') ?? 0, 2))
+                    ->extraAttributes(['class' => 'text-xl font-bold text-success-600 dark:text-success-400']),
 
-                            Forms\Components\Placeholder::make('bank_name')
-                                ->label('Bank Name')
-                                ->content(function (Forms\Get $get) {
-                                    $gatewayId = $get('payment_gateway_id');
-                                    if (!$gatewayId) return 'N/A';
-                                    
-                                    $gateway = PaymentGateway::find($gatewayId);
-                                    if (!$gateway || !$gateway->isBankTransfer()) return 'N/A';
-                                    
-                                    $bankDetails = $gateway->bank_account_details ?? [];
-                                    return $bankDetails['bank_name'] ?? 'N/A';
-                                })
-                                ->visible(fn (Forms\Get $get) => $this->isBankTransferSelected($get('payment_gateway_id'))),
+                Forms\Components\Placeholder::make('account_name')
+                    ->label('Account Name')
+                    ->content(function (Forms\Get $get) {
+                        $gatewayId = $get('payment_gateway_id');
+                        if (!$gatewayId) return 'N/A';
+                        
+                        $gateway = PaymentGateway::find($gatewayId);
+                        if (!$gateway || !$gateway->isBankTransfer()) return 'N/A';
+                        
+                        $bankDetails = $gateway->bank_account_details ?? [];
+                        return $bankDetails['account_name'] ?? 'N/A';
+                    }),
 
-                            Forms\Components\FileUpload::make('payment_proof')
-                                ->label('Payment Proof')
-                                ->helperText('Upload proof of payment (receipt/screenshot)')
-                                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'])
-                                ->maxSize(5120) // 5MB
-                                ->directory('transfer-proofs')
-                                ->visibility('private')
-                                ->required()
-                                ->visible(fn (Forms\Get $get) => $this->isBankTransferSelected($get('payment_gateway_id')))
-                                ->downloadable()
-                                ->previewable(),
-                        ])
-                        ->columns(2)
-                        ->visible(fn (Forms\Get $get) => $this->isBankTransferSelected($get('payment_gateway_id')))
-                        ->collapsible()
-                        ->collapsed(false),
+                Forms\Components\Placeholder::make('account_number')
+                    ->label('Account Number')
+                    ->content(function (Forms\Get $get) {
+                        $gatewayId = $get('payment_gateway_id');
+                        if (!$gatewayId) return 'N/A';
+                        
+                        $gateway = PaymentGateway::find($gatewayId);
+                        if (!$gateway || !$gateway->isBankTransfer()) return 'N/A';
+                        
+                        $bankDetails = $gateway->bank_account_details ?? [];
+                        return $bankDetails['account_number'] ?? 'N/A';
+                    })
+                    ->extraAttributes(['class' => 'font-mono text-lg']),
 
-                    // Summary Section (shown only when bank transfer is selected)
-                    Forms\Components\Section::make('Payment Summary')
-                        ->schema([
-                            Forms\Components\Placeholder::make('summary_amount')
-                                ->label('Amount to Transfer')
-                                ->content(fn (Forms\Get $get) => '₦' . number_format($get('amount') ?? 0, 2))
-                                ->extraAttributes(['class' => 'text-lg font-bold']),
+                Forms\Components\Placeholder::make('bank_name')
+                    ->label('Bank Name')
+                    ->content(function (Forms\Get $get) {
+                        $gatewayId = $get('payment_gateway_id');
+                        if (!$gatewayId) return 'N/A';
+                        
+                        $gateway = PaymentGateway::find($gatewayId);
+                        if (!$gateway || !$gateway->isBankTransfer()) return 'N/A';
+                        
+                        $bankDetails = $gateway->bank_account_details ?? [];
+                        return $bankDetails['bank_name'] ?? 'N/A';
+                    }),
 
-                            Forms\Components\Placeholder::make('summary_account')
-                                ->label('Account Number')
-                                ->content(function (Forms\Get $get) {
-                                    $gatewayId = $get('payment_gateway_id');
-                                    if (!$gatewayId) return 'N/A';
-                                    
-                                    $gateway = PaymentGateway::find($gatewayId);
-                                    if (!$gateway || !$gateway->isBankTransfer()) return 'N/A';
-                                    
-                                    $bankDetails = $gateway->bank_account_details ?? [];
-                                    return $bankDetails['account_number'] ?? 'N/A';
-                                }),
+                Forms\Components\Placeholder::make('transfer_instructions')
+                    ->label('')
+                    ->content('After making the transfer, upload your payment proof below. Your wallet will be credited within 24-48 hours after verification.')
+                    ->extraAttributes(['class' => 'text-sm text-gray-600 dark:text-gray-400 mt-2']),
+            ])
+            ->columns(2)
+            ->visible(fn (Forms\Get $get) => $this->isBankTransferSelected($get('payment_gateway_id')))
+            ->collapsible()
+            ->collapsed(false),
 
-                            Forms\Components\Placeholder::make('summary_reference')
-                                ->label('Reference Number')
-                                ->content('Will be generated after submission')
-                                ->helperText('A unique reference number will be provided after you submit. Use it as payment reference when transferring.'),
-
-                            Forms\Components\Placeholder::make('summary_note')
-                                ->label('')
-                                ->content('After transferring, upload your payment proof above. Your wallet will be credited within 24-48 hours after verification.')
-                                ->extraAttributes(['class' => 'text-sm text-gray-600 dark:text-gray-400']),
-                        ])
-                        ->columns(1)
-                        ->visible(fn (Forms\Get $get) => $this->isBankTransferSelected($get('payment_gateway_id')))
-                        ->collapsible()
-                        ->collapsed(false),
-                ])
-                ->action(function (array $data) {
-                    return $this->processFunding($data);
-                })
-                ->modalSubmitActionLabel('Add Fund'),
+        // Payment Proof Section (separate)
+        Forms\Components\Section::make('Payment Proof')
+            ->schema([
+                Forms\Components\FileUpload::make('payment_proof')
+                    ->label('Upload Proof of Payment')
+                    ->helperText('Upload receipt or screenshot of your transfer (JPEG, PNG, or PDF)')
+                    ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'])
+                    ->maxSize(5120) // 5MB
+                    ->directory('transfer-proofs')
+                    ->visibility('private')
+                    ->required()
+                    ->downloadable()
+                    ->previewable()
+                    ->columnSpanFull(),
+            ])
+            ->visible(fn (Forms\Get $get) => $this->isBankTransferSelected($get('payment_gateway_id')))
+            ->collapsible()
+            ->collapsed(false),
+    ])
+    ->action(function (array $data) {
+        return $this->processFunding($data);
+    })
+    ->modalSubmitActionLabel('Add Fund')
+    ->modalFooterActionsAlignment('right'),
 
             Action::make('buy_credits')
                 ->label('Buy Ad Credits')
@@ -257,7 +239,9 @@ class WalletPage extends Page implements HasTable, HasActions
                 ])
                 ->action(function (array $data) {
                     return $this->processCreditPurchase($data);
-                }),
+                })
+                ->modalSubmitActionLabel('Buy Credits')
+                ->modalFooterActionsAlignment('right'),
 
             Action::make('withdraw')
                 ->label('Withdraw Funds')
@@ -303,7 +287,9 @@ class WalletPage extends Page implements HasTable, HasActions
                 ])
                 ->action(function (array $data) {
                     return $this->processWithdrawal($data);
-                }),
+                })
+                ->modalSubmitActionLabel('Withdraw Funds')
+                ->modalFooterActionsAlignment('right'),
         ];
     }
     
