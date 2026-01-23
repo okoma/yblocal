@@ -147,7 +147,20 @@ class SubscriptionPage extends Page implements HasForms, HasActions
                                 ->required()
                                 ->native(false)
                                 ->live()
-                                ->selectablePlaceholder(false),
+                                ->selectablePlaceholder(false)
+                                ->helperText(function () use ($plan) {
+                                    if ($plan->yearly_price !== null && $plan->price > 0) {
+                                        $monthlyTotal = $plan->price * 12;
+                                        $yearlyPrice = $plan->yearly_price;
+                                        $savings = $monthlyTotal - $yearlyPrice;
+                                        $savingsPercent = round(($savings / $monthlyTotal) * 100);
+                                        
+                                        return new \Illuminate\Support\HtmlString(
+                                            '<span class="text-success-600 dark:text-success-400 font-medium">Select yearly to save ' . $savingsPercent . '% (₦' . number_format($savings, 2) . ')</span>'
+                                        );
+                                    }
+                                    return null;
+                                }),
                         ])
                         ->columnSpanFull()
                         ->collapsed(false)
