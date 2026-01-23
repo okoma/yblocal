@@ -33,57 +33,111 @@ class CreateBusiness extends CreateRecord
         return [
             // Step 1: Basic Information
             Wizard\Step::make('Basic Information')
-                ->description('Enter your business name and type')
+                ->description('Enter your business details, amenities, and legal information')
                 ->schema([
-                    Forms\Components\TextInput::make('business_name')
-                        ->required()
-                        ->maxLength(255)
-                        ->live(onBlur: true)
-                        ->afterStateUpdated(fn ($state, Forms\Set $set) => 
-                            $set('slug', \Illuminate\Support\Str::slug($state))
-                        ),
-                    
-                    Forms\Components\TextInput::make('slug')
-                        ->required()
-                        ->maxLength(255)
-                        ->unique(ignoreRecord: true)
-                        ->disabled()
-                        ->dehydrated()
-                        ->helperText('URL-friendly version of your business name (auto-generated)'),
-                    
-                    Forms\Components\Select::make('business_type_id')
-                        ->label('Business Type')
-                        ->required()
-                        ->searchable()
-                        ->preload()
-                        ->relationship('businessType', 'name')
-                        ->live()
-                        ->afterStateUpdated(fn (Forms\Set $set) => $set('categories', [])),
-                    
-                    Forms\Components\Select::make('categories')
-                        ->label('Categories')
-                        ->multiple()
-                        ->options(function (Forms\Get $get) {
-                            $businessTypeId = $get('business_type_id');
-                            if (!$businessTypeId) return [];
+                    Forms\Components\Section::make('Business Details')
+                        ->schema([
+                            Forms\Components\TextInput::make('business_name')
+                                ->required()
+                                ->maxLength(255)
+                                ->live(onBlur: true)
+                                ->afterStateUpdated(fn ($state, Forms\Set $set) => 
+                                    $set('slug', \Illuminate\Support\Str::slug($state))
+                                ),
                             
-                            return Category::where('business_type_id', $businessTypeId)
-                                ->where('is_active', true)
-                                ->pluck('name', 'id');
-                        })
-                        ->searchable()
-                        ->preload()
-                        ->disabled(fn (Forms\Get $get): bool => !$get('business_type_id'))
-                        ->helperText('Select one or more categories for your business (select business type first)'),
+                            Forms\Components\TextInput::make('slug')
+                                ->required()
+                                ->maxLength(255)
+                                ->unique(ignoreRecord: true)
+                                ->disabled()
+                                ->dehydrated()
+                                ->helperText('URL-friendly version of your business name (auto-generated)'),
+                            
+                            Forms\Components\Select::make('business_type_id')
+                                ->label('Business Type')
+                                ->required()
+                                ->searchable()
+                                ->preload()
+                                ->relationship('businessType', 'name')
+                                ->live()
+                                ->afterStateUpdated(fn (Forms\Set $set) => $set('categories', [])),
+                            
+                            Forms\Components\Select::make('categories')
+                                ->label('Categories')
+                                ->multiple()
+                                ->options(function (Forms\Get $get) {
+                                    $businessTypeId = $get('business_type_id');
+                                    if (!$businessTypeId) return [];
+                                    
+                                    return Category::where('business_type_id', $businessTypeId)
+                                        ->where('is_active', true)
+                                        ->pluck('name', 'id');
+                                })
+                                ->searchable()
+                                ->preload()
+                                ->disabled(fn (Forms\Get $get): bool => !$get('business_type_id'))
+                                ->helperText('Select one or more categories for your business (select business type first)'),
+                            
+                            Forms\Components\Textarea::make('description')
+                                ->required()
+                                ->rows(4)
+                                ->maxLength(1000)
+                                ->helperText('Describe your business in detail')
+                                ->columnSpanFull(),
+                        ])
+                        ->columns(2),
                     
-                    Forms\Components\Textarea::make('description')
-                        ->required()
-                        ->rows(4)
-                        ->maxLength(1000)
-                        ->helperText('Describe your business in detail')
-                        ->columnSpanFull(),
+                    Forms\Components\Section::make('Amenities & Payment')
+                        ->description('What facilities and payment methods do you offer?')
+                        ->schema([
+                            Forms\Components\Select::make('payment_methods')
+                                ->label('Payment Methods Accepted')
+                                ->multiple()
+                                ->options(PaymentMethod::where('is_active', true)->pluck('name', 'id'))
+                                ->searchable()
+                                ->preload()
+                                ->helperText('Select all payment methods you accept'),
+                            
+                            Forms\Components\Select::make('amenities')
+                                ->label('Amenities & Features')
+                                ->multiple()
+                                ->options(Amenity::where('is_active', true)->pluck('name', 'id'))
+                                ->searchable()
+                                ->preload()
+                                ->helperText('Select all amenities available at your business'),
+                        ])
+                        ->columns(2)
+                        ->collapsible(),
+                    
+                    Forms\Components\Section::make('Legal Information')
+                        ->description('Business registration details (optional)')
+                        ->schema([
+                            Forms\Components\TextInput::make('registration_number')
+                                ->label('CAC/RC Number')
+                                ->maxLength(50)
+                                ->helperText('Business registration number'),
+                            
+                            Forms\Components\Select::make('entity_type')
+                                ->options([
+                                    'Sole Proprietorship' => 'Sole Proprietorship',
+                                    'Partnership' => 'Partnership',
+                                    'Limited Liability Company (LLC)' => 'Limited Liability Company (LLC)',
+                                    'Corporation' => 'Corporation',
+                                    'Non-Profit' => 'Non-Profit',
+                                ]),
+                            
+                            Forms\Components\TextInput::make('years_in_business')
+                                ->required()
+                                ->numeric()
+                                ->minValue(0)
+                                ->maxValue(100)
+                                ->default(0)
+                                ->helperText('How many years have you been operating?'),
+                        ])
+                        ->columns(3)
+                        ->collapsible(),
                 ])
-                ->columns(2),
+                ->columns(1),
             
             // Step 2: Location & Contact
             Wizard\Step::make('Location & Contact')
@@ -404,57 +458,7 @@ Forms\Components\Grid::make(2)
                 ])
                 ->columns(1),
             
-            // Step 4: Features & Amenities (Optional)
-            Wizard\Step::make('Features & Amenities')
-                ->description('What facilities do you offer? (optional - you can skip this step)')
-                ->schema([
-                    Forms\Components\Select::make('payment_methods')
-                        ->label('Payment Methods Accepted')
-                        ->multiple()
-                        ->options(PaymentMethod::where('is_active', true)->pluck('name', 'id'))
-                        ->searchable()
-                        ->preload()
-                        ->helperText('Select all payment methods you accept'),
-                    
-                    Forms\Components\Select::make('amenities')
-                        ->label('Amenities & Features')
-                        ->multiple()
-                        ->options(Amenity::where('is_active', true)->pluck('name', 'id'))
-                        ->searchable()
-                        ->preload()
-                        ->helperText('Select all amenities available at your business'),
-                ])
-                ->columns(1),
-            
-            // Step 5: Legal Information (Optional)
-            Wizard\Step::make('Legal Information')
-                ->description('Business registration details (optional - you can skip this step)')
-                ->schema([
-                    Forms\Components\TextInput::make('registration_number')
-                        ->label('CAC/RC Number')
-                        ->maxLength(50)
-                        ->helperText('Business registration number'),
-                    
-                    Forms\Components\Select::make('entity_type')
-                        ->options([
-                            'Sole Proprietorship' => 'Sole Proprietorship',
-                            'Partnership' => 'Partnership',
-                            'Limited Liability Company (LLC)' => 'Limited Liability Company (LLC)',
-                            'Corporation' => 'Corporation',
-                            'Non-Profit' => 'Non-Profit',
-                        ]),
-                    
-                    Forms\Components\TextInput::make('years_in_business')
-                        ->required()
-                        ->numeric()
-                        ->minValue(0)
-                        ->maxValue(100)
-                        ->default(0)
-                        ->helperText('How many years have you been operating?'),
-                ])
-                ->columns(3),
-            
-            // Step 6: FAQs (Optional)
+            // Step 4: FAQs (Optional)
             Wizard\Step::make('FAQs')
                 ->description('Add frequently asked questions (optional - you can skip this step)')
                 ->schema([
@@ -531,7 +535,7 @@ Forms\Components\Grid::make(2)
                 ])
                 ->columns(1),
             
-            // Step 7: Social Media (Optional)
+            // Step 5: Social Media (Optional)
             Wizard\Step::make('Social Media')
                 ->description('Connect your social media profiles (optional - you can skip this step)')
                 ->schema([
@@ -572,7 +576,7 @@ Forms\Components\Grid::make(2)
                 ])
                 ->columns(1),
             
-            // Step 8: Team Members (Optional)
+            // Step 6: Team Members (Optional)
             Wizard\Step::make('Team Members')
                 ->description('Add your team members and staff (optional - you can skip this step)')
                 ->schema([
@@ -642,7 +646,7 @@ Forms\Components\Grid::make(2)
                 ])
                 ->columns(1),
             
-            // Step 9: Media & Branding (Optional)
+            // Step 7: Media & Branding (Optional)
             Wizard\Step::make('Media & Branding')
                 ->description('Upload your business images (optional - you can skip this step)')
                 ->schema([
@@ -672,7 +676,7 @@ Forms\Components\Grid::make(2)
                 ])
                 ->columns(2),
             
-            // Step 10: SEO Settings (Optional) - LAST STEP
+            // Step 8: SEO Settings (Optional) - LAST STEP
             Wizard\Step::make('SEO Settings')
                 ->description('Search engine optimization (optional - you can skip this step)')
                 ->schema([
