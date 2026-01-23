@@ -581,40 +581,47 @@ class EditBusiness extends EditRecord
             Wizard\Step::make('Social Media')
                 ->description('Connect your social media profiles (optional - you can skip this step)')
                 ->schema([
-                    Forms\Components\Repeater::make('social_accounts_temp')
-                        ->label('Social Media Accounts')
+                    Forms\Components\Section::make('Social Media Profiles')
+                        ->description('Add your social media accounts to increase your online presence')
                         ->schema([
-                            Forms\Components\Select::make('platform')
-                                ->options([
-                                    'facebook' => 'Facebook',
-                                    'instagram' => 'Instagram',
-                                    'twitter' => 'Twitter (X)',
-                                    'linkedin' => 'LinkedIn',
-                                    'youtube' => 'YouTube',
-                                    'tiktok' => 'TikTok',
-                                    'pinterest' => 'Pinterest',
-                                    'whatsapp' => 'WhatsApp Business',
+                            Forms\Components\Repeater::make('social_accounts_temp')
+                                ->label('')
+                                ->schema([
+                                    Forms\Components\Select::make('platform')
+                                        ->label('Platform')
+                                        ->options([
+                                            'facebook' => 'Facebook',
+                                            'instagram' => 'Instagram',
+                                            'twitter' => 'Twitter (X)',
+                                            'linkedin' => 'LinkedIn',
+                                            'youtube' => 'YouTube',
+                                            'tiktok' => 'TikTok',
+                                            'pinterest' => 'Pinterest',
+                                            'whatsapp' => 'WhatsApp Business',
+                                        ])
+                                        ->required()
+                                        ->searchable()
+                                        ->placeholder('Select platform'),
+                                    
+                                    Forms\Components\TextInput::make('url')
+                                        ->label('Profile URL')
+                                        ->url()
+                                        ->required()
+                                        ->maxLength(255)
+                                        ->placeholder('https://facebook.com/yourbusiness'),
+                                    
+                                    Forms\Components\Toggle::make('is_active')
+                                        ->label('Active')
+                                        ->default(true)
+                                        ->helperText('Show on business page'),
                                 ])
-                                ->required()
-                                ->searchable(),
-                            
-                            Forms\Components\TextInput::make('url')
-                                ->label('Profile URL')
-                                ->url()
-                                ->required()
-                                ->maxLength(255)
-                                ->placeholder('https://facebook.com/yourbusiness'),
-                            
-                            Forms\Components\Toggle::make('is_active')
-                                ->label('Active')
-                                ->default(true),
-                        ])
-                        ->columns(3)
-                        ->defaultItems(0)
-                        ->collapsible()
-                        ->itemLabel(fn (array $state): ?string => ucfirst($state['platform'] ?? 'New Account'))
-                        ->helperText('Add your social media profiles to increase your online presence')
-                        ->columnSpanFull(),
+                                ->columns(3)
+                                ->defaultItems(0)
+                                ->collapsible()
+                                ->itemLabel(fn (array $state): ?string => ucfirst($state['platform'] ?? 'New Account'))
+                                ->addActionLabel('Add Social Account')
+                                ->columnSpanFull(),
+                        ]),
                 ])
                 ->columns(1),
             
@@ -622,69 +629,108 @@ class EditBusiness extends EditRecord
             Wizard\Step::make('Team Members')
                 ->description('Add your team members and staff (optional - you can skip this step)')
                 ->schema([
-                    Forms\Components\Repeater::make('officials_temp')
-                        ->label('Team Members')
+                    Forms\Components\Section::make('Team Members & Staff')
+                        ->description(function () {
+                            $user = Auth::user();
+                            $subscription = $user->subscription;
+                            $maxTeamMembers = $subscription?->plan?->max_team_members;
+                            $currentCount = $this->record->officials()->count();
+                            
+                            if ($maxTeamMembers === null) {
+                                return "Showcase your team members and staff (Unlimited - {$currentCount} added)";
+                            }
+                            
+                            return "Showcase your team members and staff ({$currentCount} / {$maxTeamMembers} used)";
+                        })
                         ->schema([
-                            Forms\Components\FileUpload::make('photo')
-                                ->image()
-                                ->directory('official-photos')
-                                ->maxSize(2048)
-                                ->imageEditor()
-                                ->avatar()
-                                ->columnSpanFull(),
-                            
-                            Forms\Components\TextInput::make('name')
-                                ->required()
-                                ->maxLength(255),
-                            
-                            Forms\Components\TextInput::make('position')
-                                ->required()
-                                ->maxLength(255)
-                                ->helperText('e.g., CEO, Manager, Chef, etc.'),
-                            
-                            Forms\Components\TextInput::make('order')
-                                ->label('Display Order')
-                                ->numeric()
-                                ->default(0)
-                                ->helperText('Lower numbers appear first'),
-                            
-                            Forms\Components\Toggle::make('is_active')
-                                ->label('Active')
-                                ->default(true),
-                            
-                            Forms\Components\Repeater::make('social_accounts')
-                                ->label('Social Media')
+                            Forms\Components\Repeater::make('officials_temp')
+                                ->label('')
                                 ->schema([
-                                    Forms\Components\Select::make('platform')
-                                        ->options([
-                                            'linkedin' => 'LinkedIn',
-                                            'twitter' => 'Twitter (X)',
-                                            'facebook' => 'Facebook',
-                                            'instagram' => 'Instagram',
-                                            'youtube' => 'YouTube',
-                                            'tiktok' => 'TikTok',
-                                            'github' => 'GitHub',
-                                            'website' => 'Personal Website',
-                                        ])
-                                        ->required(),
+                                    Forms\Components\FileUpload::make('photo')
+                                        ->label('Profile Photo')
+                                        ->image()
+                                        ->directory('official-photos')
+                                        ->maxSize(2048)
+                                        ->imageEditor()
+                                        ->avatar()
+                                        ->helperText('Upload a professional photo')
+                                        ->columnSpanFull(),
                                     
-                                    Forms\Components\TextInput::make('url')
-                                        ->url()
+                                    Forms\Components\TextInput::make('name')
+                                        ->label('Full Name')
                                         ->required()
-                                        ->maxLength(255),
+                                        ->maxLength(255)
+                                        ->placeholder('e.g., John Doe'),
+                                    
+                                    Forms\Components\TextInput::make('position')
+                                        ->label('Job Title/Position')
+                                        ->required()
+                                        ->maxLength(255)
+                                        ->placeholder('e.g., CEO, Manager, Chef')
+                                        ->helperText('Their role in your business'),
+                                    
+                                    Forms\Components\TextInput::make('order')
+                                        ->label('Display Order')
+                                        ->numeric()
+                                        ->default(0)
+                                        ->placeholder('0')
+                                        ->helperText('Lower numbers appear first'),
+                                    
+                                    Forms\Components\Toggle::make('is_active')
+                                        ->label('Active')
+                                        ->default(true)
+                                        ->helperText('Show on business page'),
+                                    
+                                    Forms\Components\Repeater::make('social_accounts')
+                                        ->label('Social Media (Optional)')
+                                        ->schema([
+                                            Forms\Components\Select::make('platform')
+                                                ->label('Platform')
+                                                ->options([
+                                                    'linkedin' => 'LinkedIn',
+                                                    'twitter' => 'Twitter (X)',
+                                                    'facebook' => 'Facebook',
+                                                    'instagram' => 'Instagram',
+                                                    'youtube' => 'YouTube',
+                                                    'tiktok' => 'TikTok',
+                                                    'github' => 'GitHub',
+                                                    'website' => 'Personal Website',
+                                                ])
+                                                ->required()
+                                                ->placeholder('Select platform'),
+                                            
+                                            Forms\Components\TextInput::make('url')
+                                                ->label('Profile URL')
+                                                ->url()
+                                                ->required()
+                                                ->maxLength(255)
+                                                ->placeholder('https://linkedin.com/in/username'),
+                                        ])
+                                        ->columns(2)
+                                        ->defaultItems(0)
+                                        ->collapsible()
+                                        ->itemLabel(fn (array $state): ?string => ucfirst($state['platform'] ?? 'Social Link'))
+                                        ->addActionLabel('Add Social Link')
+                                        ->columnSpanFull(),
                                 ])
                                 ->columns(2)
                                 ->defaultItems(0)
                                 ->collapsible()
-                                ->itemLabel(fn (array $state): ?string => $state['platform'] ?? null)
+                                ->itemLabel(fn (array $state): ?string => $state['name'] ?? 'New Team Member')
+                                ->addActionLabel('Add Team Member')
+                                ->maxItems(function () {
+                                    $user = Auth::user();
+                                    $subscription = $user->subscription;
+                                    $maxTeamMembers = $subscription?->plan?->max_team_members;
+                                    
+                                    if ($maxTeamMembers === null) {
+                                        return null; // Unlimited
+                                    }
+                                    
+                                    return $maxTeamMembers;
+                                })
                                 ->columnSpanFull(),
-                        ])
-                        ->columns(2)
-                        ->defaultItems(0)
-                        ->collapsible()
-                        ->itemLabel(fn (array $state): ?string => $state['name'] ?? 'New Team Member')
-                        ->helperText('Add your team members to showcase your business team')
-                        ->columnSpanFull(),
+                        ]),
                 ])
                 ->columns(1),
             
@@ -692,62 +738,119 @@ class EditBusiness extends EditRecord
             Wizard\Step::make('Media & Branding')
                 ->description('Upload your business images (optional - you can skip this step)')
                 ->schema([
-                    Forms\Components\FileUpload::make('logo')
-                        ->image()
-                        ->directory('business-logos')
-                        ->maxSize(2048)
-                        ->imageEditor()
-                        ->helperText('Square logo works best'),
+                    Forms\Components\Section::make('Brand Assets')
+                        ->description('Upload your logo and cover photo to build brand recognition')
+                        ->schema([
+                            Forms\Components\FileUpload::make('logo')
+                                ->label('Business Logo')
+                                ->image()
+                                ->directory('business-logos')
+                                ->maxSize(2048)
+                                ->imageEditor()
+                                ->helperText('Square logo works best (PNG with transparent background recommended)'),
+                            
+                            Forms\Components\FileUpload::make('cover_photo')
+                                ->label('Cover Photo')
+                                ->image()
+                                ->directory('business-covers')
+                                ->maxSize(5120)
+                                ->imageEditor()
+                                ->helperText('Wide banner image (1200x400px recommended)'),
+                        ])
+                        ->columns(2),
                     
-                    Forms\Components\FileUpload::make('cover_photo')
-                        ->image()
-                        ->directory('business-covers')
-                        ->maxSize(5120)
-                        ->imageEditor()
-                        ->helperText('Wide banner image'),
-                    
-                    Forms\Components\FileUpload::make('gallery')
-                        ->image()
-                        ->directory('business-gallery')
-                        ->multiple()
-                        ->maxFiles(10)
-                        ->maxSize(3072)
-                        ->imageEditor()
-                        ->helperText('Upload up to 10 images')
-                        ->columnSpanFull(),
+                    Forms\Components\Section::make('Photo Gallery')
+                        ->description(function () {
+                            $user = Auth::user();
+                            $subscription = $user->subscription;
+                            $maxPhotos = $subscription?->plan?->max_photos;
+                            $currentCount = count($this->record->gallery ?? []);
+                            
+                            if ($maxPhotos === null) {
+                                return "Showcase your business with photos (Unlimited - {$currentCount} added)";
+                            }
+                            
+                            return "Showcase your business with photos ({$currentCount} / {$maxPhotos} used)";
+                        })
+                        ->schema([
+                            Forms\Components\FileUpload::make('gallery')
+                                ->label('Gallery Images')
+                                ->image()
+                                ->directory('business-gallery')
+                                ->multiple()
+                                ->maxFiles(function () {
+                                    $user = Auth::user();
+                                    $subscription = $user->subscription;
+                                    $maxPhotos = $subscription?->plan?->max_photos;
+                                    
+                                    if ($maxPhotos === null) {
+                                        return 50; // Default max if unlimited
+                                    }
+                                    
+                                    return $maxPhotos;
+                                })
+                                ->maxSize(3072)
+                                ->imageEditor()
+                                ->helperText(function () {
+                                    $user = Auth::user();
+                                    $subscription = $user->subscription;
+                                    $maxPhotos = $subscription?->plan?->max_photos;
+                                    
+                                    if ($maxPhotos === null) {
+                                        return 'Upload photos of your business, products, or services';
+                                    }
+                                    
+                                    return "Upload up to {$maxPhotos} photos of your business, products, or services";
+                                })
+                                ->columnSpanFull(),
+                        ]),
                 ])
-                ->columns(2),
+                ->columns(1),
             
             // Step 8: SEO Settings (Optional) - LAST STEP
             Wizard\Step::make('SEO Settings')
                 ->description('Search engine optimization (optional - you can skip this step)')
                 ->schema([
-                    Forms\Components\Select::make('canonical_strategy')
-                        ->label('Indexing Strategy')
-                        ->options([
-                            'self' => 'Index Separately (Unique business with own SEO)',
-                            'parent' => 'Standard Business',
+                    Forms\Components\Section::make('Search Engine Optimization')
+                        ->description('Optimize your business listing for search engines')
+                        ->schema([
+                            Forms\Components\Select::make('canonical_strategy')
+                                ->label('Indexing Strategy')
+                                ->options([
+                                    'self' => 'Index Separately (Unique business with own SEO)',
+                                    'parent' => 'Standard Business',
+                                ])
+                                ->default('self')
+                                ->required()
+                                ->helperText('Most businesses should use "Index Separately"'),
+                            
+                            Forms\Components\TextInput::make('meta_title')
+                                ->label('SEO Title')
+                                ->maxLength(255)
+                                ->placeholder('e.g., Best Restaurant in Lagos | Your Business Name')
+                                ->helperText('Custom page title (auto-generated if empty)'),
+                            
+                            Forms\Components\Textarea::make('meta_description')
+                                ->label('SEO Description')
+                                ->maxLength(255)
+                                ->rows(3)
+                                ->placeholder('Describe your business in a way that appears in search results...')
+                                ->helperText('Custom meta description (auto-generated if empty)'),
+                            
+                            Forms\Components\TagsInput::make('unique_features')
+                                ->label('Unique Features')
+                                ->helperText('What makes your business unique? Press Enter after each feature')
+                                ->placeholder('e.g., 24/7 Service, Award Winning, Free Delivery')
+                                ->columnSpanFull(),
+                            
+                            Forms\Components\Textarea::make('nearby_landmarks')
+                                ->label('Nearby Landmarks')
+                                ->rows(3)
+                                ->placeholder('e.g., Near Ikeja City Mall, Opposite GTBank, Behind National Stadium...')
+                                ->helperText('Mention nearby landmarks to help customers find you')
+                                ->columnSpanFull(),
                         ])
-                        ->default('self')
-                        ->required()
-                        ->helperText('Most businesses should use "Index Separately"'),
-                    
-                    Forms\Components\TextInput::make('meta_title')
-                        ->maxLength(255)
-                        ->helperText('Custom page title (auto-generated if empty)'),
-                    
-                    Forms\Components\Textarea::make('meta_description')
-                        ->maxLength(255)
-                        ->rows(3)
-                        ->helperText('Custom meta description (auto-generated if empty)'),
-                    
-                    Forms\Components\TagsInput::make('unique_features')
-                        ->helperText('What makes your business unique? (e.g., "24/7 Service", "Award Winning")')
-                        ->placeholder('Add unique features'),
-                    
-                    Forms\Components\Textarea::make('nearby_landmarks')
-                        ->rows(3)
-                        ->helperText('Mention nearby landmarks to help customers find you'),
+                        ->columns(2),
                 ])
                 ->columns(1),
         ];
