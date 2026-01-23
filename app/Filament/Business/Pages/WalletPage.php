@@ -116,11 +116,13 @@ class WalletPage extends Page implements HasTable, HasActions
                                     $accountName = $bankDetails['account_name'] ?? 'N/A';
                                     $bankName = $bankDetails['bank_name'] ?? 'N/A';
                                     
-                                    return view('filament.components.bank-transfer-details', [
-                                        'accountNumber' => $accountNumber,
-                                        'accountName' => $accountName,
-                                        'bankName' => $bankName,
-                                    ])->render();
+                                    return new \Illuminate\Support\HtmlString(
+                                        view('filament.components.bank-transfer-details', [
+                                            'accountNumber' => $accountNumber,
+                                            'accountName' => $accountName,
+                                            'bankName' => $bankName,
+                                        ])->render()
+                                    );
                                 })
                                 ->columnSpanFull(),
 
