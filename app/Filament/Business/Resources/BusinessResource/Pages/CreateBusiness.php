@@ -590,8 +590,6 @@ class CreateBusiness extends CreateRecord
                                             'linkedin' => 'LinkedIn',
                                             'youtube' => 'YouTube',
                                             'tiktok' => 'TikTok',
-                                            'pinterest' => 'Pinterest',
-                                            'whatsapp' => 'WhatsApp Business',
                                         ])
                                         ->required()
                                         ->searchable()
