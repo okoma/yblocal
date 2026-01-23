@@ -80,6 +80,7 @@ class SubscriptionPage extends Page implements HasForms, HasActions
             ->fillForm(function (array $arguments): array {
                 return [
                     'plan_id' => $arguments['planId'] ?? null,
+                    'billing_interval' => 'monthly',
                 ];
             })
             ->modalHeading(fn () => 'Subscribe to Plan')
@@ -137,7 +138,7 @@ class SubscriptionPage extends Page implements HasForms, HasActions
                                         $savings = $monthlyTotal - $yearlyPrice;
                                         $savingsPercent = round(($savings / $monthlyTotal) * 100);
                                         
-                                        $options['yearly'] = 'Yearly';
+                                        $options['yearly'] = 'Yearly (Save ' . $savingsPercent . '% - ₦' . number_format($savings, 2) . ')';
                                     }
                                     
                                     return $options;
@@ -146,19 +147,7 @@ class SubscriptionPage extends Page implements HasForms, HasActions
                                 ->required()
                                 ->native(false)
                                 ->live()
-                                ->helperText(function () use ($plan) {
-                                    if ($plan->yearly_price !== null && $plan->price > 0) {
-                                        $monthlyTotal = $plan->price * 12;
-                                        $yearlyPrice = $plan->yearly_price;
-                                        $savings = $monthlyTotal - $yearlyPrice;
-                                        $savingsPercent = round(($savings / $monthlyTotal) * 100);
-                                        
-                                        return new \Illuminate\Support\HtmlString(
-                                            '<span class="text-success-600 dark:text-success-400 font-medium">Select yearly to save ' . $savingsPercent . '% (₦' . number_format($savings, 2) . ')</span>'
-                                        );
-                                    }
-                                    return null;
-                                }),
+                                ->selectablePlaceholder(false),
                         ])
                         ->columnSpanFull()
                         ->collapsed(false)
