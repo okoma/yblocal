@@ -32,9 +32,10 @@ class SubscriptionResource extends Resource
     {
         return $form->schema([
             Forms\Components\Section::make('Subscription Details')->schema([
-                Forms\Components\Select::make('user_id')->relationship('user', 'name')->required()->searchable()->preload()->disabled(fn ($context) => $context !== 'create'),
+                Forms\Components\Select::make('business_id')->relationship('business', 'business_name')->required()->searchable()->preload()->helperText('Select the business for this subscription'),
+                Forms\Components\Select::make('user_id')->relationship('user', 'name')->searchable()->preload()->helperText('Optional: Who initiated the subscription'),
                 Forms\Components\Select::make('subscription_plan_id')->relationship('plan', 'name')->required()->searchable()->preload(),
-                Forms\Components\Select::make('business_id')->relationship('business', 'business_name')->searchable()->preload()->helperText('Optional: Link to specific business'),
+                Forms\Components\Select::make('billing_interval')->options(['monthly' => 'Monthly', 'yearly' => 'Yearly'])->required()->default('monthly')->native(false)->helperText('Billing cycle'),
                 Forms\Components\TextInput::make('subscription_code')->maxLength(255)->disabled()->helperText('Auto-generated'),
             ])->columns(2),
             
@@ -47,7 +48,8 @@ class SubscriptionResource extends Resource
             ])->columns(3),
             
             Forms\Components\Section::make('Usage Tracking')->schema([
-                Forms\Components\TextInput::make('branches_used')->numeric()->default(0),
+                Forms\Components\TextInput::make('faqs_used')->numeric()->default(0),
+                Forms\Components\TextInput::make('leads_viewed_used')->numeric()->default(0)->helperText('Leads viewed (not received)'),
                 Forms\Components\TextInput::make('products_used')->numeric()->default(0),
                 Forms\Components\TextInput::make('team_members_used')->numeric()->default(0),
                 Forms\Components\TextInput::make('photos_used')->numeric()->default(0),
@@ -66,14 +68,15 @@ class SubscriptionResource extends Resource
     {
         return $table->columns([
             Tables\Columns\TextColumn::make('subscription_code')->searchable()->copyable()->label('Code'),
-            Tables\Columns\TextColumn::make('user.name')->searchable()->sortable()->url(fn ($r) => route('filament.admin.resources.users.view', $r->user)),
+            Tables\Columns\TextColumn::make('business.business_name')->searchable()->sortable()->limit(30)->description(fn ($r) => $r->user?->name),
             Tables\Columns\TextColumn::make('plan.name')->searchable()->sortable()->badge()->color('info'),
-            Tables\Columns\TextColumn::make('business.business_name')->searchable()->toggleable()->limit(30),
+            Tables\Columns\TextColumn::make('billing_interval')->badge()->colors(['info' => 'monthly', 'success' => 'yearly'])->formatStateUsing(fn ($s) => ucfirst($s)),
             Tables\Columns\TextColumn::make('status')->badge()->colors(['success' => 'active', 'danger' => 'cancelled', 'warning' => 'expired', 'gray' => 'paused', 'info' => 'trialing'])->formatStateUsing(fn ($s) => ucfirst($s))->sortable(),
             Tables\Columns\TextColumn::make('starts_at')->dateTime()->sortable()->toggleable(),
             Tables\Columns\TextColumn::make('ends_at')->dateTime()->sortable()->since()->description(fn ($r) => $r->ends_at->format('M d, Y')),
             Tables\Columns\IconColumn::make('auto_renew')->boolean()->label('Auto Renew')->toggleable(),
-            Tables\Columns\TextColumn::make('branches_used')->label('Branches')->suffix(fn ($r) => '/' . ($r->plan->max_branches ?? '∞'))->toggleable(isToggledHiddenByDefault: true),
+            Tables\Columns\TextColumn::make('faqs_used')->label('FAQs')->suffix(fn ($r) => '/' . ($r->plan->max_faqs ?? '∞'))->toggleable(isToggledHiddenByDefault: true),
+            Tables\Columns\TextColumn::make('leads_viewed_used')->label('Leads Viewed')->suffix(fn ($r) => '/' . ($r->plan->max_leads_view ?? '∞'))->toggleable(isToggledHiddenByDefault: true),
             Tables\Columns\TextColumn::make('products_used')->label('Products')->suffix(fn ($r) => '/' . ($r->plan->max_products ?? '∞'))->toggleable(isToggledHiddenByDefault: true),
         ])->defaultSort('created_at', 'desc')->filters([
             Tables\Filters\SelectFilter::make('status')->options(['active' => 'Active', 'cancelled' => 'Cancelled', 'expired' => 'Expired', 'paused' => 'Paused', 'trialing' => 'Trialing'])->multiple(),

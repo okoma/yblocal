@@ -251,9 +251,9 @@ class LeadResource extends Resource
     {
         return [
             'index' => Pages\ListLeads::route('/'),
-            'create' => Pages\CreateLead::route('/create'),
+            // 'create' => Pages\CreateLead::route('/create'), // Business owners can't create leads - leads come from customers
             'view' => Pages\ViewLead::route('/{record}'),
-            'edit' => Pages\EditLead::route('/{record}/edit'),
+            // 'edit' => Pages\EditLead::route('/{record}/edit'), // Business owners can only view leads, not edit them
         ];
     }
 
@@ -271,8 +271,26 @@ class LeadResource extends Resource
     
     public static function getEloquentQuery(): Builder
     {
-        $businesses = Auth::user()->businesses()->pluck('id');
-        return parent::getEloquentQuery()
-            ->whereIn('business_id', $businesses);
+        $user = Auth::user();
+        $businesses = $user->businesses()->pluck('id');
+        
+        // Show ALL leads - viewing limit is enforced on individual view, not list
+        $query = parent::getEloquentQuery()
+            ->whereIn('business_id', $businesses)
+            ->orderBy('created_at', 'desc'); // Most recent first
+        
+        return $query;
+    }
+
+    public static function canCreate(): bool
+    {
+        // Business owners cannot create leads - leads come from customer inquiries
+        return false;
+    }
+
+    public static function canEdit($record): bool
+    {
+        // Business owners can only view leads, not edit them
+        return false;
     }
 }

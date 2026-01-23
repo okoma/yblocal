@@ -29,8 +29,16 @@ class ListProducts extends ListRecords
     public function getTabs(): array
     {
         $query = function() {
-            $businesses = Auth::user()->businesses()->pluck('id');
-            return $this->getModel()::whereIn('business_id', $businesses);
+            $user = Auth::user();
+            // Get businesses owned by user
+            $ownedBusinessIds = $user->businesses()->pluck('id')->toArray();
+            // Get businesses managed by user with can_manage_products permission
+            $managedBusinessIds = $user->activeBusinessManagers()
+                ->whereJsonContains('permissions->can_manage_products', true)
+                ->pluck('business_id')
+                ->toArray();
+            $businessIds = array_unique(array_merge($ownedBusinessIds, $managedBusinessIds));
+            return $this->getModel()::whereIn('business_id', $businessIds);
         };
         
         return [

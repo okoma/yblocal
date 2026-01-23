@@ -45,24 +45,16 @@ class BusinessViewSummary extends Model
         return $this->belongsTo(Business::class);
     }
 
-    /**
-     * Branch (for multi-location businesses)
-     */
-    public function branch(): BelongsTo
-    {
-        return $this->belongsTo(BusinessBranch::class, 'business_branch_id');
-    }
-
     // ============================================
     // HELPER METHODS
     // ============================================
 
     /**
-     * Get the parent (either Business or BusinessBranch)
+     * Get the parent business
      */
     public function parent()
     {
-        return $this->business_id ? $this->business : $this->branch;
+        return $this->business;
     }
 
     /**

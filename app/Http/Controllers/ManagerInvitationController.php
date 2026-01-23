@@ -61,7 +61,7 @@ class ManagerInvitationController extends Controller
                 'name' => $validated['name'],
                 'email' => $invitation->email,
                 'password' => Hash::make($validated['password']),
-                'role' => 'branch_manager',
+                'role' => 'customer', // Will be granted access via BusinessManager relationship
             ]);
         } else {
             // If user exists, verify password
@@ -79,7 +79,7 @@ class ManagerInvitationController extends Controller
         // Redirect to dashboard
         return redirect()
             ->route('filament.business.pages.dashboard')
-            ->with('success', 'Welcome! You are now a manager for ' . $invitation->branch->branch_title);
+            ->with('success', 'Welcome! You are now a manager for ' . $invitation->business->business_name);
     }
 
     /**

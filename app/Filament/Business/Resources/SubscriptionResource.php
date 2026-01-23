@@ -16,6 +16,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\HtmlString;
 
 class SubscriptionResource extends Resource
 {
@@ -59,6 +60,16 @@ class SubscriptionResource extends Resource
                     ->searchable()
                     ->toggleable(),
 
+                Tables\Columns\TextColumn::make('billing_interval')
+                    ->label('Billing')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => ucfirst($state))
+                    ->color(fn (string $state): string => match ($state) {
+                        'yearly' => 'success',
+                        'monthly' => 'info',
+                        default => 'gray',
+                    }),
+
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
@@ -87,9 +98,10 @@ class SubscriptionResource extends Resource
                     ->boolean()
                     ->toggleable(),
 
-                Tables\Columns\TextColumn::make('plan.price')
+                Tables\Columns\TextColumn::make('price')
                     ->label('Price')
                     ->money('NGN')
+                    ->state(fn ($record) => $record->getPrice())
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
@@ -115,18 +127,11 @@ class SubscriptionResource extends Resource
                     Tables\Actions\ViewAction::make(),
 
                     Tables\Actions\Action::make('renew')
+                        ->label('Renew')
                         ->icon('heroicon-o-arrow-path')
                         ->color('success')
-                        ->requiresConfirmation()
-                        ->action(function (Subscription $record) {
-                            $record->renew(30);
-                            
-                            Notification::make()
-                                ->success()
-                                ->title('Subscription Renewed')
-                                ->body('Your subscription has been extended by 30 days.')
-                                ->send();
-                        })
+                        ->url(fn (Subscription $record) => static::getUrl('view', ['record' => $record->id]))
+                        ->tooltip('Renew this subscription with payment')
                         ->visible(fn (Subscription $record) => $record->isActive()),
 
                     Tables\Actions\Action::make('toggle_auto_renew')

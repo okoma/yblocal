@@ -127,13 +127,21 @@ class BusinessVerification extends Model
             'verified_at' => now(),
         ]);
 
-        // Update business
+        // Update business - Verification alone doesn't grant premium
         $this->business->update([
             'is_verified' => true,
             'verification_level' => $level,
             'verification_score' => $this->verification_score,
             'current_verification_id' => $this->id,
         ]);
+
+        // Check if business has active subscription, then grant premium
+        if ($this->business->hasActiveSubscription()) {
+            $this->business->update([
+                'is_premium' => true,
+                'premium_until' => $this->business->activeSubscription()->ends_at,
+            ]);
+        }
     }
 
     public function reject($adminId, $reason, $feedback = null)
@@ -143,6 +151,16 @@ class BusinessVerification extends Model
             'verified_by' => $adminId,
             'rejection_reason' => $reason,
             'admin_feedback' => $feedback,
+        ]);
+
+        // Remove verification status (and premium if they had it)
+        $this->business->update([
+            'is_verified' => false,
+            'verification_level' => 'none',
+            'verification_score' => 0,
+            'current_verification_id' => null,
+            'is_premium' => false, // Lost premium (requires both verified + subscription)
+            'premium_until' => null,
         ]);
     }
 

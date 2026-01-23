@@ -75,9 +75,23 @@ class AdCampaign extends Model
         return $this->belongsTo(AdPackage::class, 'ad_package_id');
     }
 
+    /**
+     * Single transaction reference (optional, for direct lookup)
+     * Use this for quick access to the primary payment transaction
+     */
     public function transaction()
     {
         return $this->belongsTo(Transaction::class);
+    }
+
+    /**
+     * All payment transactions (polymorphic - RECOMMENDED)
+     * Use this for complete payment history and in payment processing
+     * This is what PaymentController uses for activation
+     */
+    public function transactions()
+    {
+        return $this->morphMany(Transaction::class, 'transactionable');
     }
 
     // Scopes

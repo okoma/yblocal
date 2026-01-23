@@ -46,7 +46,8 @@ class SubscriptionPlanResource extends Resource
             ])->columns(3),
             
             Forms\Components\Section::make('Limits')->schema([
-                Forms\Components\TextInput::make('max_branches')->numeric()->helperText('Leave empty for unlimited'),
+                Forms\Components\TextInput::make('max_faqs')->numeric()->helperText('Leave empty for unlimited'),
+                Forms\Components\TextInput::make('max_leads_view')->numeric()->helperText('Max leads they can VIEW (unlimited receiving)'),
                 Forms\Components\TextInput::make('max_products')->numeric()->helperText('Leave empty for unlimited'),
                 Forms\Components\TextInput::make('max_team_members')->numeric()->helperText('Leave empty for unlimited'),
                 Forms\Components\TextInput::make('max_photos')->numeric()->helperText('Gallery photos limit'),
@@ -71,7 +72,8 @@ class SubscriptionPlanResource extends Resource
             Tables\Columns\TextColumn::make('name')->searchable()->sortable()->description(fn ($record) => Str::limit($record->description, 50)),
             Tables\Columns\TextColumn::make('price')->money('NGN')->sortable()->description(fn ($record) => $record->billing_interval === 'yearly' ? "Yearly: ₦" . number_format($record->yearly_price, 2) : null),
             Tables\Columns\TextColumn::make('billing_interval')->badge()->formatStateUsing(fn ($state) => ucfirst($state)),
-            Tables\Columns\TextColumn::make('max_branches')->label('Branches')->default('∞')->formatStateUsing(fn ($state) => $state ?? '∞'),
+            Tables\Columns\TextColumn::make('max_faqs')->label('FAQs')->default('∞')->formatStateUsing(fn ($state) => $state ?? '∞'),
+            Tables\Columns\TextColumn::make('max_leads_view')->label('Leads View')->default('∞')->formatStateUsing(fn ($state) => $state ?? '∞'),
             Tables\Columns\TextColumn::make('max_products')->label('Products')->default('∞')->formatStateUsing(fn ($state) => $state ?? '∞'),
             Tables\Columns\TextColumn::make('monthly_ad_credits')->label('Ad Credits')->suffix('/mo')->toggleable(),
             Tables\Columns\IconColumn::make('is_popular')->boolean()->label('Popular'),

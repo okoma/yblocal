@@ -92,7 +92,7 @@ return new class extends Migration
             [$database, $table, $index]
         );
         
-        return !empty($result) && $result[0]->count > 0;
+        return !empty($result) && isset($result[0]) && $result[0]->count > 0;
     }
 
     /**
@@ -113,6 +113,6 @@ return new class extends Migration
             [$database, $table, $foreignKey]
         );
         
-        return !empty($result) && $result[0]->count > 0;
+        return !empty($result) && isset($result[0]) && $result[0]->count > 0;
     }
 };

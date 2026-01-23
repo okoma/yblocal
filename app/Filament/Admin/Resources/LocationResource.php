@@ -113,11 +113,6 @@ class LocationResource extends Resource
                     ->label('Sub-locations')
                     ->sortable(),
                 
-                Tables\Columns\TextColumn::make('branches_count')
-                    ->counts('branches')
-                    ->label('Branches')
-                    ->sortable(),
-                
                 Tables\Columns\IconColumn::make('is_active')
                     ->boolean()
                     ->label('Active')

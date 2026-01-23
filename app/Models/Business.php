@@ -73,6 +73,7 @@ class Business extends Model
     protected $casts = [
         'gallery' => 'array',
         'business_hours' => 'array',
+        'unique_features' => 'array',
         'is_claimed' => 'boolean',
         'is_verified' => 'boolean',
         'is_premium' => 'boolean',
@@ -109,11 +110,79 @@ class Business extends Model
     }
 
     /**
+     * Business Subscriptions
+     */
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(Subscription::class);
+    }
+
+    /**
+     * Active Subscription
+     */
+    public function subscription(): HasMany
+    {
+        return $this->subscriptions()->where('status', 'active')->latest();
+    }
+
+    /**
+     * Get the active subscription
+     */
+    public function activeSubscription()
+    {
+        return $this->subscriptions()
+            ->where('status', 'active')
+            ->where('ends_at', '>', now())
+            ->first();
+    }
+
+    /**
+     * Check if business has an active subscription
+     */
+    public function hasActiveSubscription(): bool
+    {
+        return $this->activeSubscription() !== null;
+    }
+
+    /**
+     * Check if subscription is expired
+     */
+    public function isSubscriptionExpired(): bool
+    {
+        $subscription = $this->activeSubscription();
+        return $subscription && $subscription->isExpired();
+    }
+
+    /**
      * User who claimed this business
      */
     public function claimedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'claimed_by');
+    }
+
+    /**
+     * All claim requests for this business
+     */
+    public function claims(): HasMany
+    {
+        return $this->hasMany(BusinessClaim::class);
+    }
+
+    /**
+     * All verification attempts for this business
+     */
+    public function verifications(): HasMany
+    {
+        return $this->hasMany(BusinessVerification::class);
+    }
+
+    /**
+     * Current active verification
+     */
+    public function currentVerification(): BelongsTo
+    {
+        return $this->belongsTo(BusinessVerification::class, 'current_verification_id');
     }
 
     /**
@@ -221,6 +290,52 @@ class Business extends Model
             ->withTimestamps();
     }
 
+    /**
+     * Business Managers (users who manage this business)
+     */
+    public function managers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'business_managers', 'business_id', 'user_id')
+            ->using(BusinessManager::class)
+            ->withPivot(['position', 'permissions', 'is_active', 'is_primary', 'joined_at'])
+            ->wherePivot('is_active', true)
+            ->withTimestamps();
+    }
+
+    /**
+     * All business manager assignments (including inactive)
+     */
+    public function managerAssignments(): HasMany
+    {
+        return $this->hasMany(BusinessManager::class);
+    }
+
+    /**
+     * Active business managers only
+     */
+    public function activeManagers(): HasMany
+    {
+        return $this->hasMany(BusinessManager::class)->where('is_active', true);
+    }
+
+    /**
+     * Manager invitations for this business
+     */
+    public function managerInvitations(): HasMany
+    {
+        return $this->hasMany(ManagerInvitation::class);
+    }
+
+    /**
+     * Pending manager invitations
+     */
+    public function pendingManagerInvitations(): HasMany
+    {
+        return $this->hasMany(ManagerInvitation::class)
+            ->where('status', 'pending')
+            ->where('expires_at', '>', now());
+    }
+
 
     // ============================================
     // FEATURES & AMENITIES
@@ -240,6 +355,24 @@ class Business extends Model
     public function amenities(): BelongsToMany
     {
         return $this->belongsToMany(Amenity::class, 'business_amenity');
+    }
+
+    /**
+     * Business FAQs
+     */
+    public function faqs(): HasMany
+    {
+        return $this->hasMany(FAQ::class)->ordered();
+    }
+
+    /**
+     * Active FAQs only
+     */
+    public function activeFaqs(): HasMany
+    {
+        return $this->hasMany(FAQ::class)
+            ->where('is_active', true)
+            ->ordered();
     }
 
     // ============================================

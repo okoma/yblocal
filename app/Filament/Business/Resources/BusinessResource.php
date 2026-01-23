@@ -40,8 +40,19 @@ class BusinessResource extends Resource
 
     public static function table(Table $table): Table
     {
+        $user = Auth::user();
+        
+        // Show businesses owned by user OR managed by user
+        $query = Business::query()
+            ->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhereHas('managers', function ($query) use ($user) {
+                      $query->where('user_id', $user->id);
+                  });
+            });
+        
         return $table
-            ->query(Business::query()->where('user_id', Auth::id()))
+            ->query($query)
             ->columns([
                 Tables\Columns\ImageColumn::make('logo')
                     ->circular()
@@ -110,17 +121,6 @@ class BusinessResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
-    }
-
-    public static function getRelations(): array
-    {
-        return [
-            RelationManagers\ProductsRelationManager::class,
-            RelationManagers\LeadsRelationManager::class,
-            RelationManagers\ReviewsRelationManager::class,
-            RelationManagers\OfficialsRelationManager::class,
-            RelationManagers\SocialAccountsRelationManager::class,
-        ];
     }
 
     public static function getPages(): array

@@ -9,6 +9,8 @@ namespace App\Filament\Business\Resources;
 use App\Filament\Business\Resources\AdPackageResource\Pages;
 use App\Models\AdPackage;
 use App\Models\Business;
+use App\Models\Category;
+use App\Models\Location;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -175,6 +177,7 @@ class AdPackageResource extends Resource
                     ->label('Purchase')
                     ->icon('heroicon-o-shopping-cart')
                     ->color('success')
+                    ->modalWidth('3xl')
                     ->form([
                         Forms\Components\Select::make('business_id')
                             ->label('Select Business')
@@ -185,7 +188,8 @@ class AdPackageResource extends Resource
                             ->required()
                             ->searchable()
                             ->preload()
-                            ->helperText('Choose which business to advertise'),
+                            ->helperText('Choose which business to advertise')
+                            ->live(),
 
                         Forms\Components\DatePicker::make('start_date')
                             ->label('Start Date')
@@ -194,40 +198,129 @@ class AdPackageResource extends Resource
                             ->required()
                             ->helperText('When should the campaign begin?'),
 
+                        Forms\Components\Section::make('Targeting (Optional)')
+                            ->description('Leave empty to target all categories and locations')
+                            ->schema([
+                                Forms\Components\Select::make('target_categories')
+                                    ->label('Target Categories')
+                                    ->multiple()
+                                    ->options(function () {
+                                        return Category::where('is_active', true)
+                                            ->orderBy('name')
+                                            ->pluck('name', 'id');
+                                    })
+                                    ->searchable()
+                                    ->preload()
+                                    ->helperText('Select categories to target (leave empty for all categories)'),
+
+                                Forms\Components\Select::make('target_locations')
+                                    ->label('Target Locations')
+                                    ->multiple()
+                                    ->options(function () {
+                                        return Location::where('is_active', true)
+                                            ->whereIn('type', ['state', 'city'])
+                                            ->orderBy('name')
+                                            ->pluck('name', 'id');
+                                    })
+                                    ->searchable()
+                                    ->preload()
+                                    ->helperText('Select locations to target (leave empty for all locations)'),
+                            ])
+                            ->columns(2)
+                            ->collapsible()
+                            ->collapsed(),
+
                         Forms\Components\Textarea::make('notes')
                             ->label('Campaign Notes (Optional)')
                             ->rows(2)
                             ->maxLength(500),
+
+                        Forms\Components\Section::make('Payment Method')
+                            ->schema([
+                                Forms\Components\Select::make('payment_gateway_id')
+                                    ->label('Select Payment Method')
+                                    ->options(function () {
+                                        return \App\Models\PaymentGateway::enabled()
+                                            ->ordered()
+                                            ->get()
+                                            ->mapWithKeys(function ($gateway) {
+                                                return [$gateway->id => $gateway->display_name];
+                                            });
+                                    })
+                                    ->required()
+                                    ->searchable()
+                                    ->preload()
+                                    ->helperText('Choose how you want to pay for this campaign'),
+                            ]),
                     ])
                     ->action(function (AdPackage $record, array $data) {
                         try {
+                            // Prepare custom data
+                            $customData = [
+                                'starts_at' => $data['start_date'],
+                                'ends_at' => now()->parse($data['start_date'])->addDays($record->duration_days),
+                                'description' => $data['notes'] ?? null,
+                            ];
+
+                            // Add target categories if selected
+                            if (!empty($data['target_categories'])) {
+                                $customData['target_categories'] = $data['target_categories'];
+                            }
+
+                            // Add target locations if selected
+                            if (!empty($data['target_locations'])) {
+                                $customData['target_locations'] = $data['target_locations'];
+                            }
+
                             // Create the campaign
                             $campaign = $record->createCampaign(
                                 $data['business_id'],
                                 auth()->id(),
-                                [
-                                    'starts_at' => $data['start_date'],
-                                    'ends_at' => now()->parse($data['start_date'])->addDays($record->duration_days),
-                                    'description' => $data['notes'] ?? null,
+                                $customData
+                            );
+
+                            // Initialize payment through service
+                            $result = app(\App\Services\PaymentService::class)->initializePayment(
+                                user: auth()->user(),
+                                amount: $record->price,
+                                gatewayId: $data['payment_gateway_id'],
+                                payable: $campaign,
+                                metadata: [
+                                    'package_id' => $record->id,
+                                    'package_name' => $record->name,
+                                    'business_id' => $data['business_id'],
                                 ]
                             );
 
-                            // TODO: Integrate with payment gateway here
-                            // For now, we'll mark it as unpaid
-
-                            Notification::make()
-                                ->success()
-                                ->title('Campaign Created!')
-                                ->body('Your campaign has been created. Complete payment to activate it.')
-                                ->actions([
-                                    \Filament\Notifications\Actions\Action::make('view')
-                                        ->label('View Campaign')
-                                        ->url(fn () => static::getUrl('../ad-campaigns/view', ['record' => $campaign])),
-                                ])
-                                ->send();
-
-                            // Redirect to payment or campaign details
-                            // redirect()->route('payment.process', $campaign);
+                            // Handle payment result
+                            if ($result->requiresRedirect()) {
+                                return redirect()->away($result->redirectUrl);
+                            } elseif ($result->isBankTransfer()) {
+                                Notification::make()
+                                    ->info()
+                                    ->title('Bank Transfer Details')
+                                    ->body($result->instructions)
+                                    ->persistent()
+                                    ->actions([
+                                        \Filament\Notifications\Actions\Action::make('view')
+                                            ->label('View Campaign')
+                                            ->url(fn () => static::getUrl('../ad-campaigns/view', ['record' => $campaign])),
+                                    ])
+                                    ->send();
+                            } elseif ($result->isSuccess()) {
+                                Notification::make()
+                                    ->success()
+                                    ->title('Campaign Activated!')
+                                    ->body($result->message)
+                                    ->actions([
+                                        \Filament\Notifications\Actions\Action::make('view')
+                                            ->label('View Campaign')
+                                            ->url(fn () => static::getUrl('../ad-campaigns/view', ['record' => $campaign])),
+                                    ])
+                                    ->send();
+                            } else {
+                                throw new \Exception($result->message);
+                            }
 
                         } catch (\Exception $e) {
                             Notification::make()
@@ -240,7 +333,8 @@ class AdPackageResource extends Resource
                     ->requiresConfirmation()
                     ->modalHeading('Purchase Ad Package')
                     ->modalDescription(fn ($record) => 'You are about to purchase the "' . $record->name . '" package for ₦' . number_format($record->price, 2))
-                    ->modalSubmitActionLabel('Create Campaign'),
+                    ->modalSubmitActionLabel('Purchase & Pay')
+                    ->modalFooterActionsAlignment('right'),
             ])
             ->bulkActions([
                 // No bulk actions needed for business users

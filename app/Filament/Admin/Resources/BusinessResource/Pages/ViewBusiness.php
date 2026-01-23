@@ -124,9 +124,9 @@ class ViewBusiness extends ViewRecord
                 
                 Components\Section::make('Statistics')
                     ->schema([
-                        Components\TextEntry::make('branches_count')
-                            ->label('Total Branches')
-                            ->state(fn ($record) => $record->branches()->count()),
+                        Components\TextEntry::make('products_count')
+                            ->label('Total Products')
+                            ->state(fn ($record) => $record->products()->count()),
                         
                         Components\TextEntry::make('avg_rating')
                             ->label('Average Rating')

@@ -20,3 +20,21 @@ Route::prefix('manager/invitation')->name('manager.invitation.')->group(function
     Route::post('/{token}/decline', [ManagerInvitationController::class, 'decline'])
         ->name('decline');
 });
+
+// Payment Webhooks (Server-to-Server notifications)
+Route::prefix('webhooks')->name('webhooks.')->group(function () {
+    Route::post('/paystack', [\App\Http\Controllers\PaymentController::class, 'paystackWebhook'])->name('paystack');
+    Route::post('/flutterwave', [\App\Http\Controllers\PaymentController::class, 'flutterwaveWebhook'])->name('flutterwave');
+});
+
+// Payment Callbacks (User redirects after payment)
+Route::prefix('payment')->name('payment.')->group(function () {
+    Route::get('/paystack/callback', [\App\Http\Controllers\PaymentController::class, 'paystackCallback'])->name('paystack.callback');
+    Route::get('/flutterwave/callback', [\App\Http\Controllers\PaymentController::class, 'flutterwaveCallback'])->name('flutterwave.callback');
+});
+
+// Transaction Receipt (Business Panel)
+Route::middleware(['auth'])->group(function () {
+    Route::get('/business/transaction/{transaction}/receipt', [\App\Http\Controllers\PaymentController::class, 'downloadReceipt'])
+        ->name('business.transaction.receipt');
+});

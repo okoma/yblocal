@@ -2,7 +2,7 @@
 
 // ============================================
 // app/Models/Subscription.php
-// User's active subscription
+// Business subscriptions - Each subscription is linked to a specific business
 // ============================================
 
 namespace App\Models;
@@ -16,9 +16,10 @@ class Subscription extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
+        'business_id',
         'user_id',
         'subscription_plan_id',
-        'business_id',
+        'billing_interval',
         'subscription_code',
         'status',
         'starts_at',
@@ -28,7 +29,10 @@ class Subscription extends Model
         'paused_at',
         'auto_renew',
         'cancellation_reason',
-        'branches_used',
+        'faqs_used',
+        'leads_viewed_used',
+        'monthly_leads_viewed',
+        'last_leads_reset_at',
         'products_used',
         'team_members_used',
         'photos_used',
@@ -42,10 +46,16 @@ class Subscription extends Model
         'trial_ends_at' => 'datetime',
         'cancelled_at' => 'datetime',
         'paused_at' => 'datetime',
+        'last_leads_reset_at' => 'datetime',
         'auto_renew' => 'boolean',
     ];
 
     // Relationships
+    public function business()
+    {
+        return $this->belongsTo(Business::class);
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -54,11 +64,6 @@ class Subscription extends Model
     public function plan()
     {
         return $this->belongsTo(SubscriptionPlan::class, 'subscription_plan_id');
-    }
-
-    public function business()
-    {
-        return $this->belongsTo(Business::class);
     }
 
     public function transactions()
@@ -131,16 +136,114 @@ class Subscription extends Model
         ]);
     }
 
-    public function renew($duration = 30)
+    public function renew()
     {
+        // Renew based on billing interval
+        $duration = $this->billing_interval === 'yearly' ? 365 : 30;
+        
         $this->update([
             'ends_at' => $this->ends_at->addDays($duration),
         ]);
     }
-
-    public function canAddBranch()
+    
+    public function getPrice()
     {
-        return $this->plan->max_branches === null || $this->branches_used < $this->plan->max_branches;
+        return $this->billing_interval === 'yearly' 
+            ? $this->plan->yearly_price 
+            : $this->plan->price;
+    }
+    
+    public function isYearly()
+    {
+        return $this->billing_interval === 'yearly';
+    }
+    
+    public function isMonthly()
+    {
+        return $this->billing_interval === 'monthly';
+    }
+
+    public function canAddFaq()
+    {
+        return $this->plan->max_faqs === null || $this->faqs_used < $this->plan->max_faqs;
+    }
+
+    public function canViewMoreLeads()
+    {
+        // Check if reset is needed first
+        $this->checkAndResetMonthlyLeads();
+        
+        // They can always receive unlimited leads, but viewing is limited monthly
+        return $this->plan->max_leads_view === null || $this->monthly_leads_viewed < $this->plan->max_leads_view;
+    }
+    
+    /**
+     * Check if monthly leads counter needs to be reset
+     * - Yearly subscriptions: Reset on calendar month (1st of month)
+     * - Monthly subscriptions: Reset on billing cycle (subscription renewal date)
+     */
+    public function checkAndResetMonthlyLeads(): void
+    {
+        $shouldReset = false;
+        
+        if ($this->billing_interval === 'yearly') {
+            // Reset on calendar month (1st of each month)
+            $lastReset = $this->last_leads_reset_at;
+            
+            if (!$lastReset || $lastReset->month !== now()->month || $lastReset->year !== now()->year) {
+                $shouldReset = true;
+            }
+        } elseif ($this->billing_interval === 'monthly') {
+            // Reset on billing cycle (based on starts_at date)
+            $lastReset = $this->last_leads_reset_at ?? $this->starts_at;
+            $dayOfMonth = $this->starts_at->day;
+            
+            // Calculate next reset date
+            $nextResetDate = $lastReset->copy()->addMonth()->startOfDay();
+            
+            if (now()->gte($nextResetDate)) {
+                $shouldReset = true;
+            }
+        }
+        
+        if ($shouldReset) {
+            $this->resetMonthlyLeads();
+        }
+    }
+    
+    /**
+     * Reset monthly leads counter
+     */
+    public function resetMonthlyLeads(): void
+    {
+        $this->update([
+            'monthly_leads_viewed' => 0,
+            'last_leads_reset_at' => now(),
+        ]);
+    }
+    
+    /**
+     * Increment monthly leads viewed counter
+     */
+    public function incrementLeadsViewed(): void
+    {
+        $this->checkAndResetMonthlyLeads();
+        $this->increment('monthly_leads_viewed');
+        $this->increment('leads_viewed_used'); // Keep total count too
+    }
+    
+    /**
+     * Get remaining leads that can be viewed this month
+     */
+    public function getRemainingLeadsView(): ?int
+    {
+        $this->checkAndResetMonthlyLeads();
+        
+        if ($this->plan->max_leads_view === null) {
+            return null; // Unlimited
+        }
+        
+        return max(0, $this->plan->max_leads_view - $this->monthly_leads_viewed);
     }
 
     public function canAddProduct()

@@ -1,7 +1,7 @@
 {{-- resources/views/filament/infolists/campaign-traffic-breakdown.blade.php --}}
 
 @php
-    $data = $impressions ?? [];
+    $data = is_array($impressions ?? []) ? $impressions : [];
     $total = array_sum($data);
     $type = $type ?? 'impressions';
     

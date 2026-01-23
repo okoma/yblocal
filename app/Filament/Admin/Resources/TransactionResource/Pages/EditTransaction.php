@@ -1,7 +1,5 @@
 <?php
-// ============================================
-// app/Filament/Admin/Resources/TransactionResource/Pages/EditTransaction.php
-// ============================================
+
 namespace App\Filament\Admin\Resources\TransactionResource\Pages;
 
 use App\Filament\Admin\Resources\TransactionResource;
@@ -16,12 +14,7 @@ class EditTransaction extends EditRecord
     {
         return [
             Actions\ViewAction::make(),
-            Actions\DeleteAction::make()
-                ->visible(fn () => auth()->user()->isAdmin()),
-            Actions\RestoreAction::make()
-                ->visible(fn () => auth()->user()->isAdmin()),
-            Actions\ForceDeleteAction::make()
-                ->visible(fn () => auth()->user()->isAdmin()),
+            Actions\DeleteAction::make(),
         ];
     }
 

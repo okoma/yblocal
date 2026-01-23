@@ -1,7 +1,5 @@
 <?php
-// ============================================
-// app/Filament/Admin/Resources/TransactionResource/Pages/ListTransactions.php
-// ============================================
+
 namespace App\Filament\Admin\Resources\TransactionResource\Pages;
 
 use App\Filament\Admin\Resources\TransactionResource;
@@ -17,39 +15,34 @@ class ListTransactions extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make()
-                ->visible(fn () => auth()->user()->isAdmin()),
+            Actions\CreateAction::make(),
         ];
     }
 
     public function getTabs(): array
     {
         return [
-            'all' => Tab::make('All'),
+            'all' => Tab::make('All Transactions'),
             
             'pending' => Tab::make('Pending')
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'pending'))
-                ->badge(fn () => static::getModel()::where('status', 'pending')->count())
+                ->badge(fn () => \App\Models\Transaction::where('status', 'pending')->count())
                 ->badgeColor('warning'),
             
             'completed' => Tab::make('Completed')
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'completed'))
-                ->badge(fn () => static::getModel()::where('status', 'completed')->count())
+                ->badge(fn () => \App\Models\Transaction::where('status', 'completed')->count())
                 ->badgeColor('success'),
             
             'failed' => Tab::make('Failed')
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'failed'))
-                ->badge(fn () => static::getModel()::where('status', 'failed')->count())
+                ->badge(fn () => \App\Models\Transaction::where('status', 'failed')->count())
                 ->badgeColor('danger'),
             
             'refunded' => Tab::make('Refunded')
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('is_refunded', true))
-                ->badge(fn () => static::getModel()::where('is_refunded', true)->count())
-                ->badgeColor('secondary'),
-            
-            'today' => Tab::make('Today')
-                ->modifyQueryUsing(fn (Builder $query) => $query->whereDate('created_at', today()))
-                ->badge(fn () => static::getModel()::whereDate('created_at', today())->count()),
+                ->badge(fn () => \App\Models\Transaction::where('is_refunded', true)->count())
+                ->badgeColor('info'),
         ];
     }
 }
