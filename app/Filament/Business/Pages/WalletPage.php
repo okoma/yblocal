@@ -381,31 +381,36 @@ class WalletPage extends Page implements HasTable, HasActions
             DB::beginTransaction();
             
             try {
-                // Create withdrawal transaction with bank details in metadata
+                // Create withdrawal transaction (deduct from wallet)
                 $transaction = $wallet->withdraw(
                     $amount, 
                     "Withdrawal request to {$data['bank_name']} - {$data['account_number']}",
                     null, // No related transaction
                     [
                         'withdrawal_type' => 'bank_transfer',
-                        'bank_name' => $data['bank_name'],
-                        'account_number' => $data['account_number'],
-                        'account_name' => $data['account_name'],
-                        'status' => 'pending_approval', // Pending admin approval
-                        'requested_at' => now()->toIso8601String(),
+                        'status' => 'pending_approval',
                     ]
                 );
                 
-                // NOTE: Withdrawal requests require admin approval
-                // Admins can view and approve these in the WalletTransactionResource
-                // Once approved, the funds are transferred to the bank account
-                // The transaction metadata contains all necessary bank details
+                // Create withdrawal request for admin approval
+                $withdrawalRequest = \App\Models\WithdrawalRequest::create([
+                    'user_id' => auth()->id(),
+                    'wallet_id' => $wallet->id,
+                    'amount' => $amount,
+                    'bank_name' => $data['bank_name'],
+                    'account_name' => $data['account_name'],
+                    'account_number' => $data['account_number'],
+                    'sort_code' => $data['sort_code'] ?? null,
+                    'status' => 'pending',
+                    'transaction_id' => $transaction->id,
+                ]);
                 
                 Log::info('Withdrawal request created', [
                     'user_id' => auth()->id(),
                     'wallet_id' => $wallet->id,
                     'amount' => $amount,
                     'transaction_id' => $transaction->id,
+                    'withdrawal_request_id' => $withdrawalRequest->id,
                     'bank_details' => [
                         'bank_name' => $data['bank_name'],
                         'account_number' => $data['account_number'],

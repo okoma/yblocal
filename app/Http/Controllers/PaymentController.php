@@ -281,7 +281,7 @@ class PaymentController extends Controller
 
         match (true) {
             $payable instanceof Subscription => $this->activateSubscription($payable),
-            $payable instanceof AdCampaign => $payable->update(['is_paid' => true, 'is_active' => true]),
+            $payable instanceof AdCampaign => $this->activateAdCampaign($payable, $transaction),
             $payable instanceof Wallet => $payable->deposit($transaction->amount, 'Payment gateway funding', $transaction),
             default => Log::warning('Unknown payable type', ['type' => get_class($payable)]),
         };
@@ -291,6 +291,58 @@ class PaymentController extends Controller
             'type' => get_class($payable),
             'payable_id' => $payable->id,
         ]);
+    }
+    
+    /**
+     * Activate ad campaign or process extension/budget addition
+     */
+    protected function activateAdCampaign(AdCampaign $campaign, Transaction $transaction): void
+    {
+        $metadata = $transaction->metadata ?? [];
+        $extensionType = $metadata['extension_type'] ?? null;
+        
+        if ($extensionType === 'duration') {
+            // Extend campaign duration
+            $days = (int) ($metadata['days'] ?? 0);
+            if ($days > 0) {
+                $campaign->update([
+                    'ends_at' => $campaign->ends_at->copy()->addDays($days),
+                ]);
+                
+                Log::info('Campaign duration extended', [
+                    'campaign_id' => $campaign->id,
+                    'days_added' => $days,
+                    'new_end_date' => $campaign->ends_at,
+                    'transaction_id' => $transaction->id,
+                ]);
+            }
+        } elseif ($extensionType === 'budget') {
+            // Add budget to campaign
+            $additionalBudget = (float) ($metadata['additional_budget'] ?? 0);
+            if ($additionalBudget > 0) {
+                $campaign->update([
+                    'budget' => $campaign->budget + $additionalBudget,
+                ]);
+                
+                Log::info('Campaign budget increased', [
+                    'campaign_id' => $campaign->id,
+                    'budget_added' => $additionalBudget,
+                    'new_budget' => $campaign->budget,
+                    'transaction_id' => $transaction->id,
+                ]);
+            }
+        } else {
+            // New campaign - just activate it
+            $campaign->update([
+                'is_paid' => true,
+                'is_active' => true,
+            ]);
+            
+            Log::info('Campaign activated', [
+                'campaign_id' => $campaign->id,
+                'transaction_id' => $transaction->id,
+            ]);
+        }
     }
 
     /**

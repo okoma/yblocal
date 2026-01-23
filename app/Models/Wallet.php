@@ -48,6 +48,14 @@ class Wallet extends Model
         return $this->morphMany(Transaction::class, 'transactionable');
     }
 
+    /**
+     * Withdrawal requests for this wallet
+     */
+    public function withdrawalRequests()
+    {
+        return $this->hasMany(WithdrawalRequest::class);
+    }
+
     // Helper methods
     public function deposit($amount, $description = null, $reference = null)
     {
