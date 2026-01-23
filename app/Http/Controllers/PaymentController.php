@@ -1,5 +1,7 @@
 <?php
 
+//app/Http/Controllers/PaymentController.php
+
 namespace App\Http\Controllers;
 
 use App\Models\PaymentGateway;
@@ -280,7 +282,7 @@ class PaymentController extends Controller
         }
 
         match (true) {
-            $payable instanceof Subscription => $this->activateSubscription($payable),
+            $payable instanceof Subscription => $this->activateSubscription($payable, $transaction),
             $payable instanceof AdCampaign => $this->activateAdCampaign($payable, $transaction),
             $payable instanceof Wallet => $payable->deposit($transaction->amount, 'Payment gateway funding', $transaction),
             default => Log::warning('Unknown payable type', ['type' => get_class($payable)]),
@@ -347,25 +349,40 @@ class PaymentController extends Controller
 
     /**
      * Activate subscription and grant premium if verified
+     * 
+     * FIXED: Now properly checks transaction metadata to determine if this is a renewal/extension
      */
-    protected function activateSubscription(Subscription $subscription): void
+    protected function activateSubscription(Subscription $subscription, Transaction $transaction): void
     {
-        // Check if this is a renewal (existing subscription with ends_at close to expiring or expired)
-        $isRenewal = $subscription->status === 'active' && $subscription->ends_at && $subscription->ends_at->lte(now()->addDays(30));
+        // Check transaction metadata to determine if this is a renewal/extension
+        $metadata = $transaction->metadata ?? [];
+        $isRenewalOrExtension = ($metadata['type'] ?? null) === 'subscription_renewal';
         
-        if ($isRenewal) {
-            // This is a renewal - extend the subscription
+        if ($isRenewalOrExtension) {
+            // This is a renewal/extension - extend the subscription from current end date
+            $oldEndDate = $subscription->ends_at->copy();
             $subscription->renew();
-            Log::info('Subscription renewed', [
+            
+            // Determine if it was a renewal or extension based on time remaining
+            $daysRemaining = now()->diffInDays($oldEndDate, false);
+            $actionType = $daysRemaining > 90 ? 'extended' : 'renewed';
+            
+            Log::info("Subscription {$actionType} via payment", [
                 'subscription_id' => $subscription->id,
-                'new_end_date' => $subscription->ends_at,
+                'transaction_id' => $transaction->id,
+                'days_remaining_before' => max(0, $daysRemaining),
+                'old_end_date' => $oldEndDate->toDateTimeString(),
+                'new_end_date' => $subscription->ends_at->toDateTimeString(),
+                'action' => $actionType,
             ]);
         } else {
             // This is a new subscription - just activate it
             $subscription->update(['status' => 'active']);
-            Log::info('Subscription activated', [
+            
+            Log::info('New subscription activated via payment', [
                 'subscription_id' => $subscription->id,
-                'end_date' => $subscription->ends_at,
+                'transaction_id' => $transaction->id,
+                'end_date' => $subscription->ends_at->toDateTimeString(),
             ]);
         }
 
@@ -386,13 +403,14 @@ class PaymentController extends Controller
                 'premium_until' => $subscription->ends_at,
             ]);
 
-            Log::info('Premium granted', [
+            Log::info('Premium granted to business', [
                 'subscription_id' => $subscription->id,
                 'business_id' => $business->id,
+                'premium_until' => $subscription->ends_at->toDateTimeString(),
                 'reason' => 'Verified + Active Subscription',
             ]);
         } else {
-            Log::info('Subscription active but no premium (not verified)', [
+            Log::info('Subscription active but no premium granted (business not verified)', [
                 'subscription_id' => $subscription->id,
                 'business_id' => $business->id,
             ]);
