@@ -4,20 +4,21 @@ namespace App\Http\Controllers;
 
 use App\Models\PaymentGateway;
 use App\Models\Transaction;
-use App\Models\Subscription;
-use App\Models\Wallet;
-use App\Models\AdCampaign;
+use App\Services\ActivationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Unified Webhook Controller
- * 
+ *
  * Handles webhooks from ALL payment gateways (Paystack, Flutterwave, etc.)
- * Gateway-specific logic is handled through methods based on gateway slug
+ * Activation is delegated to ActivationService.
  */
 class WebhookController extends Controller
 {
+    public function __construct(
+        protected ActivationService $activationService
+    ) {}
     /**
      * Handle webhook for any payment gateway
      * 
@@ -212,11 +213,7 @@ class WebhookController extends Controller
             'gateway_response' => $data,
         ]);
 
-        // Mark as paid
-        $transaction->markAsPaid();
-
-        // Activate the transactionable (Subscription, Wallet, AdCampaign)
-        $this->activateTransactionable($transaction, $gateway);
+        $this->activationService->completeAndActivate($transaction);
 
         Log::info("Webhook [{$gateway}]: Payment processed successfully", [
             'reference' => $reference,
@@ -258,80 +255,4 @@ class WebhookController extends Controller
         }
     }
 
-    /**
-     * Activate transactionable based on type
-     */
-    protected function activateTransactionable(Transaction $transaction, string $gateway): void
-    {
-        $transactionable = $transaction->transactionable;
-        
-        if (!$transactionable) {
-            Log::warning("Webhook [{$gateway}]: Transaction has no transactionable", [
-                'transaction_id' => $transaction->id,
-            ]);
-            return;
-        }
-
-        // Handle based on type
-        if ($transactionable instanceof Subscription) {
-            $this->activateSubscription($transactionable, $transaction, $gateway);
-        } elseif ($transactionable instanceof Wallet) {
-            $this->fundWallet($transactionable, $transaction, $gateway);
-        } elseif ($transactionable instanceof AdCampaign) {
-            $this->activateCampaign($transactionable, $transaction, $gateway);
-        }
-    }
-
-    /**
-     * Activate subscription
-     */
-    protected function activateSubscription(Subscription $subscription, Transaction $transaction, string $gateway): void
-    {
-        $subscription->update([
-            'status' => 'active',
-            'starts_at' => now(),
-            'ends_at' => now()->addDays(30), // Default, adjust as needed
-        ]);
-
-        Log::info("Webhook [{$gateway}]: Subscription activated", [
-            'subscription_id' => $subscription->id,
-            'transaction_id' => $transaction->id,
-        ]);
-    }
-
-    /**
-     * Fund wallet
-     */
-    protected function fundWallet(Wallet $wallet, Transaction $transaction, string $gateway): void
-    {
-        $wallet->deposit(
-            $transaction->amount,
-            "Wallet funding via " . ucfirst($gateway),
-            $transaction
-        );
-
-        Log::info("Webhook [{$gateway}]: Wallet funded", [
-            'wallet_id' => $wallet->id,
-            'user_id' => $wallet->user_id,
-            'amount' => $transaction->amount,
-            'transaction_id' => $transaction->id,
-        ]);
-    }
-
-    /**
-     * Activate campaign
-     */
-    protected function activateCampaign(AdCampaign $campaign, Transaction $transaction, string $gateway): void
-    {
-        $campaign->update([
-            'is_paid' => true,
-            'is_active' => true,
-            'transaction_id' => $transaction->id,
-        ]);
-
-        Log::info("Webhook [{$gateway}]: Campaign activated", [
-            'campaign_id' => $campaign->id,
-            'transaction_id' => $transaction->id,
-        ]);
-    }
 }

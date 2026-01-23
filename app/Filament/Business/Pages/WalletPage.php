@@ -194,7 +194,7 @@ class WalletPage extends Page implements HasTable, HasActions
                     Forms\Components\TextInput::make('credits')
                         ->label('Custom Credits')
                         ->numeric()
-                        ->required()
+                        ->required(fn (Forms\Get $get) => $get('credit_package') === 'custom')
                         ->minValue(10)
                         ->maxValue(10000)
                         ->live(debounce: 500)
@@ -455,12 +455,21 @@ class WalletPage extends Page implements HasTable, HasActions
         try {
             $user = auth()->user();
             
-            // Validate credits field exists
-            if (!isset($data['credits']) || !$data['credits']) {
-                throw new \Exception('Please select a credit package or enter custom credits.');
+            // Derive credits: 'credits' is only submitted when custom package (field visible).
+            // For pre-defined packages, the credits field is hidden so we use credit_package.
+            $credits = null;
+            if (isset($data['credits']) && $data['credits'] !== '' && $data['credits'] !== null) {
+                $credits = (int) $data['credits'];
+            } elseif (isset($data['credit_package']) && $data['credit_package'] !== 'custom') {
+                $credits = (int) $data['credit_package'];
+            } elseif (isset($data['amount']) && $data['amount'] > 0) {
+                $credits = (int) ($data['amount'] / 10); // Fallback: amount / 10
             }
             
-            $credits = (int) $data['credits'];
+            if (!$credits || $credits < 10) {
+                throw new \Exception('Please select a credit package or enter custom credits (minimum 10).');
+            }
+            
             $amount = $credits * 10; // 1 credit = ₦10
             $gatewayId = $data['payment_gateway_id'];
             

@@ -9,18 +9,22 @@ use App\Models\Transaction;
 use App\Models\Subscription;
 use App\Models\Wallet;
 use App\Models\AdCampaign;
+use App\Services\ActivationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Payment Controller
- * 
- * Handles ALL payment webhooks and callbacks for all gateways
- * Routes differentiate between gateways
+ *
+ * Handles ALL payment webhooks and callbacks for all gateways.
+ * Activation (wallet credit, subscription/campaign activation) is delegated to ActivationService.
  */
 class PaymentController extends Controller
 {
+    public function __construct(
+        protected ActivationService $activationService
+    ) {}
     // ==========================================
     // WEBHOOKS (Server-to-Server)
     // ==========================================
@@ -130,8 +134,7 @@ class PaymentController extends Controller
                     'payment_gateway_ref' => $reference,
                     'gateway_response' => $verified,
                 ]);
-                $transaction->markAsPaid();
-                $this->activatePayable($transaction);
+                $this->activationService->completeAndActivate($transaction);
             }
             return $this->redirectWithSuccess('Payment successful! Your purchase has been activated.', $transaction);
         }
@@ -175,8 +178,7 @@ class PaymentController extends Controller
                     'payment_gateway_ref' => $txRef,
                     'gateway_response' => $verified,
                 ]);
-                $transaction->markAsPaid();
-                $this->activatePayable($transaction);
+                $this->activationService->completeAndActivate($transaction);
             }
             return $this->redirectWithSuccess('Payment successful! Your purchase has been activated.', $transaction);
         }
@@ -236,8 +238,7 @@ class PaymentController extends Controller
             'payment_gateway_ref' => $reference,
             'gateway_response' => $data,
         ]);
-        $transaction->markAsPaid();
-        $this->activatePayable($transaction);
+        $this->activationService->completeAndActivate($transaction);
 
         Log::info("$gateway webhook: Payment processed", [
             'reference' => $reference,
@@ -265,160 +266,6 @@ class PaymentController extends Controller
             Log::info("$gateway webhook: Payment failed", [
                 'reference' => $reference,
                 'transaction_id' => $transaction->id,
-            ]);
-        }
-    }
-
-    /**
-     * Activate payable (Subscription, AdCampaign, Wallet)
-     */
-    protected function activatePayable(Transaction $transaction): void
-    {
-        $payable = $transaction->transactionable;
-        
-        if (!$payable) {
-            Log::warning('Transaction has no payable', ['transaction_id' => $transaction->id]);
-            return;
-        }
-
-        match (true) {
-            $payable instanceof Subscription => $this->activateSubscription($payable, $transaction),
-            $payable instanceof AdCampaign => $this->activateAdCampaign($payable, $transaction),
-            $payable instanceof Wallet => $payable->deposit($transaction->amount, 'Payment gateway funding', $transaction),
-            default => Log::warning('Unknown payable type', ['type' => get_class($payable)]),
-        };
-
-        Log::info('Payable activated', [
-            'transaction_id' => $transaction->id,
-            'type' => get_class($payable),
-            'payable_id' => $payable->id,
-        ]);
-    }
-    
-    /**
-     * Activate ad campaign or process extension/budget addition
-     */
-    protected function activateAdCampaign(AdCampaign $campaign, Transaction $transaction): void
-    {
-        $metadata = $transaction->metadata ?? [];
-        $extensionType = $metadata['extension_type'] ?? null;
-        
-        if ($extensionType === 'duration') {
-            // Extend campaign duration
-            $days = (int) ($metadata['days'] ?? 0);
-            if ($days > 0) {
-                $campaign->update([
-                    'ends_at' => $campaign->ends_at->copy()->addDays($days),
-                ]);
-                
-                Log::info('Campaign duration extended', [
-                    'campaign_id' => $campaign->id,
-                    'days_added' => $days,
-                    'new_end_date' => $campaign->ends_at,
-                    'transaction_id' => $transaction->id,
-                ]);
-            }
-        } elseif ($extensionType === 'budget') {
-            // Add budget to campaign
-            $additionalBudget = (float) ($metadata['additional_budget'] ?? 0);
-            if ($additionalBudget > 0) {
-                $campaign->update([
-                    'budget' => $campaign->budget + $additionalBudget,
-                ]);
-                
-                Log::info('Campaign budget increased', [
-                    'campaign_id' => $campaign->id,
-                    'budget_added' => $additionalBudget,
-                    'new_budget' => $campaign->budget,
-                    'transaction_id' => $transaction->id,
-                ]);
-            }
-        } else {
-            // New campaign - just activate it
-            $campaign->update([
-                'is_paid' => true,
-                'is_active' => true,
-            ]);
-            
-            Log::info('Campaign activated', [
-                'campaign_id' => $campaign->id,
-                'transaction_id' => $transaction->id,
-            ]);
-        }
-    }
-
-    /**
-     * Activate subscription and grant premium if verified
-     * 
-     * FIXED: Now properly checks transaction metadata to determine if this is a renewal/extension
-     */
-    protected function activateSubscription(Subscription $subscription, Transaction $transaction): void
-    {
-        // Check transaction metadata to determine if this is a renewal/extension
-        $metadata = $transaction->metadata ?? [];
-        $isRenewalOrExtension = ($metadata['type'] ?? null) === 'subscription_renewal';
-        
-        if ($isRenewalOrExtension) {
-            // This is a renewal/extension - extend the subscription
-            // The renew() method will automatically extend from now() if expired, or from ends_at if still active
-            $oldEndDate = ($subscription->ends_at && $subscription->ends_at->isFuture()) 
-                ? $subscription->ends_at->copy() 
-                : now();
-            $wasExpired = $subscription->isExpired() || $subscription->status === 'expired';
-            
-            $subscription->renew();
-            
-            // Determine if it was a renewal or extension based on time remaining
-            $daysRemaining = now()->diffInDays($oldEndDate, false);
-            $actionType = $daysRemaining > 90 ? 'extended' : 'renewed';
-            
-            Log::info("Subscription {$actionType} via payment", [
-                'subscription_id' => $subscription->id,
-                'transaction_id' => $transaction->id,
-                'was_expired' => $wasExpired,
-                'days_remaining_before' => max(0, $daysRemaining),
-                'old_end_date' => $oldEndDate->toDateTimeString(),
-                'new_end_date' => $subscription->ends_at->toDateTimeString(),
-                'action' => $actionType,
-            ]);
-        } else {
-            // This is a new subscription - just activate it
-            $subscription->update(['status' => 'active']);
-            
-            Log::info('New subscription activated via payment', [
-                'subscription_id' => $subscription->id,
-                'transaction_id' => $transaction->id,
-                'end_date' => $subscription->ends_at->toDateTimeString(),
-            ]);
-        }
-
-        // Get the business
-        $business = $subscription->business;
-
-        if (!$business) {
-            Log::warning('Subscription has no associated business', [
-                'subscription_id' => $subscription->id,
-            ]);
-            return;
-        }
-
-        // Grant premium ONLY if business is verified
-        if ($business->is_verified) {
-            $business->update([
-                'is_premium' => true,
-                'premium_until' => $subscription->ends_at,
-            ]);
-
-            Log::info('Premium granted to business', [
-                'subscription_id' => $subscription->id,
-                'business_id' => $business->id,
-                'premium_until' => $subscription->ends_at->toDateTimeString(),
-                'reason' => 'Verified + Active Subscription',
-            ]);
-        } else {
-            Log::info('Subscription active but no premium granted (business not verified)', [
-                'subscription_id' => $subscription->id,
-                'business_id' => $business->id,
             ]);
         }
     }

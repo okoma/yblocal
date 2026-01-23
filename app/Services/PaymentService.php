@@ -16,6 +16,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class PaymentService
 {
+    public function __construct(
+        protected ActivationService $activationService
+    ) {}
+
     // Constants
     protected const CURRENCY = 'NGN';
     protected const HTTP_TIMEOUT = 30;
@@ -448,11 +452,8 @@ class PaymentService
                 // Deduct from wallet
                 $wallet->withdraw($amount, $transaction->description, $transaction);
                 
-                // Mark transaction as completed
-                $transaction->markAsPaid();
-                
-                // Activate the payable entity
-                $this->activatePayable($transaction->transactionable);
+                // Complete transaction and activate payable (subscription, campaign, etc.)
+                $this->activationService->completeAndActivate($transaction);
                 
                 DB::commit();
                 
@@ -485,53 +486,6 @@ class PaymentService
             ]);
             
             return PaymentResult::failed('Wallet payment failed. Please try again.');
-        }
-    }
-    
-    /**
-     * Activate payable entity after successful payment
-     */
-    protected function activatePayable(Model $payable): void
-    {
-        try {
-            if ($payable instanceof Subscription) {
-                $payable->update(['status' => 'active']);
-                
-                Log::info('Subscription activated via PaymentService', [
-                    'subscription_id' => $payable->id,
-                    'plan_id' => $payable->subscription_plan_id,
-                ]);
-            } elseif ($payable instanceof AdCampaign) {
-                $payable->update([
-                    'is_paid' => true,
-                    'is_active' => true,
-                ]);
-                
-                Log::info('Ad Campaign activated via PaymentService', [
-                    'campaign_id' => $payable->id,
-                ]);
-            } elseif ($payable instanceof Wallet) {
-                // Wallet funding doesn't need activation
-                // The deposit is already handled
-                Log::info('Wallet payment processed via PaymentService', [
-                    'wallet_id' => $payable->id,
-                ]);
-            } else {
-                Log::warning('Unknown payable type in PaymentService', [
-                    'type' => get_class($payable),
-                    'id' => $payable->id,
-                ]);
-            }
-        } catch (\Exception $e) {
-            Log::error('Failed to activate payable in PaymentService', [
-                'type' => get_class($payable),
-                'id' => $payable->id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            
-            // Re-throw to ensure transaction rollback if within DB transaction
-            throw $e;
         }
     }
 }
