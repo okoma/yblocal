@@ -4,9 +4,12 @@ namespace App\Filament\Business\Resources\ManagerInvitationResource\Pages;
 
 use App\Filament\Business\Resources\ManagerInvitationResource;
 use App\Models\ManagerInvitation;
+use App\Mail\ManagerInvitationMail;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class CreateManagerInvitation extends CreateRecord
@@ -54,14 +57,34 @@ class CreateManagerInvitation extends CreateRecord
     {
         $invitation = $this->record;
         
-        // TODO: Send email notification here
-        // Mail::to($invitation->email)->send(new ManagerInvitationMail($invitation));
-        
-        Notification::make()
-            ->title('Invitation sent')
-            ->body('Manager invitation has been sent to ' . $invitation->email)
-            ->success()
-            ->send();
+        try {
+            // Send email notification
+            Mail::to($invitation->email)->send(new ManagerInvitationMail($invitation));
+            
+            Log::info('Manager invitation email sent', [
+                'invitation_id' => $invitation->id,
+                'email' => $invitation->email,
+                'business_id' => $invitation->business_id,
+            ]);
+            
+            Notification::make()
+                ->title('Invitation sent')
+                ->body('Manager invitation has been sent to ' . $invitation->email)
+                ->success()
+                ->send();
+        } catch (\Exception $e) {
+            Log::error('Failed to send manager invitation email', [
+                'invitation_id' => $invitation->id,
+                'email' => $invitation->email,
+                'error' => $e->getMessage(),
+            ]);
+            
+            Notification::make()
+                ->title('Invitation created but email failed')
+                ->body('The invitation was created but the email could not be sent. Please contact support.')
+                ->warning()
+                ->send();
+        }
     }
     
     protected function getRedirectUrl(): string

@@ -299,7 +299,7 @@ class PaymentController extends Controller
     protected function activateSubscription(Subscription $subscription): void
     {
         // Check if this is a renewal (existing subscription with ends_at close to expiring or expired)
-        $isRenewal = $subscription->status === 'active' && $subscription->ends_at->lte(now()->addDays(30));
+        $isRenewal = $subscription->status === 'active' && $subscription->ends_at && $subscription->ends_at->lte(now()->addDays(30));
         
         if ($isRenewal) {
             // This is a renewal - extend the subscription
@@ -320,25 +320,30 @@ class PaymentController extends Controller
         // Get the business
         $business = $subscription->business;
 
-        if ($business) {
-            // Grant premium ONLY if business is verified
-            if ($business->is_verified) {
-                $business->update([
-                    'is_premium' => true,
-                    'premium_until' => $subscription->ends_at,
-                ]);
+        if (!$business) {
+            Log::warning('Subscription has no associated business', [
+                'subscription_id' => $subscription->id,
+            ]);
+            return;
+        }
 
-                Log::info('Premium granted', [
-                    'subscription_id' => $subscription->id,
-                    'business_id' => $business->id,
-                    'reason' => 'Verified + Active Subscription',
-                ]);
-            } else {
-                Log::info('Subscription active but no premium (not verified)', [
-                    'subscription_id' => $subscription->id,
-                    'business_id' => $business->id,
-                ]);
-            }
+        // Grant premium ONLY if business is verified
+        if ($business->is_verified) {
+            $business->update([
+                'is_premium' => true,
+                'premium_until' => $subscription->ends_at,
+            ]);
+
+            Log::info('Premium granted', [
+                'subscription_id' => $subscription->id,
+                'business_id' => $business->id,
+                'reason' => 'Verified + Active Subscription',
+            ]);
+        } else {
+            Log::info('Subscription active but no premium (not verified)', [
+                'subscription_id' => $subscription->id,
+                'business_id' => $business->id,
+            ]);
         }
     }
 

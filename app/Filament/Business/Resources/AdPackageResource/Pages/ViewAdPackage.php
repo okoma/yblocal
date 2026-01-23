@@ -63,18 +63,11 @@ class ViewAdPackage extends ViewRecord
                             ]
                         );
 
-                        // TODO: Integrate with payment gateway here
-
-                        Notification::make()
-                            ->success()
-                            ->title('Campaign Created!')
-                            ->body('Your campaign has been created. Complete payment to activate it.')
-                            ->actions([
-                                \Filament\Notifications\Actions\Action::make('view')
-                                    ->label('View Campaign')
-                                    ->url(route('filament.business.resources.ad-campaigns.view', $campaign)),
-                            ])
-                            ->send();
+                        // Redirect to campaign view page where payment options are available
+                        // The payment integration is handled in the AdCampaignResource view page
+                        $this->redirect(
+                            \App\Filament\Business\Resources\AdCampaignResource::getUrl('view', ['record' => $campaign->id])
+                        );
 
                     } catch (\Exception $e) {
                         Notification::make()

@@ -28,6 +28,7 @@ class TransactionResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
+            ->with(['gateway', 'transactionable']) // Eager load relationships to prevent N+1 queries
             ->where('user_id', Filament::auth()->id())
             ->latest();
     }

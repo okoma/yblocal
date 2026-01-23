@@ -381,25 +381,51 @@ class WalletPage extends Page implements HasTable, HasActions
             DB::beginTransaction();
             
             try {
-                // Create withdrawal transaction (pending)
-                $wallet->withdraw(
+                // Create withdrawal transaction with bank details in metadata
+                $transaction = $wallet->withdraw(
                     $amount, 
-                    "Withdrawal request to {$data['bank_name']} - {$data['account_number']}"
+                    "Withdrawal request to {$data['bank_name']} - {$data['account_number']}",
+                    null, // No related transaction
+                    [
+                        'withdrawal_type' => 'bank_transfer',
+                        'bank_name' => $data['bank_name'],
+                        'account_number' => $data['account_number'],
+                        'account_name' => $data['account_name'],
+                        'status' => 'pending_approval', // Pending admin approval
+                        'requested_at' => now()->toIso8601String(),
+                    ]
                 );
                 
-                // TODO: Create a WithdrawalRequest model to track admin approval
-                // For now, just create the transaction
+                // NOTE: Withdrawal requests require admin approval
+                // Admins can view and approve these in the WalletTransactionResource
+                // Once approved, the funds are transferred to the bank account
+                // The transaction metadata contains all necessary bank details
+                
+                Log::info('Withdrawal request created', [
+                    'user_id' => auth()->id(),
+                    'wallet_id' => $wallet->id,
+                    'amount' => $amount,
+                    'transaction_id' => $transaction->id,
+                    'bank_details' => [
+                        'bank_name' => $data['bank_name'],
+                        'account_number' => $data['account_number'],
+                    ],
+                ]);
                 
                 DB::commit();
                 
                 Notification::make()
                     ->success()
                     ->title('Withdrawal Requested')
-                    ->body('Your withdrawal request has been submitted. Processing time: 24-48 hours.')
+                    ->body('Your withdrawal request has been submitted for approval. Processing time: 24-48 hours.')
                     ->send();
                 
             } catch (\Exception $e) {
                 DB::rollBack();
+                Log::error('Withdrawal request failed', [
+                    'user_id' => auth()->id(),
+                    'error' => $e->getMessage(),
+                ]);
                 throw $e;
             }
             

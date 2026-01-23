@@ -276,6 +276,7 @@ class LeadResource extends Resource
         
         // Show ALL leads - viewing limit is enforced on individual view, not list
         $query = parent::getEloquentQuery()
+            ->with('business') // Eager load business to prevent N+1 queries
             ->whereIn('business_id', $businesses)
             ->orderBy('created_at', 'desc'); // Most recent first
         
