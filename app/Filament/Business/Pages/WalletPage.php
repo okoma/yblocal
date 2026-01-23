@@ -164,7 +164,7 @@ class WalletPage extends Page implements HasTable, HasActions
                 ->label('Buy Ad Credits')
                 ->icon('heroicon-o-sparkles')
                 ->color('primary')
-                ->modalWidth('md')
+                ->modalWidth('lg')
                 ->form([
                     Forms\Components\Select::make('credit_package')
                         ->label('Select Credit Package')
@@ -203,13 +203,6 @@ class WalletPage extends Page implements HasTable, HasActions
                         )
                         ->visible(fn (Forms\Get $get) => $get('credit_package') === 'custom')
                         ->helperText('Minimum: 10 credits, Maximum: 10,000 credits'),
-
-                    Forms\Components\Placeholder::make('total_display')
-                        ->label('Total Cost')
-                        ->content(fn (Forms\Get $get) => 
-                            '₦' . number_format(($get('credits') ?? 0) * 10, 2)
-                        )
-                        ->visible(fn (Forms\Get $get) => $get('credits') > 0),
                     
                     Forms\Components\Hidden::make('amount'),
 
@@ -222,7 +215,80 @@ class WalletPage extends Page implements HasTable, HasActions
                         })
                         ->native(false)
                         ->required()
+                        ->live()
                         ->helperText('Select your preferred payment method'),
+
+                    // Payment Summary (shown for all payment methods)
+                    Forms\Components\Section::make('Payment Summary')
+                        ->schema([
+                            Forms\Components\Placeholder::make('credits_summary')
+                                ->label('Credits to Purchase')
+                                ->content(fn (Forms\Get $get) => number_format($get('credits') ?? 0) . ' Credits')
+                                ->extraAttributes(['class' => 'text-xl font-bold text-primary-600 dark:text-primary-400']),
+                            
+                            Forms\Components\Placeholder::make('amount_summary')
+                                ->label('Total Amount')
+                                ->content(fn (Forms\Get $get) => '₦' . number_format(($get('credits') ?? 0) * 10, 2))
+                                ->extraAttributes(['class' => 'text-2xl font-bold text-success-600 dark:text-success-400']),
+                        ])
+                        ->columns(2)
+                        ->visible(fn (Forms\Get $get) => $get('credits') > 0 && $get('payment_gateway_id'))
+                        ->columnSpanFull(),
+
+                    // Bank Transfer Details (shown only when bank transfer is selected)
+                    Forms\Components\Section::make('Bank Transfer Details')
+                        ->schema([
+                            Forms\Components\Placeholder::make('bank_details')
+                                ->label('')
+                                ->content(function (Forms\Get $get) {
+                                    $gatewayId = $get('payment_gateway_id');
+                                    if (!$gatewayId) return '';
+                                    
+                                    $gateway = PaymentGateway::find($gatewayId);
+                                    if (!$gateway || !$gateway->isBankTransfer()) return '';
+                                    
+                                    $bankDetails = $gateway->bank_account_details ?? [];
+                                    $accountNumber = $bankDetails['account_number'] ?? 'N/A';
+                                    $accountName = $bankDetails['account_name'] ?? 'N/A';
+                                    $bankName = $bankDetails['bank_name'] ?? 'N/A';
+                                    
+                                    return new \Illuminate\Support\HtmlString(
+                                        view('filament.components.bank-transfer-details', [
+                                            'accountNumber' => $accountNumber,
+                                            'accountName' => $accountName,
+                                            'bankName' => $bankName,
+                                        ])->render()
+                                    );
+                                })
+                                ->columnSpanFull(),
+
+                            Forms\Components\Placeholder::make('transfer_instructions')
+                                ->label('')
+                                ->content('After making the transfer, upload your payment proof below. Credits will be added within 24-48 hours after verification.')
+                                ->extraAttributes(['class' => 'text-sm text-gray-600 dark:text-gray-400']),
+                        ])
+                        ->visible(fn (Forms\Get $get) => $this->isBankTransferSelected($get('payment_gateway_id')))
+                        ->collapsible()
+                        ->collapsed(false),
+
+                    // Payment Proof Section (separate)
+                    Forms\Components\Section::make('Payment Proof')
+                        ->schema([
+                            Forms\Components\FileUpload::make('payment_proof')
+                                ->label('Upload Proof of Payment')
+                                ->helperText('Upload receipt or screenshot of your transfer (JPEG, PNG, or PDF)')
+                                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'])
+                                ->maxSize(5120) // 5MB
+                                ->directory('credit-transfer-proofs')
+                                ->visibility('private')
+                                ->required()
+                                ->downloadable()
+                                ->previewable()
+                                ->columnSpanFull(),
+                        ])
+                        ->visible(fn (Forms\Get $get) => $this->isBankTransferSelected($get('payment_gateway_id')))
+                        ->collapsible()
+                        ->collapsed(false),
                 ])
                 ->action(function (array $data) {
                     return $this->processCreditPurchase($data);
