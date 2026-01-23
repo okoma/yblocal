@@ -454,7 +454,13 @@ class WalletPage extends Page implements HasTable, HasActions
     {
         try {
             $user = auth()->user();
-            $credits = $data['credits'];
+            
+            // Validate credits field exists
+            if (!isset($data['credits']) || !$data['credits']) {
+                throw new \Exception('Please select a credit package or enter custom credits.');
+            }
+            
+            $credits = (int) $data['credits'];
             $amount = $credits * 10; // 1 credit = ₦10
             $gatewayId = $data['payment_gateway_id'];
             
@@ -502,8 +508,55 @@ class WalletPage extends Page implements HasTable, HasActions
                     DB::rollBack();
                     throw $e;
                 }
+            } elseif ($gateway->isBankTransfer()) {
+                // Bank transfer for credits
+                $wallet = $this->getWallet();
+                
+                DB::beginTransaction();
+                
+                try {
+                    // Prepare metadata
+                    $metadata = [
+                        'type' => 'credit_purchase',
+                        'credits' => $credits,
+                        'amount' => $amount,
+                    ];
+                    
+                    // Add payment proof if provided
+                    if (!empty($data['payment_proof'])) {
+                        $metadata['payment_proof'] = $data['payment_proof'];
+                        $metadata['payment_proof_uploaded_at'] = now()->toIso8601String();
+                    }
+                    
+                    // Initialize payment through service
+                    $result = app(PaymentService::class)->initializePayment(
+                        user: $user,
+                        amount: $amount,
+                        gatewayId: $gatewayId,
+                        payable: $wallet,
+                        metadata: $metadata
+                    );
+                    
+                    DB::commit();
+                    
+                    if ($result->isBankTransfer()) {
+                        Notification::make()
+                            ->success()
+                            ->title('Payment Proof Uploaded')
+                            ->body("Your payment proof has been received. {$credits} credits will be added to your account within 24-48 hours after verification.")
+                            ->send();
+                        
+                        return null;
+                    } else {
+                        throw new \Exception($result->message);
+                    }
+                    
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    throw $e;
+                }
             } else {
-                // Gateway payment for credits - fund wallet first, then convert to credits
+                // Other gateway payment for credits
                 Notification::make()
                     ->warning()
                     ->title('Feature Coming Soon')
