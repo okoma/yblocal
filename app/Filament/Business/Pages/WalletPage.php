@@ -710,7 +710,7 @@ class WalletPage extends Page implements HasTable, HasActions
                     ->color('primary')
                     ->default(0)
                     ->formatStateUsing(fn ($state, $record) => $state > 0 ? $state : null)
-                    ->prefix(fn ($record) => $record && in_array($record->type, ['credit_purchase', 'bonus']) ? '+' : '-'),
+                    ->prefix(fn ($record) => $record && (in_array($record->type, ['credit_purchase', 'bonus']) || ($record->type === 'purchase' && ($record->credits ?? 0) > 0)) ? '+' : '-'),
 
                 Tables\Columns\TextColumn::make('balance_after')
                     ->label('Balance')
