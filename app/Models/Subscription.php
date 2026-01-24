@@ -92,7 +92,7 @@ class Subscription extends Model
     // Helper methods
     public function isActive()
     {
-        return $this->status === 'active' && $this->ends_at->isFuture();
+        return $this->status === 'active' && $this->ends_at && $this->ends_at->isFuture();
     }
 
     public function isTrialing()
@@ -102,11 +102,15 @@ class Subscription extends Model
 
     public function isExpired()
     {
-        return $this->ends_at->isPast();
+        return $this->ends_at && $this->ends_at->isPast();
     }
 
     public function daysRemaining()
     {
+        if (!$this->ends_at) {
+            return 0;
+        }
+        
         return max(0, now()->diffInDays($this->ends_at, false));
     }
 
@@ -141,8 +145,15 @@ class Subscription extends Model
         // Renew based on billing interval
         $duration = $this->billing_interval === 'yearly' ? 365 : 30;
         
+        // If subscription has expired, extend from today
+        // Otherwise, extend from the current end date
+        $startDate = $this->ends_at && $this->ends_at->isFuture() 
+            ? $this->ends_at 
+            : now();
+        
         $this->update([
-            'ends_at' => $this->ends_at->addDays($duration),
+            'ends_at' => $startDate->copy()->addDays($duration),
+            'status' => 'active', // Ensure status is active after renewal
         ]);
     }
     

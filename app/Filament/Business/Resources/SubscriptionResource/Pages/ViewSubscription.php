@@ -28,19 +28,31 @@ class ViewSubscription extends ViewRecord
     {
         return [
             Actions\Action::make('renew')
-                ->label('Renew Subscription')
+                ->label(function () {
+                    // Dynamic label based on days remaining
+                    $daysRemaining = $this->record->daysRemaining();
+                    return $daysRemaining > 90 ? 'Extend Subscription' : 'Renew Subscription';
+                })
                 ->icon('heroicon-o-arrow-path')
                 ->color('success')
                 ->modalWidth('md')
-                ->modalHeading('Renew Your Subscription')
+                ->modalHeading(function () {
+                    $daysRemaining = $this->record->daysRemaining();
+                    return $daysRemaining > 90 ? 'Extend Your Subscription' : 'Renew Your Subscription';
+                })
                 ->modalDescription(function () {
                     $period = $this->record->isYearly() ? '1 year' : '1 month';
                     $price = number_format($this->record->getPrice(), 2);
-                    return "Renew for {$period} - ₦{$price}";
+                    $daysRemaining = $this->record->daysRemaining();
+                    $action = $daysRemaining > 90 ? 'Extend' : 'Renew';
+                    return "{$action} for {$period} - ₦{$price}";
                 })
                 ->form([
                     Forms\Components\Placeholder::make('renewal_summary')
-                        ->label('Renewal Details')
+                        ->label(function () {
+                            $daysRemaining = $this->record->daysRemaining();
+                            return $daysRemaining > 90 ? 'Extension Details' : 'Renewal Details';
+                        })
                         ->content(function () {
                             $plan = $this->record->plan->name;
                             $period = $this->record->isYearly() ? '1 Year' : '1 Month';
@@ -50,6 +62,9 @@ class ViewSubscription extends ViewRecord
                             // Clone the date to avoid modifying the original
                             $newEndDate = clone $this->record->ends_at;
                             $newEnd = $newEndDate->addDays($this->record->isYearly() ? 365 : 30)->format('M j, Y');
+                            
+                            $daysRemaining = $this->record->daysRemaining();
+                            $action = $daysRemaining > 90 ? 'Extension' : 'Renewal';
                             
                             return new HtmlString(<<<HTML
                                 <div class="space-y-2 text-sm">
@@ -91,8 +106,15 @@ class ViewSubscription extends ViewRecord
                 ->action(function (array $data) {
                     return $this->processRenewal($data);
                 })
-                ->modalSubmitActionLabel('Pay & Renew')
-                ->visible(fn () => $this->record->isActive()),
+                ->modalSubmitActionLabel(function () {
+                    $daysRemaining = $this->record->daysRemaining();
+                    return $daysRemaining > 90 ? 'Pay & Extend' : 'Pay & Renew';
+                })
+                ->visible(fn () => 
+                    // Show for active subscriptions OR expired subscriptions (allow renewal)
+                    $this->record->isActive() || 
+                    ($this->record->status === 'expired' || $this->record->isExpired())
+                ),
 
             Actions\Action::make('toggle_auto_renew')
                 ->label(fn () => $this->record->auto_renew ? 'Disable Auto-Renew' : 'Enable Auto-Renew')
@@ -383,12 +405,13 @@ class ViewSubscription extends ViewRecord
             $amount = $subscription->getPrice();
             $gatewayId = $data['payment_gateway_id'];
             
-            // Validate subscription is still active
-            if (!$subscription->isActive()) {
+            // Allow renewal for active subscriptions OR expired subscriptions
+            // Only block if subscription is cancelled (not expired)
+            if ($subscription->status === 'cancelled') {
                 Notification::make()
                     ->danger()
-                    ->title('Subscription Not Active')
-                    ->body('This subscription is not active and cannot be renewed.')
+                    ->title('Subscription Cancelled')
+                    ->body('This subscription has been cancelled and cannot be renewed. Please create a new subscription.')
                     ->send();
                 return null;
             }
@@ -412,6 +435,10 @@ class ViewSubscription extends ViewRecord
                 
                 DB::commit();
                 
+                // Determine action type for user feedback
+                $daysRemaining = $subscription->daysRemaining();
+                $actionType = $daysRemaining > 90 ? 'extended' : 'renewed';
+                
                 // Handle payment result
                 if ($result->requiresRedirect()) {
                     return redirect()->away($result->redirectUrl);
@@ -429,8 +456,8 @@ class ViewSubscription extends ViewRecord
                     
                     Notification::make()
                         ->success()
-                        ->title('Subscription Renewed!')
-                        ->body('Your subscription has been successfully renewed.')
+                        ->title('Subscription ' . ucfirst($actionType) . '!')
+                        ->body("Your subscription has been successfully {$actionType}.")
                         ->send();
                     
                     $this->refreshFormData(['ends_at']);

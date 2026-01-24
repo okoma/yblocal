@@ -16,6 +16,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class PaymentService
 {
+    public function __construct(
+        protected ActivationService $activationService
+    ) {}
+
     // Constants
     protected const CURRENCY = 'NGN';
     protected const HTTP_TIMEOUT = 30;
@@ -44,9 +48,43 @@ class PaymentService
         array $metadata = []
     ): PaymentResult {
         try {
-            // Validate amount
+            // Validate user
+            if (!$user || !$user->id) {
+                Log::error('Invalid user for payment initialization');
+                return PaymentResult::failed('Invalid user. Please log in and try again.');
+            }
+            
+            // Validate amount is positive and numeric
+            if (!is_numeric($amount) || $amount <= 0) {
+                Log::warning('Invalid payment amount', [
+                    'user_id' => $user->id,
+                    'amount' => $amount,
+                ]);
+                return PaymentResult::failed('Invalid payment amount.');
+            }
+            
+            // Validate minimum amount
             if ($amount < self::MIN_AMOUNT) {
                 return PaymentResult::failed("Amount must be at least ₦" . number_format(self::MIN_AMOUNT, 2));
+            }
+            
+            // Validate payable entity exists
+            if (!$payable || !$payable->id) {
+                Log::error('Invalid payable entity for payment', [
+                    'user_id' => $user->id,
+                    'payable_type' => get_class($payable ?? new \stdClass()),
+                ]);
+                return PaymentResult::failed('Invalid payment target. Please try again.');
+            }
+            
+            // Validate payable entity is supported
+            $validPayableTypes = [Subscription::class, AdCampaign::class, Wallet::class];
+            if (!in_array(get_class($payable), $validPayableTypes)) {
+                Log::error('Unsupported payable type', [
+                    'user_id' => $user->id,
+                    'type' => get_class($payable),
+                ]);
+                return PaymentResult::failed('Unsupported payment type.');
             }
             
             // Validate and get gateway
@@ -62,6 +100,7 @@ class PaymentService
                 'gateway' => $gateway->slug,
                 'amount' => $amount,
                 'type' => get_class($payable),
+                'payable_id' => $payable->id,
             ]);
             
             // Route to appropriate gateway
@@ -69,8 +108,9 @@ class PaymentService
             
         } catch (\Exception $e) {
             Log::error('Payment initialization failed', [
-                'user_id' => $user->id,
-                'amount' => $amount,
+                'user_id' => $user->id ?? null,
+                'amount' => $amount ?? null,
+                'gateway_id' => $gatewayId ?? null,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
@@ -367,17 +407,42 @@ class PaymentService
             
             // Validate wallet exists
             if (!$wallet) {
+                Log::error('Wallet not found for user', ['user_id' => $user->id]);
                 return PaymentResult::failed('Wallet not found. Please contact support.');
+            }
+            
+            // Validate amount is positive
+            if ($amount <= 0) {
+                Log::warning('Invalid wallet payment amount', [
+                    'user_id' => $user->id,
+                    'amount' => $amount,
+                ]);
+                return PaymentResult::failed('Invalid payment amount.');
             }
             
             // Check sufficient balance
             if ($wallet->balance < $amount) {
                 $shortfall = $amount - $wallet->balance;
+                Log::info('Insufficient wallet balance', [
+                    'user_id' => $user->id,
+                    'required' => $amount,
+                    'available' => $wallet->balance,
+                    'shortfall' => $shortfall,
+                ]);
+                
                 return PaymentResult::failed(sprintf(
                     'Insufficient balance. You need ₦%s more. Current balance: ₦%s',
                     number_format($shortfall, 2),
                     number_format($wallet->balance, 2)
                 ));
+            }
+            
+            // Validate transaction has a payable entity
+            if (!$transaction->transactionable) {
+                Log::error('Transaction has no payable entity', [
+                    'transaction_id' => $transaction->id,
+                ]);
+                return PaymentResult::failed('Invalid transaction. Please contact support.');
             }
             
             // Use database transaction for consistency
@@ -387,11 +452,8 @@ class PaymentService
                 // Deduct from wallet
                 $wallet->withdraw($amount, $transaction->description, $transaction);
                 
-                // Mark transaction as completed
-                $transaction->markAsPaid();
-                
-                // Activate the payable entity
-                $this->activatePayable($transaction->transactionable);
+                // Complete transaction and activate payable (subscription, campaign, etc.)
+                $this->activationService->completeAndActivate($transaction);
                 
                 DB::commit();
                 
@@ -399,41 +461,31 @@ class PaymentService
                     'user_id' => $user->id,
                     'transaction_id' => $transaction->id,
                     'amount' => $amount,
+                    'wallet_balance_after' => $wallet->fresh()->balance,
                 ]);
                 
                 return PaymentResult::success('Payment successful! Your purchase has been activated.');
                 
             } catch (\Exception $e) {
                 DB::rollBack();
+                Log::error('Wallet payment database transaction failed', [
+                    'user_id' => $user->id,
+                    'transaction_id' => $transaction->id,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
                 throw $e;
             }
             
         } catch (\Exception $e) {
             Log::error('Wallet payment failed', [
                 'user_id' => $user->id,
-                'transaction_id' => $transaction->id,
+                'transaction_id' => $transaction->id ?? 'N/A',
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
             
             return PaymentResult::failed('Wallet payment failed. Please try again.');
-        }
-    }
-    
-    /**
-     * Activate payable entity after successful payment
-     */
-    protected function activatePayable(Model $payable): void
-    {
-        if ($payable instanceof Subscription) {
-            $payable->update(['status' => 'active']);
-        } elseif ($payable instanceof AdCampaign) {
-            $payable->update([
-                'is_paid' => true,
-                'is_active' => true,
-            ]);
-        } elseif ($payable instanceof Wallet) {
-            // Wallet funding doesn't need activation
-            // The deposit is already handled
         }
     }
 }

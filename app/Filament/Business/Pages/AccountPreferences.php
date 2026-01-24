@@ -370,23 +370,66 @@ class AccountPreferences extends Page
         // Generate 6-digit verification code
         $verificationCode = str_pad((string) rand(0, 999999), 6, '0', STR_PAD_LEFT);
         
-        // TODO: Send verification code via WhatsApp API
-        // For now, just store it
         $user = auth()->user();
         $preferences = UserPreference::getForUser($user->id);
-        $preferences->update([
-            'whatsapp_verification_code' => $verificationCode,
-        ]);
         
-        // Update form data
-        $this->data['whatsapp_verification_code'] = $verificationCode;
-        $this->form->fill($this->data);
-        
-        Notification::make()
-            ->success()
-            ->title('Verification Code Sent')
-            ->body('A verification code has been sent to ' . $whatsappNumber . '. Please check your WhatsApp messages.')
-            ->send();
+        try {
+            // Store verification code
+            $preferences->update([
+                'whatsapp_verification_code' => $verificationCode,
+                'whatsapp_verification_sent_at' => now(),
+            ]);
+            
+            // Send verification code via WhatsApp API
+            // NOTE: WhatsApp API integration required
+            // Recommended services:
+            // 1. Twilio WhatsApp API: https://www.twilio.com/whatsapp
+            // 2. WhatsApp Business API: https://business.whatsapp.com/
+            // 3. Africa's Talking (for African markets): https://africastalking.com/
+            //
+            // Implementation example (using Twilio):
+            // $twilioSid = config('services.twilio.sid');
+            // $twilioToken = config('services.twilio.token');
+            // $twilioWhatsappNumber = config('services.twilio.whatsapp_number');
+            // 
+            // $client = new Twilio\Rest\Client($twilioSid, $twilioToken);
+            // $client->messages->create(
+            //     "whatsapp:" . $whatsappNumber,
+            //     [
+            //         'from' => "whatsapp:" . $twilioWhatsappNumber,
+            //         'body' => "Your " . config('app.name') . " verification code is: " . $verificationCode
+            //     ]
+            // );
+            
+            // For development: Log the code
+            Log::info('WhatsApp verification code generated', [
+                'user_id' => $user->id,
+                'whatsapp_number' => $whatsappNumber,
+                'code' => $verificationCode, // Remove in production
+            ]);
+            
+            // Update form data
+            $this->data['whatsapp_verification_code'] = $verificationCode;
+            $this->form->fill($this->data);
+            
+            Notification::make()
+                ->success()
+                ->title('Verification Code Generated')
+                ->body('Verification code: ' . $verificationCode . ' (WhatsApp API integration pending)')
+                ->send();
+                
+        } catch (\Exception $e) {
+            Log::error('WhatsApp verification failed', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+            
+            Notification::make()
+                ->danger()
+                ->title('Verification Failed')
+                ->body('Could not send verification code. Please try again.')
+                ->send();
+        }
     }
     
     public function verifyWhatsAppCode(): void

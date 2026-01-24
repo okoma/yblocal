@@ -276,215 +276,220 @@ class CreateBusiness extends CreateRecord
                 ])
                 ->columns(1),
             
-            // Step 3: Business Hours (Monday-Friday Required)
-            Wizard\Step::make('Business Hours')
-                ->description('Set your operating hours (Monday-Friday required, weekend optional)')
+// Step 3: Business Hours (Monday-Friday Required)
+Wizard\Step::make('Business Hours')
+->description('Set your operating hours (Monday-Friday required, weekend optional)')
+->schema([
+    Forms\Components\Section::make('Weekdays (Required)')
+        ->description('Please specify your operating hours for Monday through Friday')
+        ->schema([
+            // Monday
+            Forms\Components\Grid::make(4)
                 ->schema([
-                    Forms\Components\Section::make('Weekdays (Required)')
-                        ->description('Please specify your operating hours for Monday through Friday')
-                        ->schema([
-                            // Monday
-                            Forms\Components\Grid::make(4)
-                                ->schema([
-                                    Forms\Components\Placeholder::make('monday_label')
-                                        ->label('')
-                                        ->content('Monday'),
-                                    
-                                    Forms\Components\TimePicker::make('monday_open')
-                                        ->label('Opens')
-                                        ->required()
-                                        ->disabled(fn (Forms\Get $get) => $get('monday_closed')),
-                                    
-                                    Forms\Components\TimePicker::make('monday_close')
-                                        ->label('Closes')
-                                        ->required()
-                                        ->disabled(fn (Forms\Get $get) => $get('monday_closed')),
-                                    
-                                    Forms\Components\Toggle::make('monday_closed')
-                                        ->label('Closed')
-                                        ->live()
-                                        ->afterStateUpdated(function ($state, Forms\Set $set) {
-                                            if ($state) {
-                                                $set('monday_open', null);
-                                                $set('monday_close', null);
-                                            }
-                                        }),
-                                ]),
-                            
-                            // Tuesday
-                            Forms\Components\Grid::make(4)
-                                ->schema([
-                                    Forms\Components\Placeholder::make('tuesday_label')
-                                        ->label('')
-                                        ->content('Tuesday'),
-                                    
-                                    Forms\Components\TimePicker::make('tuesday_open')
-                                        ->label('Opens')
-                                        ->required()
-                                        ->disabled(fn (Forms\Get $get) => $get('tuesday_closed')),
-                                    
-                                    Forms\Components\TimePicker::make('tuesday_close')
-                                        ->label('Closes')
-                                        ->required()
-                                        ->disabled(fn (Forms\Get $get) => $get('tuesday_closed')),
-                                    
-                                    Forms\Components\Toggle::make('tuesday_closed')
-                                        ->label('Closed')
-                                        ->live()
-                                        ->afterStateUpdated(function ($state, Forms\Set $set) {
-                                            if ($state) {
-                                                $set('tuesday_open', null);
-                                                $set('tuesday_close', null);
-                                            }
-                                        }),
-                                ]),
-                            
-                            // Wednesday
-                            Forms\Components\Grid::make(4)
-                                ->schema([
-                                    Forms\Components\Placeholder::make('wednesday_label')
-                                        ->label('')
-                                        ->content('Wednesday'),
-                                    
-                                    Forms\Components\TimePicker::make('wednesday_open')
-                                        ->label('Opens')
-                                        ->required()
-                                        ->disabled(fn (Forms\Get $get) => $get('wednesday_closed')),
-                                    
-                                    Forms\Components\TimePicker::make('wednesday_close')
-                                        ->label('Closes')
-                                        ->required()
-                                        ->disabled(fn (Forms\Get $get) => $get('wednesday_closed')),
-                                    
-                                    Forms\Components\Toggle::make('wednesday_closed')
-                                        ->label('Closed')
-                                        ->live()
-                                        ->afterStateUpdated(function ($state, Forms\Set $set) {
-                                            if ($state) {
-                                                $set('wednesday_open', null);
-                                                $set('wednesday_close', null);
-                                            }
-                                        }),
-                                ]),
-                            
-                            // Thursday
-                            Forms\Components\Grid::make(4)
-                                ->schema([
-                                    Forms\Components\Placeholder::make('thursday_label')
-                                        ->label('')
-                                        ->content('Thursday'),
-                                    
-                                    Forms\Components\TimePicker::make('thursday_open')
-                                        ->label('Opens')
-                                        ->required()
-                                        ->disabled(fn (Forms\Get $get) => $get('thursday_closed')),
-                                    
-                                    Forms\Components\TimePicker::make('thursday_close')
-                                        ->label('Closes')
-                                        ->required()
-                                        ->disabled(fn (Forms\Get $get) => $get('thursday_closed')),
-                                    
-                                    Forms\Components\Toggle::make('thursday_closed')
-                                        ->label('Closed')
-                                        ->live()
-                                        ->afterStateUpdated(function ($state, Forms\Set $set) {
-                                            if ($state) {
-                                                $set('thursday_open', null);
-                                                $set('thursday_close', null);
-                                            }
-                                        }),
-                                ]),
-                            
-                            // Friday
-                            Forms\Components\Grid::make(4)
-                                ->schema([
-                                    Forms\Components\Placeholder::make('friday_label')
-                                        ->label('')
-                                        ->content('Friday'),
-                                    
-                                    Forms\Components\TimePicker::make('friday_open')
-                                        ->label('Opens')
-                                        ->required()
-                                        ->disabled(fn (Forms\Get $get) => $get('friday_closed')),
-                                    
-                                    Forms\Components\TimePicker::make('friday_close')
-                                        ->label('Closes')
-                                        ->required()
-                                        ->disabled(fn (Forms\Get $get) => $get('friday_closed')),
-                                    
-                                    Forms\Components\Toggle::make('friday_closed')
-                                        ->label('Closed')
-                                        ->live()
-                                        ->afterStateUpdated(function ($state, Forms\Set $set) {
-                                            if ($state) {
-                                                $set('friday_open', null);
-                                                $set('friday_close', null);
-                                            }
-                                        }),
-                                ]),
-                        ]),
+                    Forms\Components\Placeholder::make('monday_label')
+                        ->label('')
+                        ->content('Monday'),
                     
-                    Forms\Components\Section::make('Weekend (Optional)')
-                        ->description('Optionally set your weekend hours')
-                        ->schema([
-                            // Saturday
-                            Forms\Components\Grid::make(4)
-                                ->schema([
-                                    Forms\Components\Placeholder::make('saturday_label')
-                                        ->label('')
-                                        ->content('Saturday'),
-                                    
-                                    Forms\Components\TimePicker::make('saturday_open')
-                                        ->label('Opens')
-                                        ->disabled(fn (Forms\Get $get) => $get('saturday_closed')),
-                                    
-                                    Forms\Components\TimePicker::make('saturday_close')
-                                        ->label('Closes')
-                                        ->disabled(fn (Forms\Get $get) => $get('saturday_closed')),
-                                    
-                                    Forms\Components\Toggle::make('saturday_closed')
-                                        ->label('Closed')
-                                        ->default(true)
-                                        ->live()
-                                        ->afterStateUpdated(function ($state, Forms\Set $set) {
-                                            if ($state) {
-                                                $set('saturday_open', null);
-                                                $set('saturday_close', null);
-                                            }
-                                        }),
-                                ]),
-                            
-                            // Sunday
-                            Forms\Components\Grid::make(4)
-                                ->schema([
-                                    Forms\Components\Placeholder::make('sunday_label')
-                                        ->label('')
-                                        ->content('Sunday'),
-                                    
-                                    Forms\Components\TimePicker::make('sunday_open')
-                                        ->label('Opens')
-                                        ->disabled(fn (Forms\Get $get) => $get('sunday_closed')),
-                                    
-                                    Forms\Components\TimePicker::make('sunday_close')
-                                        ->label('Closes')
-                                        ->disabled(fn (Forms\Get $get) => $get('sunday_closed')),
-                                    
-                                    Forms\Components\Toggle::make('sunday_closed')
-                                        ->label('Closed')
-                                        ->default(true)
-                                        ->live()
-                                        ->afterStateUpdated(function ($state, Forms\Set $set) {
-                                            if ($state) {
-                                                $set('sunday_open', null);
-                                                $set('sunday_close', null);
-                                            }
-                                        }),
-                                ]),
-                        ])
-                        ->collapsible()
-                        ->collapsed(),
-                ])
-                ->columns(1),
+                    Forms\Components\TimePicker::make('monday_open')
+                        ->label('Opens')
+                        ->required(fn (Forms\Get $get): bool => !$get('monday_closed'))
+                        ->disabled(fn (Forms\Get $get) => $get('monday_closed')),
+                    
+                    Forms\Components\TimePicker::make('monday_close')
+                        ->label('Closes')
+                        ->required(fn (Forms\Get $get): bool => !$get('monday_closed'))
+                        ->disabled(fn (Forms\Get $get) => $get('monday_closed')),
+                    
+                    Forms\Components\Toggle::make('monday_closed')
+                        ->label('Closed')
+                        ->live()
+                        ->afterStateUpdated(function ($state, Forms\Set $set) {
+                            if ($state) {
+                                $set('monday_open', null);
+                                $set('monday_close', null);
+                            }
+                        }),
+                ]),
+            
+            // Tuesday
+            Forms\Components\Grid::make(4)
+                ->schema([
+                    Forms\Components\Placeholder::make('tuesday_label')
+                        ->label('')
+                        ->content('Tuesday'),
+                    
+                    Forms\Components\TimePicker::make('tuesday_open')
+                        ->label('Opens')
+                        ->required(fn (Forms\Get $get): bool => !$get('tuesday_closed'))
+                        ->disabled(fn (Forms\Get $get) => $get('tuesday_closed')),
+                    
+                    Forms\Components\TimePicker::make('tuesday_close')
+                        ->label('Closes')
+                        ->required(fn (Forms\Get $get): bool => !$get('tuesday_closed'))
+                        ->disabled(fn (Forms\Get $get) => $get('tuesday_closed')),
+                    
+                    Forms\Components\Toggle::make('tuesday_closed')
+                        ->label('Closed')
+                        ->live()
+                        ->afterStateUpdated(function ($state, Forms\Set $set) {
+                            if ($state) {
+                                $set('tuesday_open', null);
+                                $set('tuesday_close', null);
+                            }
+                        }),
+                ]),
+            
+            // Wednesday
+            Forms\Components\Grid::make(4)
+                ->schema([
+                    Forms\Components\Placeholder::make('wednesday_label')
+                        ->label('')
+                        ->content('Wednesday'),
+                    
+                    Forms\Components\TimePicker::make('wednesday_open')
+                        ->label('Opens')
+                        ->required(fn (Forms\Get $get): bool => !$get('wednesday_closed'))
+                        ->disabled(fn (Forms\Get $get) => $get('wednesday_closed')),
+                    
+                    Forms\Components\TimePicker::make('wednesday_close')
+                        ->label('Closes')
+                        ->required(fn (Forms\Get $get): bool => !$get('wednesday_closed'))
+                        ->disabled(fn (Forms\Get $get) => $get('wednesday_closed')),
+                    
+                    Forms\Components\Toggle::make('wednesday_closed')
+                        ->label('Closed')
+                        ->live()
+                        ->afterStateUpdated(function ($state, Forms\Set $set) {
+                            if ($state) {
+                                $set('wednesday_open', null);
+                                $set('wednesday_close', null);
+                            }
+                        }),
+                ]),
+            
+            // Thursday
+            Forms\Components\Grid::make(4)
+                ->schema([
+                    Forms\Components\Placeholder::make('thursday_label')
+                        ->label('')
+                        ->content('Thursday'),
+                    
+                    Forms\Components\TimePicker::make('thursday_open')
+                        ->label('Opens')
+                        ->required(fn (Forms\Get $get): bool => !$get('thursday_closed'))
+                        ->disabled(fn (Forms\Get $get) => $get('thursday_closed')),
+                    
+                    Forms\Components\TimePicker::make('thursday_close')
+                        ->label('Closes')
+                        ->required(fn (Forms\Get $get): bool => !$get('thursday_closed'))
+                        ->disabled(fn (Forms\Get $get) => $get('thursday_closed')),
+                    
+                    Forms\Components\Toggle::make('thursday_closed')
+                        ->label('Closed')
+                        ->live()
+                        ->afterStateUpdated(function ($state, Forms\Set $set) {
+                            if ($state) {
+                                $set('thursday_open', null);
+                                $set('thursday_close', null);
+                            }
+                        }),
+                ]),
+            
+            // Friday
+            Forms\Components\Grid::make(4)
+                ->schema([
+                    Forms\Components\Placeholder::make('friday_label')
+                        ->label('')
+                        ->content('Friday'),
+                    
+                    Forms\Components\TimePicker::make('friday_open')
+                        ->label('Opens')
+                        ->required(fn (Forms\Get $get): bool => !$get('friday_closed'))
+                        ->disabled(fn (Forms\Get $get) => $get('friday_closed')),
+                    
+                    Forms\Components\TimePicker::make('friday_close')
+                        ->label('Closes')
+                        ->required(fn (Forms\Get $get): bool => !$get('friday_closed'))
+                        ->disabled(fn (Forms\Get $get) => $get('friday_closed')),
+                    
+                    Forms\Components\Toggle::make('friday_closed')
+                        ->label('Closed')
+                        ->live()
+                        ->afterStateUpdated(function ($state, Forms\Set $set) {
+                            if ($state) {
+                                $set('friday_open', null);
+                                $set('friday_close', null);
+                            }
+                        }),
+                ]),
+        ]),
+    
+        Forms\Components\Section::make('Weekend (Optional)')
+        ->description('Optionally set your weekend hours')
+        ->schema([
+            // Saturday
+            Forms\Components\Grid::make(4)
+                ->schema([
+                    Forms\Components\Placeholder::make('saturday_label')
+                        ->label('')
+                        ->content('Saturday'),
+                    
+                    Forms\Components\TimePicker::make('saturday_open')
+                        ->label('Opens')
+                        ->required(fn (Forms\Get $get): bool => !$get('saturday_closed'))
+                        ->disabled(fn (Forms\Get $get) => $get('saturday_closed')),
+                    
+                    Forms\Components\TimePicker::make('saturday_close')
+                        ->label('Closes')
+                        ->required(fn (Forms\Get $get): bool => !$get('saturday_closed'))
+                        ->disabled(fn (Forms\Get $get) => $get('saturday_closed')),
+                    
+                    Forms\Components\Toggle::make('saturday_closed')
+                        ->label('Closed')
+                        ->default(true)
+                        ->live()
+                        ->afterStateUpdated(function ($state, Forms\Set $set) {
+                            if ($state) {
+                                $set('saturday_open', null);
+                                $set('saturday_close', null);
+                            }
+                        }),
+                ]),
+            
+            // Sunday
+            Forms\Components\Grid::make(4)
+                ->schema([
+                    Forms\Components\Placeholder::make('sunday_label')
+                        ->label('')
+                        ->content('Sunday'),
+                    
+                    Forms\Components\TimePicker::make('sunday_open')
+                        ->label('Opens')
+                        ->required(fn (Forms\Get $get): bool => !$get('sunday_closed'))
+                        ->disabled(fn (Forms\Get $get) => $get('sunday_closed')),
+                    
+                    Forms\Components\TimePicker::make('sunday_close')
+                        ->label('Closes')
+                        ->required(fn (Forms\Get $get): bool => !$get('sunday_closed'))
+                        ->disabled(fn (Forms\Get $get) => $get('sunday_closed')),
+                    
+                    Forms\Components\Toggle::make('sunday_closed')
+                        ->label('Closed')
+                        ->default(true)
+                        ->live()
+                        ->afterStateUpdated(function ($state, Forms\Set $set) {
+                            if ($state) {
+                                $set('sunday_open', null);
+                                $set('sunday_close', null);
+                            }
+                        }),
+                ]),
+        ])
+        ->collapsible()
+        ->collapsed(),
+
+])
+->columns(1),
             
             // Step 4: FAQs (Optional)
             Wizard\Step::make('FAQs')
@@ -781,6 +786,9 @@ class CreateBusiness extends CreateRecord
                                 })
                                 ->maxSize(3072)
                                 ->imageEditor()
+                                ->reorderable()
+                                ->appendFiles()
+                                ->panelLayout('grid')
                                 ->helperText(function () {
                                     $user = Auth::user();
                                     $subscription = $user->subscription;

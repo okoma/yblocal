@@ -44,6 +44,7 @@ class BusinessResource extends Resource
         
         // Show businesses owned by user OR managed by user
         $query = Business::query()
+            ->with('businessType') // Eager load business type to prevent N+1 queries
             ->where(function ($q) use ($user) {
                 $q->where('user_id', $user->id)
                   ->orWhereHas('managers', function ($query) use ($user) {

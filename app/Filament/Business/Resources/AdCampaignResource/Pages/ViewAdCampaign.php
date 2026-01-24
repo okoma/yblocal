@@ -6,12 +6,16 @@
 namespace App\Filament\Business\Resources\AdCampaignResource\Pages;
 
 use App\Filament\Business\Resources\AdCampaignResource;
+use App\Models\PaymentGateway;
+use App\Services\PaymentService;
 use Filament\Actions;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Infolists\Infolist;
 use Filament\Infolists\Components;
 use Filament\Notifications\Notification;
 use Filament\Forms;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ViewAdCampaign extends ViewRecord
 {
@@ -66,13 +70,19 @@ class ViewAdCampaign extends ViewRecord
                         ->minValue(1)
                         ->maxValue(90)
                         ->default(7)
-                        ->helperText('Add more days to your campaign'),
+                        ->helperText('Add more days to your campaign')
+                        ->live(),
                     
                     Forms\Components\Placeholder::make('cost')
                         ->label('Additional Cost')
-                        ->content(fn (Forms\Get $get) => 
-                            '₦' . number_format(($get('days') ?? 7) * 100, 2)
-                        ),
+                        ->content(function (Forms\Get $get) {
+                            $days = $get('days') ?? 7;
+                            $pricePerDay = $this->record->package 
+                                ? $this->record->package->getPricePerDay() 
+                                : ($this->record->budget / max(1, $this->record->starts_at->diffInDays($this->record->ends_at)));
+                            $cost = $days * $pricePerDay;
+                            return '₦' . number_format($cost, 2);
+                        }),
 
                     Forms\Components\Placeholder::make('new_end_date')
                         ->label('New End Date')
@@ -81,17 +91,109 @@ class ViewAdCampaign extends ViewRecord
                                 ->addDays($get('days') ?? 7)
                                 ->format('M j, Y')
                         ),
+                    
+                    Forms\Components\Select::make('payment_gateway_id')
+                        ->label('Payment Method')
+                        ->options(function () {
+                            return PaymentGateway::enabled()
+                                ->ordered()
+                                ->get()
+                                ->mapWithKeys(function ($gateway) {
+                                    return [$gateway->id => $gateway->display_name];
+                                });
+                        })
+                        ->required()
+                        ->searchable()
+                        ->preload()
+                        ->helperText('Select how you want to pay for the extension'),
                 ])
                 ->requiresConfirmation()
                 ->modalHeading('Extend Campaign Duration')
                 ->modalDescription('Extend your campaign by purchasing additional days.')
                 ->action(function (array $data) {
-                    // TODO: Process payment for extension
-                    Notification::make()
-                        ->warning()
-                        ->title('Feature Coming Soon')
-                        ->body('Campaign extension with payment will be available soon.')
-                        ->send();
+                    try {
+                        $days = (int) $data['days'];
+                        $campaign = $this->record;
+                        
+                        // Calculate cost
+                        $pricePerDay = $campaign->package 
+                            ? $campaign->package->getPricePerDay() 
+                            : ($campaign->budget / max(1, $campaign->starts_at->diffInDays($campaign->ends_at)));
+                        $cost = $days * $pricePerDay;
+                        
+                        if ($cost <= 0) {
+                            Notification::make()
+                                ->danger()
+                                ->title('Invalid Cost')
+                                ->body('Unable to calculate extension cost. Please contact support.')
+                                ->send();
+                            return;
+                        }
+                        
+                        $user = auth()->user();
+                        
+                        // Initialize payment
+                        $paymentService = app(PaymentService::class);
+                        $result = $paymentService->initializePayment(
+                            user: $user,
+                            amount: $cost,
+                            gatewayId: $data['payment_gateway_id'],
+                            payable: $campaign,
+                            metadata: [
+                                'extension_type' => 'duration',
+                                'days' => $days,
+                                'current_end_date' => $campaign->ends_at->toIso8601String(),
+                                'new_end_date' => $campaign->ends_at->copy()->addDays($days)->toIso8601String(),
+                                'price_per_day' => $pricePerDay,
+                            ]
+                        );
+                        
+                        // Handle payment result
+                        if ($result->requiresRedirect()) {
+                            Notification::make()
+                                ->info()
+                                ->title('Redirecting to Payment')
+                                ->body('You will be redirected to complete your payment.')
+                                ->send();
+                            
+                            return redirect($result->redirectUrl);
+                        } elseif ($result->isBankTransfer()) {
+                            Notification::make()
+                                ->info()
+                                ->title('Bank Transfer Instructions')
+                                ->body($result->instructions)
+                                ->persistent()
+                                ->send();
+                        } elseif ($result->isSuccess()) {
+                            // Payment successful (wallet payment)
+                            // Campaign will be extended automatically via PaymentController
+                            Notification::make()
+                                ->success()
+                                ->title('Payment Successful')
+                                ->body('Your campaign has been extended successfully!')
+                                ->send();
+                        } else {
+                            Notification::make()
+                                ->danger()
+                                ->title('Payment Failed')
+                                ->body($result->message ?? 'Unable to process payment. Please try again.')
+                                ->send();
+                        }
+                        
+                    } catch (\Exception $e) {
+                        Log::error('Campaign extension payment failed', [
+                            'campaign_id' => $this->record->id,
+                            'user_id' => auth()->id(),
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString(),
+                        ]);
+                        
+                        Notification::make()
+                            ->danger()
+                            ->title('Error')
+                            ->body('Failed to process extension payment: ' . $e->getMessage())
+                            ->send();
+                    }
                 })
                 ->visible(fn () => $this->record->isActive()),
 
@@ -107,7 +209,8 @@ class ViewAdCampaign extends ViewRecord
                         ->minValue(100)
                         ->maxValue(100000)
                         ->prefix('₦')
-                        ->helperText('Add more budget to your campaign'),
+                        ->helperText('Add more budget to your campaign')
+                        ->live(),
                     
                     Forms\Components\Placeholder::make('current_budget')
                         ->label('Current Budget')
@@ -118,15 +221,102 @@ class ViewAdCampaign extends ViewRecord
                         ->content(fn (Forms\Get $get) => 
                             '₦' . number_format($this->record->budget + ($get('additional_budget') ?? 0), 2)
                         ),
+                    
+                    Forms\Components\Select::make('payment_gateway_id')
+                        ->label('Payment Method')
+                        ->options(function () {
+                            return PaymentGateway::enabled()
+                                ->ordered()
+                                ->get()
+                                ->mapWithKeys(function ($gateway) {
+                                    return [$gateway->id => $gateway->display_name];
+                                });
+                        })
+                        ->required()
+                        ->searchable()
+                        ->preload()
+                        ->helperText('Select how you want to pay for the additional budget'),
                 ])
                 ->requiresConfirmation()
+                ->modalHeading('Add Budget to Campaign')
+                ->modalDescription('Increase your campaign budget by purchasing additional funds.')
                 ->action(function (array $data) {
-                    // TODO: Process additional budget payment
-                    Notification::make()
-                        ->warning()
-                        ->title('Feature Coming Soon')
-                        ->body('Budget addition with payment will be available soon.')
-                        ->send();
+                    try {
+                        $additionalBudget = (float) $data['additional_budget'];
+                        $campaign = $this->record;
+                        
+                        if ($additionalBudget < 100) {
+                            Notification::make()
+                                ->danger()
+                                ->title('Invalid Amount')
+                                ->body('Minimum additional budget is ₦100.')
+                                ->send();
+                            return;
+                        }
+                        
+                        $user = auth()->user();
+                        
+                        // Initialize payment
+                        $paymentService = app(PaymentService::class);
+                        $result = $paymentService->initializePayment(
+                            user: $user,
+                            amount: $additionalBudget,
+                            gatewayId: $data['payment_gateway_id'],
+                            payable: $campaign,
+                            metadata: [
+                                'extension_type' => 'budget',
+                                'additional_budget' => $additionalBudget,
+                                'current_budget' => $campaign->budget,
+                                'new_budget' => $campaign->budget + $additionalBudget,
+                            ]
+                        );
+                        
+                        // Handle payment result
+                        if ($result->requiresRedirect()) {
+                            Notification::make()
+                                ->info()
+                                ->title('Redirecting to Payment')
+                                ->body('You will be redirected to complete your payment.')
+                                ->send();
+                            
+                            return redirect($result->redirectUrl);
+                        } elseif ($result->isBankTransfer()) {
+                            Notification::make()
+                                ->info()
+                                ->title('Bank Transfer Instructions')
+                                ->body($result->instructions)
+                                ->persistent()
+                                ->send();
+                        } elseif ($result->isSuccess()) {
+                            // Payment successful (wallet payment)
+                            // Budget will be added automatically via PaymentController
+                            Notification::make()
+                                ->success()
+                                ->title('Payment Successful')
+                                ->body('Additional budget has been added to your campaign!')
+                                ->send();
+                        } else {
+                            Notification::make()
+                                ->danger()
+                                ->title('Payment Failed')
+                                ->body($result->message ?? 'Unable to process payment. Please try again.')
+                                ->send();
+                        }
+                        
+                    } catch (\Exception $e) {
+                        Log::error('Campaign budget addition payment failed', [
+                            'campaign_id' => $this->record->id,
+                            'user_id' => auth()->id(),
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString(),
+                        ]);
+                        
+                        Notification::make()
+                            ->danger()
+                            ->title('Error')
+                            ->body('Failed to process budget addition payment: ' . $e->getMessage())
+                            ->send();
+                    }
                 })
                 ->visible(fn () => $this->record->isActive()),
 

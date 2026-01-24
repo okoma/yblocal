@@ -56,10 +56,10 @@ class WalletPage extends Page implements HasTable, HasActions
     {
         return [
             Action::make('add_funds')
-                ->label('Add Funds')
+                ->label('Add Fund')
                 ->icon('heroicon-o-plus-circle')
                 ->color('success')
-                ->modalWidth('md')
+                ->modalWidth('lg')
                 ->form([
                     Forms\Components\TextInput::make('amount')
                         ->label('Amount (₦)')
@@ -81,17 +81,90 @@ class WalletPage extends Page implements HasTable, HasActions
                         })
                         ->native(false)
                         ->required()
+                        ->live()
+                        ->afterStateUpdated(function (Forms\Set $set) {
+                            // Clear proof upload when payment method changes
+                            $set('payment_proof', null);
+                        })
                         ->helperText('Select your preferred payment method'),
+
+                    // Payment Summary (shown for all payment methods)
+                    Forms\Components\Section::make('Payment Summary')
+                        ->schema([
+                            Forms\Components\Placeholder::make('summary_amount')
+                                ->label('Amount to Pay')
+                                ->content(fn (Forms\Get $get) => '₦' . number_format($get('amount') ?? 0, 2))
+                                ->extraAttributes(['class' => 'text-2xl font-bold text-primary-600 dark:text-primary-400']),
+                        ])
+                        ->visible(fn (Forms\Get $get) => $get('amount') > 0 && $get('payment_gateway_id'))
+                        ->columnSpanFull(),
+
+                    // Bank Transfer Details (shown only when bank transfer is selected)
+                    Forms\Components\Section::make('Bank Transfer Details')
+                        ->schema([
+                            Forms\Components\Placeholder::make('bank_details')
+                                ->label('')
+                                ->content(function (Forms\Get $get) {
+                                    $gatewayId = $get('payment_gateway_id');
+                                    if (!$gatewayId) return '';
+                                    
+                                    $gateway = PaymentGateway::find($gatewayId);
+                                    if (!$gateway || !$gateway->isBankTransfer()) return '';
+                                    
+                                    $bankDetails = $gateway->bank_account_details ?? [];
+                                    $accountNumber = $bankDetails['account_number'] ?? 'N/A';
+                                    $accountName = $bankDetails['account_name'] ?? 'N/A';
+                                    $bankName = $bankDetails['bank_name'] ?? 'N/A';
+                                    
+                                    return new \Illuminate\Support\HtmlString(
+                                        view('filament.components.bank-transfer-details', [
+                                            'accountNumber' => $accountNumber,
+                                            'accountName' => $accountName,
+                                            'bankName' => $bankName,
+                                        ])->render()
+                                    );
+                                })
+                                ->columnSpanFull(),
+
+                            Forms\Components\Placeholder::make('transfer_instructions')
+                                ->label('')
+                                ->content('After making the transfer, upload your payment proof below. Your wallet will be credited within 24-48 hours after verification.')
+                                ->extraAttributes(['class' => 'text-sm text-gray-600 dark:text-gray-400']),
+                        ])
+                        ->visible(fn (Forms\Get $get) => $this->isBankTransferSelected($get('payment_gateway_id')))
+                        ->collapsible()
+                        ->collapsed(false),
+
+                    // Payment Proof Section (separate)
+                    Forms\Components\Section::make('Payment Proof')
+                        ->schema([
+                            Forms\Components\FileUpload::make('payment_proof')
+                                ->label('Upload Proof of Payment')
+                                ->helperText('Upload receipt or screenshot of your transfer (JPEG, PNG, or PDF)')
+                                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'])
+                                ->maxSize(5120) // 5MB
+                                ->directory('transfer-proofs')
+                                ->visibility('private')
+                                ->required()
+                                ->downloadable()
+                                ->previewable()
+                                ->columnSpanFull(),
+                        ])
+                        ->visible(fn (Forms\Get $get) => $this->isBankTransferSelected($get('payment_gateway_id')))
+                        ->collapsible()
+                        ->collapsed(false),
                 ])
                 ->action(function (array $data) {
                     return $this->processFunding($data);
-                }),
+                })
+                ->modalSubmitActionLabel('Add Fund')
+                ->modalFooterActionsAlignment('right'),
 
             Action::make('buy_credits')
                 ->label('Buy Ad Credits')
                 ->icon('heroicon-o-sparkles')
                 ->color('primary')
-                ->modalWidth('md')
+                ->modalWidth('lg')
                 ->form([
                     Forms\Components\Select::make('credit_package')
                         ->label('Select Credit Package')
@@ -121,7 +194,7 @@ class WalletPage extends Page implements HasTable, HasActions
                     Forms\Components\TextInput::make('credits')
                         ->label('Custom Credits')
                         ->numeric()
-                        ->required()
+                        ->required(fn (Forms\Get $get) => $get('credit_package') === 'custom')
                         ->minValue(10)
                         ->maxValue(10000)
                         ->live(debounce: 500)
@@ -130,13 +203,6 @@ class WalletPage extends Page implements HasTable, HasActions
                         )
                         ->visible(fn (Forms\Get $get) => $get('credit_package') === 'custom')
                         ->helperText('Minimum: 10 credits, Maximum: 10,000 credits'),
-
-                    Forms\Components\Placeholder::make('total_display')
-                        ->label('Total Cost')
-                        ->content(fn (Forms\Get $get) => 
-                            '₦' . number_format(($get('credits') ?? 0) * 10, 2)
-                        )
-                        ->visible(fn (Forms\Get $get) => $get('credits') > 0),
                     
                     Forms\Components\Hidden::make('amount'),
 
@@ -149,11 +215,86 @@ class WalletPage extends Page implements HasTable, HasActions
                         })
                         ->native(false)
                         ->required()
+                        ->live()
                         ->helperText('Select your preferred payment method'),
+
+                    // Payment Summary (shown for all payment methods)
+                    Forms\Components\Section::make('Payment Summary')
+                        ->schema([
+                            Forms\Components\Placeholder::make('credits_summary')
+                                ->label('Credits to Purchase')
+                                ->content(fn (Forms\Get $get) => number_format($get('credits') ?? 0) . ' Credits')
+                                ->extraAttributes(['class' => 'text-xl font-bold text-primary-600 dark:text-primary-400']),
+                            
+                            Forms\Components\Placeholder::make('amount_summary')
+                                ->label('Total Amount')
+                                ->content(fn (Forms\Get $get) => '₦' . number_format(($get('credits') ?? 0) * 10, 2))
+                                ->extraAttributes(['class' => 'text-2xl font-bold text-success-600 dark:text-success-400']),
+                        ])
+                        ->columns(2)
+                        ->visible(fn (Forms\Get $get) => $get('credits') > 0 && $get('payment_gateway_id'))
+                        ->columnSpanFull(),
+
+                    // Bank Transfer Details (shown only when bank transfer is selected)
+                    Forms\Components\Section::make('Bank Transfer Details')
+                        ->schema([
+                            Forms\Components\Placeholder::make('bank_details')
+                                ->label('')
+                                ->content(function (Forms\Get $get) {
+                                    $gatewayId = $get('payment_gateway_id');
+                                    if (!$gatewayId) return '';
+                                    
+                                    $gateway = PaymentGateway::find($gatewayId);
+                                    if (!$gateway || !$gateway->isBankTransfer()) return '';
+                                    
+                                    $bankDetails = $gateway->bank_account_details ?? [];
+                                    $accountNumber = $bankDetails['account_number'] ?? 'N/A';
+                                    $accountName = $bankDetails['account_name'] ?? 'N/A';
+                                    $bankName = $bankDetails['bank_name'] ?? 'N/A';
+                                    
+                                    return new \Illuminate\Support\HtmlString(
+                                        view('filament.components.bank-transfer-details', [
+                                            'accountNumber' => $accountNumber,
+                                            'accountName' => $accountName,
+                                            'bankName' => $bankName,
+                                        ])->render()
+                                    );
+                                })
+                                ->columnSpanFull(),
+
+                            Forms\Components\Placeholder::make('transfer_instructions')
+                                ->label('')
+                                ->content('After making the transfer, upload your payment proof below. Credits will be added within 24-48 hours after verification.')
+                                ->extraAttributes(['class' => 'text-sm text-gray-600 dark:text-gray-400']),
+                        ])
+                        ->visible(fn (Forms\Get $get) => $this->isBankTransferSelected($get('payment_gateway_id')))
+                        ->collapsible()
+                        ->collapsed(false),
+
+                    // Payment Proof Section (separate)
+                    Forms\Components\Section::make('Payment Proof')
+                        ->schema([
+                            Forms\Components\FileUpload::make('payment_proof')
+                                ->label('Upload Proof of Payment')
+                                ->helperText('Upload receipt or screenshot of your transfer (JPEG, PNG, or PDF)')
+                                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'])
+                                ->maxSize(5120) // 5MB
+                                ->directory('credit-transfer-proofs')
+                                ->visibility('private')
+                                ->required()
+                                ->downloadable()
+                                ->previewable()
+                                ->columnSpanFull(),
+                        ])
+                        ->visible(fn (Forms\Get $get) => $this->isBankTransferSelected($get('payment_gateway_id')))
+                        ->collapsible()
+                        ->collapsed(false),
                 ])
                 ->action(function (array $data) {
                     return $this->processCreditPurchase($data);
-                }),
+                })
+                ->modalSubmitActionLabel('Buy Credits')
+                ->modalFooterActionsAlignment('right'),
 
             Action::make('withdraw')
                 ->label('Withdraw Funds')
@@ -199,10 +340,25 @@ class WalletPage extends Page implements HasTable, HasActions
                 ])
                 ->action(function (array $data) {
                     return $this->processWithdrawal($data);
-                }),
+                })
+                ->modalSubmitActionLabel('Withdraw Funds')
+                ->modalFooterActionsAlignment('right'),
         ];
     }
     
+    /**
+     * Check if bank transfer is selected
+     */
+    protected function isBankTransferSelected(?int $gatewayId): bool
+    {
+        if (!$gatewayId) {
+            return false;
+        }
+        
+        $gateway = PaymentGateway::find($gatewayId);
+        return $gateway && $gateway->isBankTransfer();
+    }
+
     /**
      * Process wallet funding
      */
@@ -219,16 +375,29 @@ class WalletPage extends Page implements HasTable, HasActions
             DB::beginTransaction();
             
             try {
+                // Get gateway to check if it's bank transfer
+                $gateway = PaymentGateway::find($gatewayId);
+                $isBankTransfer = $gateway && $gateway->isBankTransfer();
+                
+                // Prepare metadata
+                $metadata = [
+                    'type' => 'wallet_funding',
+                    'amount' => $amount,
+                ];
+                
+                // Add payment proof if bank transfer
+                if ($isBankTransfer && !empty($data['payment_proof'])) {
+                    $metadata['payment_proof'] = $data['payment_proof'];
+                    $metadata['payment_proof_uploaded_at'] = now()->toIso8601String();
+                }
+                
                 // Initialize payment through service
                 $result = app(PaymentService::class)->initializePayment(
                     user: $user,
                     amount: $amount,
                     gatewayId: $gatewayId,
                     payable: $wallet,
-                    metadata: [
-                        'type' => 'wallet_funding',
-                        'amount' => $amount,
-                    ]
+                    metadata: $metadata
                 );
                 
                 DB::commit();
@@ -237,12 +406,13 @@ class WalletPage extends Page implements HasTable, HasActions
                 if ($result->requiresRedirect()) {
                     return redirect()->away($result->redirectUrl);
                 } elseif ($result->isBankTransfer()) {
+                    // For bank transfer, show success message about proof upload
                     Notification::make()
-                        ->info()
-                        ->title('Bank Transfer Details')
-                        ->body($result->instructions)
-                        ->persistent()
+                        ->success()
+                        ->title('Payment Proof Uploaded')
+                        ->body('Your payment proof has been received. Your wallet will be credited within 24-48 hours after verification.')
                         ->send();
+                    
                     return null;
                 } elseif ($result->isSuccess()) {
                     Notification::make()
@@ -284,7 +454,22 @@ class WalletPage extends Page implements HasTable, HasActions
     {
         try {
             $user = auth()->user();
-            $credits = $data['credits'];
+            
+            // Derive credits: 'credits' is only submitted when custom package (field visible).
+            // For pre-defined packages, the credits field is hidden so we use credit_package.
+            $credits = null;
+            if (isset($data['credits']) && $data['credits'] !== '' && $data['credits'] !== null) {
+                $credits = (int) $data['credits'];
+            } elseif (isset($data['credit_package']) && $data['credit_package'] !== 'custom') {
+                $credits = (int) $data['credit_package'];
+            } elseif (isset($data['amount']) && $data['amount'] > 0) {
+                $credits = (int) ($data['amount'] / 10); // Fallback: amount / 10
+            }
+            
+            if (!$credits || $credits < 10) {
+                throw new \Exception('Please select a credit package or enter custom credits (minimum 10).');
+            }
+            
             $amount = $credits * 10; // 1 credit = ₦10
             $gatewayId = $data['payment_gateway_id'];
             
@@ -314,8 +499,8 @@ class WalletPage extends Page implements HasTable, HasActions
                 DB::beginTransaction();
                 
                 try {
-                    // Deduct from balance and add credits
-                    $wallet->purchase($amount, "Purchased {$credits} ad credits");
+                    // Deduct from balance and add credits (pass credits so purchase row shows them)
+                    $wallet->purchase($amount, "Purchased {$credits} ad credits", null, $credits);
                     $wallet->addCredits($credits, "Ad credits purchase - {$credits} credits");
                     
                     DB::commit();
@@ -333,13 +518,53 @@ class WalletPage extends Page implements HasTable, HasActions
                     throw $e;
                 }
             } else {
-                // Gateway payment for credits - fund wallet first, then convert to credits
-                Notification::make()
-                    ->warning()
-                    ->title('Feature Coming Soon')
-                    ->body('Please add funds first, then buy credits using your wallet balance.')
-                    ->send();
-                return null;
+                // Bank transfer, Paystack, or Flutterwave: create pending txn, redirect or show instructions
+                $wallet = $this->getWallet();
+                $metadata = [
+                    'type' => 'credit_purchase',
+                    'credits' => $credits,
+                    'amount' => $amount,
+                ];
+                if ($gateway->isBankTransfer() && !empty($data['payment_proof'])) {
+                    $metadata['payment_proof'] = $data['payment_proof'];
+                    $metadata['payment_proof_uploaded_at'] = now()->toIso8601String();
+                }
+
+                DB::beginTransaction();
+                try {
+                    $result = app(PaymentService::class)->initializePayment(
+                        user: $user,
+                        amount: $amount,
+                        gatewayId: $gatewayId,
+                        payable: $wallet,
+                        metadata: $metadata
+                    );
+                    DB::commit();
+
+                    if ($result->requiresRedirect()) {
+                        return redirect()->away($result->redirectUrl);
+                    }
+                    if ($result->isBankTransfer()) {
+                        Notification::make()
+                            ->success()
+                            ->title('Payment Proof Uploaded')
+                            ->body("Your payment proof has been received. {$credits} credits will be added to your account within 24-48 hours after verification.")
+                            ->send();
+                        return null;
+                    }
+                    if ($result->isSuccess()) {
+                        Notification::make()
+                            ->success()
+                            ->title('Credits Purchased!')
+                            ->body("{$credits} ad credits added to your account.")
+                            ->send();
+                        return null;
+                    }
+                    throw new \Exception($result->message ?? 'Unable to process payment.');
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    throw $e;
+                }
             }
             
         } catch (\Exception $e) {
@@ -381,25 +606,56 @@ class WalletPage extends Page implements HasTable, HasActions
             DB::beginTransaction();
             
             try {
-                // Create withdrawal transaction (pending)
-                $wallet->withdraw(
+                // Create withdrawal transaction (deduct from wallet)
+                $transaction = $wallet->withdraw(
                     $amount, 
-                    "Withdrawal request to {$data['bank_name']} - {$data['account_number']}"
+                    "Withdrawal request to {$data['bank_name']} - {$data['account_number']}",
+                    null, // No related transaction
+                    [
+                        'withdrawal_type' => 'bank_transfer',
+                        'status' => 'pending_approval',
+                    ]
                 );
                 
-                // TODO: Create a WithdrawalRequest model to track admin approval
-                // For now, just create the transaction
+                // Create withdrawal request for admin approval
+                $withdrawalRequest = \App\Models\WithdrawalRequest::create([
+                    'user_id' => auth()->id(),
+                    'wallet_id' => $wallet->id,
+                    'amount' => $amount,
+                    'bank_name' => $data['bank_name'],
+                    'account_name' => $data['account_name'],
+                    'account_number' => $data['account_number'],
+                    'sort_code' => $data['sort_code'] ?? null,
+                    'status' => 'pending',
+                    'transaction_id' => $transaction->id,
+                ]);
+                
+                Log::info('Withdrawal request created', [
+                    'user_id' => auth()->id(),
+                    'wallet_id' => $wallet->id,
+                    'amount' => $amount,
+                    'transaction_id' => $transaction->id,
+                    'withdrawal_request_id' => $withdrawalRequest->id,
+                    'bank_details' => [
+                        'bank_name' => $data['bank_name'],
+                        'account_number' => $data['account_number'],
+                    ],
+                ]);
                 
                 DB::commit();
                 
                 Notification::make()
                     ->success()
                     ->title('Withdrawal Requested')
-                    ->body('Your withdrawal request has been submitted. Processing time: 24-48 hours.')
+                    ->body('Your withdrawal request has been submitted for approval. Processing time: 24-48 hours.')
                     ->send();
                 
             } catch (\Exception $e) {
                 DB::rollBack();
+                Log::error('Withdrawal request failed', [
+                    'user_id' => auth()->id(),
+                    'error' => $e->getMessage(),
+                ]);
                 throw $e;
             }
             
@@ -442,10 +698,11 @@ class WalletPage extends Page implements HasTable, HasActions
                     ->wrap(),
 
                 Tables\Columns\TextColumn::make('amount')
+                    ->label('Amount')
                     ->money('NGN')
                     ->sortable()
-                    ->color(fn ($record) => in_array($record->type, ['deposit', 'refund', 'bonus']) ? 'success' : 'danger')
-                    ->prefix(fn ($record) => in_array($record->type, ['deposit', 'refund', 'bonus']) ? '+' : '-'),
+                    ->color(fn ($record) => in_array($record->type, ['deposit', 'refund', 'bonus']) || ($record->type === 'credit_purchase' && $record->amount > 0) ? 'success' : 'danger')
+                    ->prefix(fn ($record) => in_array($record->type, ['deposit', 'refund', 'bonus']) || ($record->type === 'credit_purchase' && $record->amount > 0) ? '+' : '-'),
 
                 Tables\Columns\TextColumn::make('credits')
                     ->label('Credits')
@@ -453,7 +710,7 @@ class WalletPage extends Page implements HasTable, HasActions
                     ->color('primary')
                     ->default(0)
                     ->formatStateUsing(fn ($state, $record) => $state > 0 ? $state : null)
-                    ->prefix(fn ($record) => $record && in_array($record->type, ['credit_purchase', 'bonus']) ? '+' : '-'),
+                    ->prefix(fn ($record) => $record && (in_array($record->type, ['credit_purchase', 'bonus']) || ($record->type === 'purchase' && ($record->credits ?? 0) > 0)) ? '+' : '-'),
 
                 Tables\Columns\TextColumn::make('balance_after')
                     ->label('Balance')

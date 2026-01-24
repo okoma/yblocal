@@ -4,28 +4,27 @@ namespace App\Http\Controllers;
 
 use App\Models\PaymentGateway;
 use App\Models\Transaction;
-use App\Models\Subscription;
-use App\Models\Wallet;
-use App\Models\AdCampaign;
+use App\Services\ActivationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
-/**
- * Unified Webhook Controller
- * 
- * Handles webhooks from ALL payment gateways (Paystack, Flutterwave, etc.)
- * Gateway-specific logic is handled through methods based on gateway slug
- */
 class WebhookController extends Controller
 {
-    /**
-     * Handle webhook for any payment gateway
-     * 
-     * @param Request $request
-     * @param string $gateway (paystack, flutterwave, etc.)
-     */
+    public function __construct(
+        protected ActivationService $activationService
+    ) {}
+
     public function handle(Request $request, string $gateway)
     {
+        // DEBUG: Log all incoming webhook requests
+        Log::info("=== WEBHOOK RECEIVED ===", [
+            'gateway' => $gateway,
+            'headers' => $request->headers->all(),
+            'body' => $request->all(),
+            'raw_body' => $request->getContent(),
+            'ip' => $request->ip(),
+        ]);
+
         // Get gateway configuration
         $gatewayModel = PaymentGateway::where('slug', $gateway)
             ->where('is_enabled', true)
@@ -37,7 +36,13 @@ class WebhookController extends Controller
         }
 
         // Verify webhook signature (gateway-specific)
-        if (!$this->verifyWebhookSignature($request, $gateway, $gatewayModel->secret_key)) {
+        $signatureValid = $this->verifyWebhookSignature($request, $gateway, $gatewayModel->secret_key);
+        
+        Log::info("Webhook [{$gateway}]: Signature verification", [
+            'valid' => $signatureValid,
+        ]);
+
+        if (!$signatureValid) {
             Log::error("Webhook [{$gateway}]: Invalid signature");
             return response()->json(['error' => 'Invalid signature'], 401);
         }
@@ -45,6 +50,10 @@ class WebhookController extends Controller
         // Parse webhook data (gateway-specific)
         $webhookData = $this->parseWebhookData($request, $gateway);
         
+        Log::info("Webhook [{$gateway}]: Parsed data", [
+            'webhook_data' => $webhookData,
+        ]);
+
         if (!$webhookData || !isset($webhookData['event'])) {
             Log::error("Webhook [{$gateway}]: Invalid event data");
             return response()->json(['error' => 'Invalid event'], 400);
@@ -56,9 +65,6 @@ class WebhookController extends Controller
         return response()->json(['status' => 'success'], 200);
     }
 
-    /**
-     * Verify webhook signature based on gateway
-     */
     protected function verifyWebhookSignature(Request $request, string $gateway, string $secret): bool
     {
         return match ($gateway) {
@@ -68,9 +74,6 @@ class WebhookController extends Controller
         };
     }
 
-    /**
-     * Verify Paystack webhook signature
-     */
     protected function verifyPaystackSignature(Request $request, string $secret): bool
     {
         $signature = $request->header('x-paystack-signature');
@@ -84,9 +87,6 @@ class WebhookController extends Controller
         return hash_equals($computedSignature, $signature);
     }
 
-    /**
-     * Verify Flutterwave webhook signature
-     */
     protected function verifyFlutterwaveSignature(Request $request, string $secret): bool
     {
         $signature = $request->header('verif-hash');
@@ -100,9 +100,6 @@ class WebhookController extends Controller
         return hash_equals($computedHash, $signature);
     }
 
-    /**
-     * Parse webhook data based on gateway
-     */
     protected function parseWebhookData(Request $request, string $gateway): ?array
     {
         return match ($gateway) {
@@ -112,9 +109,6 @@ class WebhookController extends Controller
         };
     }
 
-    /**
-     * Parse Paystack webhook data
-     */
     protected function parsePaystackWebhook(Request $request): ?array
     {
         $event = json_decode($request->getContent(), true);
@@ -125,9 +119,6 @@ class WebhookController extends Controller
         ];
     }
 
-    /**
-     * Parse Flutterwave webhook data
-     */
     protected function parseFlutterwaveWebhook(Request $request): ?array
     {
         $payload = $request->all();
@@ -138,9 +129,6 @@ class WebhookController extends Controller
         ];
     }
 
-    /**
-     * Handle webhook event based on type
-     */
     protected function handleWebhookEvent(array $webhookData, string $gateway): void
     {
         $event = $webhookData['event'];
@@ -159,6 +147,12 @@ class WebhookController extends Controller
             default => false,
         };
 
+        Log::info("Webhook [{$gateway}]: Event classification", [
+            'event' => $event,
+            'is_success' => $isSuccess,
+            'is_failure' => $isFailure,
+        ]);
+
         if ($isSuccess) {
             $this->handleSuccessfulPayment($data, $gateway);
         } elseif ($isFailure) {
@@ -168,9 +162,6 @@ class WebhookController extends Controller
         }
     }
 
-    /**
-     * Extract transaction reference from webhook data
-     */
     protected function extractReference(array $data, string $gateway): ?string
     {
         return match ($gateway) {
@@ -180,9 +171,6 @@ class WebhookController extends Controller
         };
     }
 
-    /**
-     * Handle successful payment
-     */
     protected function handleSuccessfulPayment(array $data, string $gateway): void
     {
         $reference = $this->extractReference($data, $gateway);
@@ -206,17 +194,18 @@ class WebhookController extends Controller
             return;
         }
 
+        Log::info("Webhook [{$gateway}]: Transaction found, updating", [
+            'transaction_id' => $transaction->id,
+            'reference' => $reference,
+        ]);
+
         // Update transaction
         $transaction->update([
             'payment_gateway_ref' => $reference,
             'gateway_response' => $data,
         ]);
 
-        // Mark as paid
-        $transaction->markAsPaid();
-
-        // Activate the transactionable (Subscription, Wallet, AdCampaign)
-        $this->activateTransactionable($transaction, $gateway);
+        $this->activationService->completeAndActivate($transaction);
 
         Log::info("Webhook [{$gateway}]: Payment processed successfully", [
             'reference' => $reference,
@@ -224,9 +213,6 @@ class WebhookController extends Controller
         ]);
     }
 
-    /**
-     * Handle failed payment
-     */
     protected function handleFailedPayment(array $data, string $gateway): void
     {
         $reference = $this->extractReference($data, $gateway);
@@ -256,82 +242,5 @@ class WebhookController extends Controller
                 'transaction_id' => $transaction->id,
             ]);
         }
-    }
-
-    /**
-     * Activate transactionable based on type
-     */
-    protected function activateTransactionable(Transaction $transaction, string $gateway): void
-    {
-        $transactionable = $transaction->transactionable;
-        
-        if (!$transactionable) {
-            Log::warning("Webhook [{$gateway}]: Transaction has no transactionable", [
-                'transaction_id' => $transaction->id,
-            ]);
-            return;
-        }
-
-        // Handle based on type
-        if ($transactionable instanceof Subscription) {
-            $this->activateSubscription($transactionable, $transaction, $gateway);
-        } elseif ($transactionable instanceof Wallet) {
-            $this->fundWallet($transactionable, $transaction, $gateway);
-        } elseif ($transactionable instanceof AdCampaign) {
-            $this->activateCampaign($transactionable, $transaction, $gateway);
-        }
-    }
-
-    /**
-     * Activate subscription
-     */
-    protected function activateSubscription(Subscription $subscription, Transaction $transaction, string $gateway): void
-    {
-        $subscription->update([
-            'status' => 'active',
-            'starts_at' => now(),
-            'ends_at' => now()->addDays(30), // Default, adjust as needed
-        ]);
-
-        Log::info("Webhook [{$gateway}]: Subscription activated", [
-            'subscription_id' => $subscription->id,
-            'transaction_id' => $transaction->id,
-        ]);
-    }
-
-    /**
-     * Fund wallet
-     */
-    protected function fundWallet(Wallet $wallet, Transaction $transaction, string $gateway): void
-    {
-        $wallet->deposit(
-            $transaction->amount,
-            "Wallet funding via " . ucfirst($gateway),
-            $transaction
-        );
-
-        Log::info("Webhook [{$gateway}]: Wallet funded", [
-            'wallet_id' => $wallet->id,
-            'user_id' => $wallet->user_id,
-            'amount' => $transaction->amount,
-            'transaction_id' => $transaction->id,
-        ]);
-    }
-
-    /**
-     * Activate campaign
-     */
-    protected function activateCampaign(AdCampaign $campaign, Transaction $transaction, string $gateway): void
-    {
-        $campaign->update([
-            'is_paid' => true,
-            'is_active' => true,
-            'transaction_id' => $transaction->id,
-        ]);
-
-        Log::info("Webhook [{$gateway}]: Campaign activated", [
-            'campaign_id' => $campaign->id,
-            'transaction_id' => $transaction->id,
-        ]);
     }
 }
