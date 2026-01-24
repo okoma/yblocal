@@ -776,6 +776,9 @@ class EditBusiness extends EditRecord
                                 ->image()
                                 ->directory('business-gallery')
                                 ->multiple()
+                                ->reorderable()
+                                ->appendFiles()
+                                ->panelLayout('grid')
                                 ->maxFiles(function () {
                                     $user = Auth::user();
                                     $subscription = $user->subscription;

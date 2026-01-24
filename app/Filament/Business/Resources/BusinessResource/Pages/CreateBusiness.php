@@ -781,6 +781,9 @@ class CreateBusiness extends CreateRecord
                                 })
                                 ->maxSize(3072)
                                 ->imageEditor()
+                                ->reorderable()
+                                ->appendFiles()
+                                ->panelLayout('grid')
                                 ->helperText(function () {
                                     $user = Auth::user();
                                     $subscription = $user->subscription;
