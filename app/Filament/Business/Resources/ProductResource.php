@@ -268,13 +268,6 @@ class ProductResource extends Resource
         ];
     }
 
-    public static function getNavigationBadge(): ?string
-    {
-        $user = Auth::user();
-        $businessIds = static::getAccessibleBusinessIds($user);
-        return static::getModel()::whereIn('business_id', $businessIds)->count();
-    }
-    
     public static function getEloquentQuery(): Builder
     {
         $user = Auth::user();

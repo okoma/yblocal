@@ -133,9 +133,4 @@ class BusinessResource extends Resource
             'edit' => Pages\EditBusiness::route('/{record}/edit'),
         ];
     }
-
-    public static function getNavigationBadge(): ?string
-    {
-        return static::getModel()::where('user_id', Auth::id())->count();
-    }
 }
