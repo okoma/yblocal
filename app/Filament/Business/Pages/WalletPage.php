@@ -517,27 +517,21 @@ class WalletPage extends Page implements HasTable, HasActions
                     DB::rollBack();
                     throw $e;
                 }
-            } elseif ($gateway->isBankTransfer()) {
-                // Bank transfer for credits
+            } else {
+                // Bank transfer, Paystack, or Flutterwave: create pending txn, redirect or show instructions
                 $wallet = $this->getWallet();
-                
+                $metadata = [
+                    'type' => 'credit_purchase',
+                    'credits' => $credits,
+                    'amount' => $amount,
+                ];
+                if ($gateway->isBankTransfer() && !empty($data['payment_proof'])) {
+                    $metadata['payment_proof'] = $data['payment_proof'];
+                    $metadata['payment_proof_uploaded_at'] = now()->toIso8601String();
+                }
+
                 DB::beginTransaction();
-                
                 try {
-                    // Prepare metadata
-                    $metadata = [
-                        'type' => 'credit_purchase',
-                        'credits' => $credits,
-                        'amount' => $amount,
-                    ];
-                    
-                    // Add payment proof if provided
-                    if (!empty($data['payment_proof'])) {
-                        $metadata['payment_proof'] = $data['payment_proof'];
-                        $metadata['payment_proof_uploaded_at'] = now()->toIso8601String();
-                    }
-                    
-                    // Initialize payment through service
                     $result = app(PaymentService::class)->initializePayment(
                         user: $user,
                         amount: $amount,
@@ -545,33 +539,32 @@ class WalletPage extends Page implements HasTable, HasActions
                         payable: $wallet,
                         metadata: $metadata
                     );
-                    
                     DB::commit();
-                    
+
+                    if ($result->requiresRedirect()) {
+                        return redirect()->away($result->redirectUrl);
+                    }
                     if ($result->isBankTransfer()) {
                         Notification::make()
                             ->success()
                             ->title('Payment Proof Uploaded')
                             ->body("Your payment proof has been received. {$credits} credits will be added to your account within 24-48 hours after verification.")
                             ->send();
-                        
                         return null;
-                    } else {
-                        throw new \Exception($result->message);
                     }
-                    
+                    if ($result->isSuccess()) {
+                        Notification::make()
+                            ->success()
+                            ->title('Credits Purchased!')
+                            ->body("{$credits} ad credits added to your account.")
+                            ->send();
+                        return null;
+                    }
+                    throw new \Exception($result->message ?? 'Unable to process payment.');
                 } catch (\Exception $e) {
                     DB::rollBack();
                     throw $e;
                 }
-            } else {
-                // Other gateway payment for credits
-                Notification::make()
-                    ->warning()
-                    ->title('Feature Coming Soon')
-                    ->body('Please add funds first, then buy credits using your wallet balance.')
-                    ->send();
-                return null;
             }
             
         } catch (\Exception $e) {

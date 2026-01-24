@@ -53,11 +53,7 @@ class ActivationService
         match (true) {
             $payable instanceof Subscription => $this->activateSubscription($payable, $transaction),
             $payable instanceof AdCampaign => $this->activateAdCampaign($payable, $transaction),
-            $payable instanceof Wallet => $payable->deposit(
-                $transaction->amount,
-                'Payment gateway funding',
-                $transaction
-            ),
+            $payable instanceof Wallet => $this->activateWallet($payable, $transaction),
             default => Log::warning('ActivationService: Unknown payable type', [
                 'type' => get_class($payable),
                 'transaction_id' => $transaction->id,
@@ -69,6 +65,35 @@ class ActivationService
             'type' => get_class($payable),
             'payable_id' => $payable->id,
         ]);
+    }
+
+    /**
+     * Activate wallet: deposit (funding) or addCredits (credit purchase).
+     */
+    protected function activateWallet(Wallet $wallet, Transaction $transaction): void
+    {
+        $metadata = $transaction->metadata ?? [];
+        $isCreditPurchase = ($metadata['type'] ?? null) === 'credit_purchase';
+        $credits = (int) ($metadata['credits'] ?? 0);
+
+        if ($isCreditPurchase && $credits > 0) {
+            $wallet->addCredits(
+                $credits,
+                "Ad credits purchase - {$credits} credits",
+                $transaction
+            );
+            Log::info('ActivationService: Wallet credits added (credit purchase)', [
+                'wallet_id' => $wallet->id,
+                'credits' => $credits,
+                'transaction_id' => $transaction->id,
+            ]);
+        } else {
+            $wallet->deposit(
+                $transaction->amount,
+                'Payment gateway funding',
+                $transaction
+            );
+        }
     }
 
     /**
