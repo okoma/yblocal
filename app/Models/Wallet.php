@@ -83,6 +83,7 @@ class Wallet extends Model
             throw new \Exception('Insufficient wallet balance');
         }
 
+        $ref = $reference ?? $this;
         $balanceBefore = $this->balance;
         $this->decrement('balance', $amount);
         $this->refresh();
@@ -95,8 +96,8 @@ class Wallet extends Model
             'balance_before' => $balanceBefore,
             'balance_after' => $this->balance,
             'description' => $description ?? 'Wallet withdrawal',
-            'reference_type' => $reference ? get_class($reference) : null,
-            'reference_id' => $reference?->id,
+            'reference_type' => get_class($ref),
+            'reference_id' => $ref->id,
         ]);
     }
 
