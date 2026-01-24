@@ -9,6 +9,7 @@ use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -43,6 +44,8 @@ class AdminPanelProvider extends PanelProvider
             ->widgets([
                 //Widgets\AccountWidget::class,
             ])
+            ->renderHook(PanelsRenderHook::BODY_START, fn () => view('filament.panels.assets-admin'))
+            ->renderHook(PanelsRenderHook::FOOTER, fn () => view('filament.components.global-footer'))
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
