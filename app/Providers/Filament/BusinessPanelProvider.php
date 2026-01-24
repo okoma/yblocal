@@ -1,8 +1,4 @@
 <?php
-// ============================================
-// app/Providers/Filament/BusinessPanelProvider.php
-// FILAMENT V3.3 COMPATIBLE
-// ============================================
 
 namespace App\Providers\Filament;
 
@@ -12,7 +8,10 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
+use Filament\Support\Assets\Css;
+use Filament\Support\Assets\Js;
 use Filament\Support\Colors\Color;
+use Filament\Support\Facades\FilamentAsset;
 use Filament\View\PanelsRenderHook;
 use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -50,7 +49,6 @@ class BusinessPanelProvider extends PanelProvider
             ->widgets([
                 //Widgets\AccountWidget::class,
             ])
-            ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('filament.panels.assets-business'))
             ->renderHook(PanelsRenderHook::FOOTER, fn () => view('filament.components.global-footer'))
             ->middleware([
                 EncryptCookies::class,
@@ -69,5 +67,14 @@ class BusinessPanelProvider extends PanelProvider
             ->databaseNotifications()
             ->databaseNotificationsPolling('30s')
             ->spa();
+    }
+
+    public function boot(): void
+    {
+        FilamentAsset::register([
+            Css::make('business-panel-styles', asset('css/filament-panels/business.css?v=' . time())),
+            // Add JS if needed
+            Js::make('business-panel-js', asset('js/filament-panels/business.js?v=' . time())),
+        ], 'business');
     }
 }
