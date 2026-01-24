@@ -429,7 +429,7 @@ Wizard\Step::make('Business Hours')
                 ]),
         ]),
     
-    Forms\Components\Section::make('Weekend (Optional)')
+        Forms\Components\Section::make('Weekend (Optional)')
         ->description('Optionally set your weekend hours')
         ->schema([
             // Saturday
@@ -441,10 +441,12 @@ Wizard\Step::make('Business Hours')
                     
                     Forms\Components\TimePicker::make('saturday_open')
                         ->label('Opens')
+                        ->required(fn (Forms\Get $get): bool => !$get('saturday_closed'))
                         ->disabled(fn (Forms\Get $get) => $get('saturday_closed')),
                     
                     Forms\Components\TimePicker::make('saturday_close')
                         ->label('Closes')
+                        ->required(fn (Forms\Get $get): bool => !$get('saturday_closed'))
                         ->disabled(fn (Forms\Get $get) => $get('saturday_closed')),
                     
                     Forms\Components\Toggle::make('saturday_closed')
@@ -468,10 +470,12 @@ Wizard\Step::make('Business Hours')
                     
                     Forms\Components\TimePicker::make('sunday_open')
                         ->label('Opens')
+                        ->required(fn (Forms\Get $get): bool => !$get('sunday_closed'))
                         ->disabled(fn (Forms\Get $get) => $get('sunday_closed')),
                     
                     Forms\Components\TimePicker::make('sunday_close')
                         ->label('Closes')
+                        ->required(fn (Forms\Get $get): bool => !$get('sunday_closed'))
                         ->disabled(fn (Forms\Get $get) => $get('sunday_closed')),
                     
                     Forms\Components\Toggle::make('sunday_closed')
