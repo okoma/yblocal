@@ -47,6 +47,7 @@ class CustomerPanelProvider extends PanelProvider
             ->widgets([
                 Widgets\AccountWidget::class,
             ])
+            ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('filament.panels.assets-customer'))
             ->renderHook(PanelsRenderHook::FOOTER, fn () => view('filament.components.global-footer'))
             ->middleware([
                 EncryptCookies::class,
