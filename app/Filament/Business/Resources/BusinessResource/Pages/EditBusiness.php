@@ -364,7 +364,7 @@ class EditBusiness extends EditRecord
                                     Forms\Components\Toggle::make('wednesday_closed')
                                         ->label('Closed')
                                         ->live()
-                                        ->afterStateUpdated(function ($state, Forms\Set $get) {
+                                        ->afterStateUpdated(function ($state, Forms\Set $set) {
                                             if ($state) {
                                                 $set('wednesday_open', null);
                                                 $set('wednesday_close', null);
