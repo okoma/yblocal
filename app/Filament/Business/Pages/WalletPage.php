@@ -499,8 +499,8 @@ class WalletPage extends Page implements HasTable, HasActions
                 DB::beginTransaction();
                 
                 try {
-                    // Deduct from balance and add credits
-                    $wallet->purchase($amount, "Purchased {$credits} ad credits");
+                    // Deduct from balance and add credits (pass credits so purchase row shows them)
+                    $wallet->purchase($amount, "Purchased {$credits} ad credits", null, $credits);
                     $wallet->addCredits($credits, "Ad credits purchase - {$credits} credits");
                     
                     DB::commit();

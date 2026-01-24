@@ -101,7 +101,13 @@ class Wallet extends Model
         ]);
     }
 
-    public function purchase($amount, $description, $reference = null)
+    /**
+     * @param  float  $amount
+     * @param  string  $description
+     * @param  mixed  $reference
+     * @param  int|null  $credits  When provided (e.g. credit purchase), store credits/credits_before/credits_after.
+     */
+    public function purchase($amount, $description, $reference = null, $credits = null)
     {
         if ($this->balance < $amount) {
             throw new \Exception('Insufficient wallet balance');
@@ -109,10 +115,11 @@ class Wallet extends Model
 
         $ref = $reference ?? $this;
         $balanceBefore = $this->balance;
+        $creditsBefore = $credits !== null ? (int) $this->ad_credits : 0;
         $this->decrement('balance', $amount);
         $this->refresh();
 
-        return WalletTransaction::create([
+        $payload = [
             'wallet_id' => $this->id,
             'user_id' => $this->user_id,
             'type' => 'purchase',
@@ -122,7 +129,15 @@ class Wallet extends Model
             'description' => $description,
             'reference_type' => get_class($ref),
             'reference_id' => $ref->id,
-        ]);
+        ];
+
+        if ($credits !== null && $credits > 0) {
+            $payload['credits'] = $credits;
+            $payload['credits_before'] = $creditsBefore;
+            $payload['credits_after'] = $creditsBefore + $credits;
+        }
+
+        return WalletTransaction::create($payload);
     }
 
     /**
