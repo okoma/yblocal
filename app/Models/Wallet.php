@@ -125,6 +125,7 @@ class Wallet extends Model
     public function addCredits($credits, $description = null, $reference = null)
     {
         $creditsBefore = $this->ad_credits;
+        $balance = (float) $this->balance; // unchanged for credit-only ops
         $this->increment('ad_credits', $credits);
         $this->refresh();
 
@@ -135,6 +136,8 @@ class Wallet extends Model
             'credits' => $credits,
             'credits_before' => $creditsBefore,
             'credits_after' => $this->ad_credits,
+            'balance_before' => $balance,
+            'balance_after' => $balance,
             'description' => $description ?? 'Ad credits added',
             'reference_type' => $reference ? get_class($reference) : null,
             'reference_id' => $reference?->id,
@@ -148,6 +151,7 @@ class Wallet extends Model
         }
 
         $creditsBefore = $this->ad_credits;
+        $balance = (float) $this->balance; // unchanged for credit-only ops
         $this->decrement('ad_credits', $credits);
         $this->refresh();
 
@@ -158,6 +162,8 @@ class Wallet extends Model
             'credits' => $credits,
             'credits_before' => $creditsBefore,
             'credits_after' => $this->ad_credits,
+            'balance_before' => $balance,
+            'balance_after' => $balance,
             'description' => $description,
             'reference_type' => $reference ? get_class($reference) : null,
             'reference_id' => $reference?->id,
