@@ -50,7 +50,7 @@ class BusinessPanelProvider extends PanelProvider
             ->widgets([
                 //Widgets\AccountWidget::class,
             ])
-            ->renderHook(PanelsRenderHook::BODY_START, fn () => view('filament.panels.assets-business'))
+            ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('filament.panels.assets-business'))
             ->renderHook(PanelsRenderHook::FOOTER, fn () => view('filament.components.global-footer'))
             ->middleware([
                 EncryptCookies::class,
