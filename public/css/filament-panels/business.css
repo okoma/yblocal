@@ -68,3 +68,52 @@
 footer {
     margin-top: auto;
 }
+
+/* ===== MAKE FOOTER STICK TO BOTTOM ===== */
+html {
+    height: 100%;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    height: 100%;
+}
+
+/* Target Filament's main wrapper */
+body > div {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 100vh;
+}
+
+.fi-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.fi-layout {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+/* Make main content area grow */
+.fi-main-ctn {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.fi-main {
+    flex: 1 0 auto;
+}
+
+/* Footer stays at bottom */
+footer {
+    flex-shrink: 0;
+    margin-top: auto;
+}
