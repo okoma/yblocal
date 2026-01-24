@@ -1,5 +1,5 @@
 {{-- Global footer for all Filament panels (Admin, Business, Customer). --}}
-<footer class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-4 px-5 flex flex-col md:flex-row items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+<footer class="py-4 px-5 flex flex-col md:flex-row items-center justify-between text-sm text-gray-500 dark:text-gray-400">
   <!-- Left Side -->
   <div class="flex items-center gap-2 mb-2 md:mb-0">
     <span>&copy; <?php echo date('Y'); ?> YellowBooks.</span>
