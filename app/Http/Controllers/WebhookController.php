@@ -8,25 +8,23 @@ use App\Services\ActivationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
-/**
- * Unified Webhook Controller
- *
- * Handles webhooks from ALL payment gateways (Paystack, Flutterwave, etc.)
- * Activation is delegated to ActivationService.
- */
 class WebhookController extends Controller
 {
     public function __construct(
         protected ActivationService $activationService
     ) {}
-    /**
-     * Handle webhook for any payment gateway
-     * 
-     * @param Request $request
-     * @param string $gateway (paystack, flutterwave, etc.)
-     */
+
     public function handle(Request $request, string $gateway)
     {
+        // DEBUG: Log all incoming webhook requests
+        Log::info("=== WEBHOOK RECEIVED ===", [
+            'gateway' => $gateway,
+            'headers' => $request->headers->all(),
+            'body' => $request->all(),
+            'raw_body' => $request->getContent(),
+            'ip' => $request->ip(),
+        ]);
+
         // Get gateway configuration
         $gatewayModel = PaymentGateway::where('slug', $gateway)
             ->where('is_enabled', true)
@@ -38,7 +36,13 @@ class WebhookController extends Controller
         }
 
         // Verify webhook signature (gateway-specific)
-        if (!$this->verifyWebhookSignature($request, $gateway, $gatewayModel->secret_key)) {
+        $signatureValid = $this->verifyWebhookSignature($request, $gateway, $gatewayModel->secret_key);
+        
+        Log::info("Webhook [{$gateway}]: Signature verification", [
+            'valid' => $signatureValid,
+        ]);
+
+        if (!$signatureValid) {
             Log::error("Webhook [{$gateway}]: Invalid signature");
             return response()->json(['error' => 'Invalid signature'], 401);
         }
@@ -46,6 +50,10 @@ class WebhookController extends Controller
         // Parse webhook data (gateway-specific)
         $webhookData = $this->parseWebhookData($request, $gateway);
         
+        Log::info("Webhook [{$gateway}]: Parsed data", [
+            'webhook_data' => $webhookData,
+        ]);
+
         if (!$webhookData || !isset($webhookData['event'])) {
             Log::error("Webhook [{$gateway}]: Invalid event data");
             return response()->json(['error' => 'Invalid event'], 400);
@@ -57,9 +65,6 @@ class WebhookController extends Controller
         return response()->json(['status' => 'success'], 200);
     }
 
-    /**
-     * Verify webhook signature based on gateway
-     */
     protected function verifyWebhookSignature(Request $request, string $gateway, string $secret): bool
     {
         return match ($gateway) {
@@ -69,9 +74,6 @@ class WebhookController extends Controller
         };
     }
 
-    /**
-     * Verify Paystack webhook signature
-     */
     protected function verifyPaystackSignature(Request $request, string $secret): bool
     {
         $signature = $request->header('x-paystack-signature');
@@ -85,9 +87,6 @@ class WebhookController extends Controller
         return hash_equals($computedSignature, $signature);
     }
 
-    /**
-     * Verify Flutterwave webhook signature
-     */
     protected function verifyFlutterwaveSignature(Request $request, string $secret): bool
     {
         $signature = $request->header('verif-hash');
@@ -101,9 +100,6 @@ class WebhookController extends Controller
         return hash_equals($computedHash, $signature);
     }
 
-    /**
-     * Parse webhook data based on gateway
-     */
     protected function parseWebhookData(Request $request, string $gateway): ?array
     {
         return match ($gateway) {
@@ -113,9 +109,6 @@ class WebhookController extends Controller
         };
     }
 
-    /**
-     * Parse Paystack webhook data
-     */
     protected function parsePaystackWebhook(Request $request): ?array
     {
         $event = json_decode($request->getContent(), true);
@@ -126,9 +119,6 @@ class WebhookController extends Controller
         ];
     }
 
-    /**
-     * Parse Flutterwave webhook data
-     */
     protected function parseFlutterwaveWebhook(Request $request): ?array
     {
         $payload = $request->all();
@@ -139,9 +129,6 @@ class WebhookController extends Controller
         ];
     }
 
-    /**
-     * Handle webhook event based on type
-     */
     protected function handleWebhookEvent(array $webhookData, string $gateway): void
     {
         $event = $webhookData['event'];
@@ -160,6 +147,12 @@ class WebhookController extends Controller
             default => false,
         };
 
+        Log::info("Webhook [{$gateway}]: Event classification", [
+            'event' => $event,
+            'is_success' => $isSuccess,
+            'is_failure' => $isFailure,
+        ]);
+
         if ($isSuccess) {
             $this->handleSuccessfulPayment($data, $gateway);
         } elseif ($isFailure) {
@@ -169,9 +162,6 @@ class WebhookController extends Controller
         }
     }
 
-    /**
-     * Extract transaction reference from webhook data
-     */
     protected function extractReference(array $data, string $gateway): ?string
     {
         return match ($gateway) {
@@ -181,9 +171,6 @@ class WebhookController extends Controller
         };
     }
 
-    /**
-     * Handle successful payment
-     */
     protected function handleSuccessfulPayment(array $data, string $gateway): void
     {
         $reference = $this->extractReference($data, $gateway);
@@ -207,6 +194,11 @@ class WebhookController extends Controller
             return;
         }
 
+        Log::info("Webhook [{$gateway}]: Transaction found, updating", [
+            'transaction_id' => $transaction->id,
+            'reference' => $reference,
+        ]);
+
         // Update transaction
         $transaction->update([
             'payment_gateway_ref' => $reference,
@@ -221,9 +213,6 @@ class WebhookController extends Controller
         ]);
     }
 
-    /**
-     * Handle failed payment
-     */
     protected function handleFailedPayment(array $data, string $gateway): void
     {
         $reference = $this->extractReference($data, $gateway);
@@ -254,5 +243,4 @@ class WebhookController extends Controller
             ]);
         }
     }
-
 }
