@@ -1,7 +1,21 @@
 {{-- Global footer for all Filament panels (Admin, Business, Customer). --}}
-<footer class="fi-footer mt-auto border-t border-gray-200 bg-white px-4 py-3 dark:border-white/5 dark:bg-gray-900">
-    <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 text-sm text-gray-500 dark:text-gray-400">
-        <span>© {{ date('Y') }} YellowBooks. All rights reserved.</span>
-        <a href="{{ url('/') }}" class="hover:text-gray-700 dark:hover:text-gray-300">Home</a>
-    </div>
+<footer class="tw-bg-white tw-border-t tw-border-gray-200 tw-py-4 tw-px-8 tw-flex tw-flex-col md:tw-flex-row tw-items-center tw-justify-between tw-text-sm tw-text-gray-500">
+  <!-- Left Side -->
+  <div class="tw-flex tw-items-center tw-gap-2 tw-mb-2 md:tw-mb-0">
+    <span>&copy; <?php echo date('Y'); ?> YellowBooks.</span>
+    <span class="tw-hidden md:tw-inline">All rights reserved.</span>
+  </div>
+  
+  <!-- Right Side -->
+  <div class="tw-flex tw-items-center tw-gap-4">
+    <a href="https://yellowbooks.ng/terms" target="_blank" rel="noopener noreferrer" class="hover:tw-text-indigo-600 tw-transition-colors">
+      Terms
+    </a>
+    <a href="https://yellowbooks.ng/privacy" target="_blank" rel="noopener noreferrer" class="hover:tw-text-indigo-600 tw-transition-colors">
+      Privacy
+    </a>
+    <a href="mailto:support@yellowbooks.ng" class="hover:tw-text-indigo-600 tw-flex tw-items-center tw-gap-1 tw-transition-colors">
+      <i data-lucide="mail" class="tw-w-4 tw-h-4"></i> Support
+    </a>
+  </div>
 </footer>
