@@ -59,6 +59,7 @@ class Wallet extends Model
     // Helper methods
     public function deposit($amount, $description = null, $reference = null)
     {
+        $ref = $reference ?? $this;
         $balanceBefore = $this->balance;
         $this->increment('balance', $amount);
         $this->refresh();
@@ -71,8 +72,8 @@ class Wallet extends Model
             'balance_before' => $balanceBefore,
             'balance_after' => $this->balance,
             'description' => $description ?? 'Wallet deposit',
-            'reference_type' => $reference ? get_class($reference) : null,
-            'reference_id' => $reference?->id,
+            'reference_type' => get_class($ref),
+            'reference_id' => $ref->id,
         ]);
     }
 
@@ -105,6 +106,7 @@ class Wallet extends Model
             throw new \Exception('Insufficient wallet balance');
         }
 
+        $ref = $reference ?? $this;
         $balanceBefore = $this->balance;
         $this->decrement('balance', $amount);
         $this->refresh();
@@ -117,8 +119,8 @@ class Wallet extends Model
             'balance_before' => $balanceBefore,
             'balance_after' => $this->balance,
             'description' => $description,
-            'reference_type' => $reference ? get_class($reference) : null,
-            'reference_id' => $reference?->id,
+            'reference_type' => get_class($ref),
+            'reference_id' => $ref->id,
         ]);
     }
 
@@ -157,6 +159,7 @@ class Wallet extends Model
             throw new \Exception('Insufficient ad credits');
         }
 
+        $ref = $reference ?? $this;
         $creditsBefore = $this->ad_credits;
         $balance = (float) $this->balance; // unchanged for credit-only ops
         $this->decrement('ad_credits', $credits);
@@ -172,8 +175,8 @@ class Wallet extends Model
             'balance_before' => $balance,
             'balance_after' => $balance,
             'description' => $description,
-            'reference_type' => $reference ? get_class($reference) : null,
-            'reference_id' => $reference?->id,
+            'reference_type' => get_class($ref),
+            'reference_id' => $ref->id,
         ]);
     }
 
