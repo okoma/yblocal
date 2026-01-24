@@ -698,10 +698,11 @@ class WalletPage extends Page implements HasTable, HasActions
                     ->wrap(),
 
                 Tables\Columns\TextColumn::make('amount')
+                    ->label('Amount')
                     ->money('NGN')
                     ->sortable()
-                    ->color(fn ($record) => in_array($record->type, ['deposit', 'refund', 'bonus']) ? 'success' : 'danger')
-                    ->prefix(fn ($record) => in_array($record->type, ['deposit', 'refund', 'bonus']) ? '+' : '-'),
+                    ->color(fn ($record) => in_array($record->type, ['deposit', 'refund', 'bonus']) || ($record->type === 'credit_purchase' && $record->amount > 0) ? 'success' : 'danger')
+                    ->prefix(fn ($record) => in_array($record->type, ['deposit', 'refund', 'bonus']) || ($record->type === 'credit_purchase' && $record->amount > 0) ? '+' : '-'),
 
                 Tables\Columns\TextColumn::make('credits')
                     ->label('Credits')

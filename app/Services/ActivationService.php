@@ -80,7 +80,8 @@ class ActivationService
             $wallet->addCredits(
                 $credits,
                 "Ad credits purchase - {$credits} credits",
-                $transaction
+                $transaction,
+                (float) $transaction->amount
             );
             Log::info('ActivationService: Wallet credits added (credit purchase)', [
                 'wallet_id' => $wallet->id,

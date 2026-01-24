@@ -122,7 +122,13 @@ class Wallet extends Model
         ]);
     }
 
-    public function addCredits($credits, $description = null, $reference = null)
+    /**
+     * @param  int  $credits
+     * @param  string|null  $description
+     * @param  mixed  $reference  Transaction (gateway/bank) or null
+     * @param  float|null  $amount  Cash paid (e.g. gateway/bank transfer). Omit for wallet-funded.
+     */
+    public function addCredits($credits, $description = null, $reference = null, $amount = null)
     {
         $creditsBefore = $this->ad_credits;
         $balance = (float) $this->balance; // unchanged for credit-only ops
@@ -133,6 +139,7 @@ class Wallet extends Model
             'wallet_id' => $this->id,
             'user_id' => $this->user_id,
             'type' => 'credit_purchase',
+            'amount' => $amount !== null ? (float) $amount : 0,
             'credits' => $credits,
             'credits_before' => $creditsBefore,
             'credits_after' => $this->ad_credits,
