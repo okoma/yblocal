@@ -49,7 +49,7 @@ class BusinessPanelProvider extends PanelProvider
             ->widgets([
                 //Widgets\AccountWidget::class,
             ])
-            ->renderHook(PanelsRenderHook::FOOTER, fn () => view('filament.components.global-footer'))
+            ->renderHook(PanelsRenderHook::CONTENT_END, fn () => view('filament.components.global-footer'))
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
