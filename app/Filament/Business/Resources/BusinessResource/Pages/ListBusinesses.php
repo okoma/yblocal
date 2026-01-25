@@ -19,9 +19,9 @@ class ListBusinesses extends ListRecords
         $active = app(ActiveBusiness::class);
         $id = $active->getActiveBusinessId();
         if ($id && $active->isValid($id)) {
-            $this->redirect(BusinessResource::getUrl('view', ['record' => $id]), navigate: true);
+            $this->redirect(BusinessResource::getUrl('view', ['record' => $id]));
             return;
         }
-        $this->redirect(route('filament.business.pages.select-business'), navigate: true);
+        $this->redirect(route('filament.business.pages.select-business'));
     }
 }

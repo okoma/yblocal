@@ -68,6 +68,6 @@ class SelectBusinessPage extends Page
         }
         $active->setActiveBusinessId($id);
         $this->dispatch('business-switched');
-        $this->redirect(route('filament.business.pages.dashboard'), navigate: true);
+        $this->redirect(route('filament.business.pages.dashboard'));
     }
 }
