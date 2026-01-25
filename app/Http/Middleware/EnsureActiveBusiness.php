@@ -28,14 +28,23 @@ class EnsureActiveBusiness
             return $next($request);
         }
 
+        // Allow profile settings pages when user has no businesses
+        if ($request->routeIs([
+            'filament.business.pages.profile-settings',
+            'filament.business.pages.account-preferences',
+        ])) {
+            return $next($request);
+        }
+
         $id = $this->activeBusiness->getActiveBusinessId();
         if ($id !== null && $this->activeBusiness->isValid($id)) {
             return $next($request);
         }
 
         $selectable = $this->activeBusiness->getSelectableBusinesses();
+        // If no businesses, force redirect to Get Started (select-business page)
         if ($selectable->isEmpty()) {
-            return $next($request);
+            return redirect()->route('filament.business.pages.select-business');
         }
 
         return redirect()->route('filament.business.pages.select-business');

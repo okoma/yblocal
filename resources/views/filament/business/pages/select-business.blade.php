@@ -11,18 +11,29 @@
                 {{ $business->name }}
             </x-filament::button>
         @empty
-            <x-filament::section>
-                <p class="text-gray-500 dark:text-gray-400 mb-4">You don't have any businesses yet.</p>
+            <div class="flex flex-col items-center justify-center py-12 px-4 text-center">
+                <div class="mb-6">
+                    <x-filament::icon
+                        icon="heroicon-o-building-storefront"
+                        class="h-24 w-24 text-gray-400 dark:text-gray-600 mx-auto"
+                    />
+                </div>
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                    Get Started
+                </h2>
+                <p class="text-gray-600 dark:text-gray-400 mb-8 max-w-md">
+                    Create your first business to start managing your listings, leads, reviews, and analytics all in one place.
+                </p>
                 <x-filament::button
                     tag="a"
                     href="{{ \App\Filament\Business\Resources\BusinessResource::getUrl('create') }}"
                     color="primary"
-                    size="lg"
+                    size="xl"
                     icon="heroicon-o-plus"
                 >
-                    Add New Business
+                    Create Your First Business
                 </x-filament::button>
-            </x-filament::section>
+            </div>
         @endforelse
     </div>
 </x-filament-panels::page>

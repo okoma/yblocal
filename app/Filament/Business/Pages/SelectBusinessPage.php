@@ -20,16 +20,22 @@ class SelectBusinessPage extends Page
 
     public function getTitle(): string | Htmlable
     {
-        return 'Select Business';
+        $businesses = $this->getBusinessesProperty();
+        return $businesses->isEmpty() ? 'Get Started' : 'Select Business';
     }
 
     public function getHeading(): string | Htmlable
     {
-        return 'Select Business';
+        $businesses = $this->getBusinessesProperty();
+        return $businesses->isEmpty() ? 'Get Started' : 'Select Business';
     }
 
     public function getSubheading(): ?string
     {
+        $businesses = $this->getBusinessesProperty();
+        if ($businesses->isEmpty()) {
+            return 'Create your first business to start managing your listings, leads, and analytics.';
+        }
         return 'Choose the business you want to manage. All data, analytics, and settings will be scoped to this business.';
     }
 
@@ -40,6 +46,11 @@ class SelectBusinessPage extends Page
 
     protected function getHeaderActions(): array
     {
+        $businesses = $this->getBusinessesProperty();
+        // Only show header action when there are businesses (for "Add New Business")
+        if ($businesses->isEmpty()) {
+            return [];
+        }
         return [
             Action::make('add_new_business')
                 ->label('Add New Business')
