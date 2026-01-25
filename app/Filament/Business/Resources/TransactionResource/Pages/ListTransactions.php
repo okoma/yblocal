@@ -15,9 +15,6 @@ use Illuminate\Database\Eloquent\Builder;
 class ListTransactions extends ListRecords
 {
     protected static string $resource = TransactionResource::class;
-
-    protected $listeners = ['business-switched' => '$refresh'];
-
     protected function getHeaderActions(): array
     {
         return [];

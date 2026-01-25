@@ -23,8 +23,6 @@ class AnalyticsPage extends Page
 
     public $dateRange = '30';
 
-    protected $listeners = ['business-switched' => '$refresh'];
-
     public function getTitle(): string
     {
         return 'Analytics & Reports';

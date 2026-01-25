@@ -16,9 +16,6 @@ use Illuminate\Database\Eloquent\Builder;
 class ListProducts extends ListRecords
 {
     protected static string $resource = ProductResource::class;
-
-    protected $listeners = ['business-switched' => '$refresh'];
-
     protected function getHeaderActions(): array
     {
         return [

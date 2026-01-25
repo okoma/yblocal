@@ -12,9 +12,6 @@ use Illuminate\Database\Eloquent\Builder;
 class ListSubscriptions extends ListRecords
 {
     protected static string $resource = SubscriptionResource::class;
-
-    protected $listeners = ['business-switched' => '$refresh'];
-
     protected function getHeaderActions(): array
     {
         return [

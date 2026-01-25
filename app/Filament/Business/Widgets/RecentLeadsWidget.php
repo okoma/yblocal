@@ -13,9 +13,6 @@ class RecentLeadsWidget extends BaseWidget
     protected int | string | array $columnSpan = 'full';
 
     protected static ?int $sort = 2;
-
-    protected $listeners = ['business-switched' => '$refresh'];
-
     public function table(Table $table): Table
     {
         $id = app(ActiveBusiness::class)->getActiveBusinessId();

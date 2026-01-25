@@ -15,9 +15,6 @@ use Illuminate\Database\Eloquent\Builder;
 class ListReviews extends ListRecords
 {
     protected static string $resource = ReviewResource::class;
-
-    protected $listeners = ['business-switched' => '$refresh'];
-
     public function getTabs(): array
     {
         $baseQuery = function () {

@@ -13,9 +13,6 @@ use Illuminate\Database\Eloquent\Builder;
 class ListAdCampaigns extends ListRecords
 {
     protected static string $resource = AdCampaignResource::class;
-
-    protected $listeners = ['business-switched' => '$refresh'];
-
     protected function baseQuery(): Builder
     {
         $id = app(ActiveBusiness::class)->getActiveBusinessId();

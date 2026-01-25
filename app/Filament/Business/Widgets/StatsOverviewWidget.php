@@ -11,7 +11,6 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class StatsOverviewWidget extends BaseWidget
 {
-    protected $listeners = ['business-switched' => '$refresh'];
 
     protected function getStats(): array
     {

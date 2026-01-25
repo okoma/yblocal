@@ -37,8 +37,6 @@ class SubscriptionPage extends Page implements HasForms, HasActions
     protected static ?int $navigationSort = 7;
 
     protected static string $view = 'filament.business.pages.subscription-page';
-
-    protected $listeners = ['business-switched' => '$refresh'];
     
     public function getTitle(): string
     {

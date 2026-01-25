@@ -67,7 +67,8 @@ class SelectBusinessPage extends Page
             return;
         }
         $active->setActiveBusinessId($id);
-        $this->dispatch('business-switched');
-        $this->redirect(route('filament.business.pages.dashboard'));
+        
+        // Force full reload to dashboard with selected business
+        $this->js('window.location.href = "' . route('filament.business.pages.dashboard') . '"');
     }
 }

@@ -15,9 +15,6 @@ class BusinessPerformanceChart extends ChartWidget
     protected static ?int $sort = 3;
 
     protected int | string | array $columnSpan = 'full';
-
-    protected $listeners = ['business-switched' => '$refresh'];
-
     protected function getData(): array
     {
         $id = app(ActiveBusiness::class)->getActiveBusinessId();
