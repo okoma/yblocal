@@ -25,11 +25,36 @@ class SubscriptionResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-credit-card';
 
-    protected static ?string $navigationLabel = 'My Subscriptions';
+    protected static ?string $navigationLabel = 'My Subscription';
 
     protected static ?string $navigationGroup = 'Billing & Marketing';
 
     protected static ?int $navigationSort = 3;
+
+    public static function getNavigationUrl(): string
+    {
+        $active = app(ActiveBusiness::class);
+        $businessId = $active->getActiveBusinessId();
+        
+        if ($businessId === null) {
+            return static::getUrl('index');
+        }
+        
+        // Get active subscription for current business
+        $subscription = static::getModel()::where('user_id', auth()->id())
+            ->where('business_id', $businessId)
+            ->where('status', 'active')
+            ->where('ends_at', '>', now())
+            ->first();
+        
+        // If active subscription exists, go to view page
+        if ($subscription) {
+            return static::getUrl('view', ['record' => $subscription->id]);
+        }
+        
+        // Otherwise, go to subscription plans page to subscribe
+        return route('filament.business.pages.subscription-page');
+    }
 
     public static function getEloquentQuery(): Builder
     {

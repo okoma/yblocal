@@ -12,6 +12,35 @@ use Illuminate\Database\Eloquent\Builder;
 class ListSubscriptions extends ListRecords
 {
     protected static string $resource = SubscriptionResource::class;
+    
+    public function mount(): void
+    {
+        $active = app(ActiveBusiness::class);
+        $businessId = $active->getActiveBusinessId();
+        
+        if ($businessId === null) {
+            // No active business, redirect to subscription plans page
+            $this->redirect(route('filament.business.pages.subscription-page'));
+            return;
+        }
+        
+        // Get active subscription for current business
+        $subscription = static::getResource()::getModel()::where('user_id', auth()->id())
+            ->where('business_id', $businessId)
+            ->where('status', 'active')
+            ->where('ends_at', '>', now())
+            ->first();
+        
+        // If active subscription exists, redirect to view page
+        if ($subscription) {
+            $this->redirect(static::getResource()::getUrl('view', ['record' => $subscription->id]));
+            return;
+        }
+        
+        // Otherwise, redirect to subscription plans page
+        $this->redirect(route('filament.business.pages.subscription-page'));
+    }
+    
     protected function getHeaderActions(): array
     {
         return [
