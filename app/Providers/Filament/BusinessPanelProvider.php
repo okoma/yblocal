@@ -50,7 +50,7 @@ class BusinessPanelProvider extends PanelProvider
             ->widgets([
                 //Widgets\AccountWidget::class,
             ])
-            // ->renderHook(PanelsRenderHook::SIDEBAR_NAV_START, fn () => view('filament.components.business-switcher-sidebar'))
+            ->renderHook(PanelsRenderHook::SIDEBAR_NAV_START, fn () => view('filament.components.business-switcher-sidebar'))
             ->renderHook(PanelsRenderHook::CONTENT_END, fn () => view('filament.components.global-footer'))
             ->middleware([
                 EncryptCookies::class,
@@ -75,9 +75,8 @@ class BusinessPanelProvider extends PanelProvider
     public function boot(): void
     {
         FilamentAsset::register([
-            Css::make('business-panel-styles', asset('css/filament-panels/business.css?v=' . time())),
-            // Add JS if needed
-            Js::make('business-panel-js', asset('js/filament-panels/business.js?v=' . time())),
+            Css::make('business-panel-styles', asset('css/filament-panels/business.css')),
+            Js::make('business-panel-js', asset('js/filament-panels/business.js')),
         ], 'business');
     }
 }
