@@ -68,3 +68,11 @@
 footer {
   margin-top: auto;
 }
+
+/* Business switcher: ensure visible, not clipped by sidebar/topbar */
+.business-switcher-wrapper {
+  overflow: visible !important;
+  position: relative;
+  z-index: 20;
+  min-height: 2.5rem;
+}
