@@ -44,11 +44,19 @@ class ActiveBusiness
         if (!$user) {
             return collect();
         }
-        $ownedIds = $user->businesses()->pluck('id');
-        $managedIds = $user->managedBusinesses()->pluck('id');
+        
+        // Explicitly specify table name to avoid ambiguous column error
+        $ownedIds = $user->businesses()->pluck('businesses.id');
+        $managedIds = $user->managedBusinesses()->pluck('businesses.id');
+        
         $ids = $ownedIds->merge($managedIds)->unique()->values();
+        
         $businesses = Business::whereIn('id', $ids)->orderBy('business_name')->get();
-        return $businesses->map(fn (Business $b) => (object) ['id' => $b->id, 'name' => $b->business_name]);
+        
+        return $businesses->map(fn (Business $b) => (object) [
+            'id' => $b->id, 
+            'name' => $b->business_name
+        ]);
     }
 
     public function isValid(?int $id): bool
