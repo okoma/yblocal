@@ -69,7 +69,7 @@ class BusinessPanelProvider extends PanelProvider
             ])
             ->databaseNotifications()
             ->databaseNotificationsPolling('30s')
-            ->spa(false);
+            ->spa();
     }
 
     public function boot(): void
