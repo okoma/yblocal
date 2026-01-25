@@ -1,0 +1,70 @@
+/**
+ * Business panel custom styles.
+ * Edit this file to add panel-specific CSS for the Filament Business panel.
+ */
+/* Business panel overrides */
+
+/* ===== HIDE SCROLLBAR BUT KEEP FUNCTIONAL ===== */
+.fi-sidebar-nav,
+.fi-sidebar,
+.fi-sidebar-group-items {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+}
+
+.fi-sidebar-nav::-webkit-scrollbar,
+.fi-sidebar::-webkit-scrollbar,
+.fi-sidebar-group-items::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+}
+
+/* ===== WHITE BACKGROUND WITH DARK MODE SUPPORT ===== */
+
+/* Light mode - White background */
+.fi-sidebar {
+    background-color: #ffffff !important;
+    border-right: 1px solid #e5e7eb;
+}
+
+/* Dark mode - Dark background */
+.dark .fi-sidebar {
+    background-color: #1f2937 !important;
+    border-right: 1px solid #374151;
+}
+
+/* Sidebar header */
+.fi-sidebar-header {
+    background-color: #ffffff;
+}
+
+.dark .fi-sidebar-header {
+    background-color: #1f2937;
+}
+
+/* Navigation items text color */
+.fi-sidebar-item-label {
+    color: #111827;
+}
+
+.dark .fi-sidebar-item-label {
+    color: #f9fafb;
+}
+.fi-layout {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh !important;
+}
+
+.fi-main-ctn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.fi-main {
+    flex: 1;
+}
+
+footer {
+  margin-top: auto;
+}

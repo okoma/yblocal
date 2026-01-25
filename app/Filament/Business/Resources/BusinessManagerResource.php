@@ -350,14 +350,4 @@ class BusinessManagerResource extends Resource
     {
         return Auth::user()->isBusinessOwner();
     }
-    
-    public static function getNavigationBadge(): ?string
-    {
-        return static::getModel()::query()
-            ->whereHas('business', function ($query) {
-                $query->where('user_id', Auth::id());
-            })
-            ->where('is_active', true)
-            ->count();
-    }
 }

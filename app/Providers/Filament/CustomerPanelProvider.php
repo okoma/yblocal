@@ -13,6 +13,7 @@ use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -28,7 +29,7 @@ class CustomerPanelProvider extends PanelProvider
     {
         return $panel
             ->id('customer')
-            ->path('customer')  // Customers use /customer
+            ->path('customer')
             ->login()
             ->brandName('YellowBooks')
             ->brandLogo(asset('images/logo.png'))
@@ -46,6 +47,8 @@ class CustomerPanelProvider extends PanelProvider
             ->widgets([
                 Widgets\AccountWidget::class,
             ])
+            ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('filament.panels.assets-customer'))
+            ->renderHook(PanelsRenderHook::FOOTER, fn () => view('filament.components.global-footer'))
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

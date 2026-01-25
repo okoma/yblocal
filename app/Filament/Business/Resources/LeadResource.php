@@ -260,8 +260,9 @@ class LeadResource extends Resource
     public static function getNavigationBadge(): ?string
     {
         $businesses = Auth::user()->businesses()->pluck('id');
-        return static::getModel()::whereIn('business_id', $businesses)
+        $count = static::getModel()::whereIn('business_id', $businesses)
             ->where('status', 'new')->count();
+        return $count > 0 ? (string) $count : null;
     }
     
     public static function getNavigationBadgeColor(): ?string

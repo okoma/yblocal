@@ -283,10 +283,11 @@ class ReviewResource extends Resource
     public static function getNavigationBadge(): ?string
     {
         $businesses = Auth::user()->businesses()->pluck('id');
-        return static::getModel()::where('reviewable_type', 'App\Models\Business')
+        $count = static::getModel()::where('reviewable_type', 'App\Models\Business')
             ->whereIn('reviewable_id', $businesses)
             ->whereNull('reply')
             ->count();
+        return $count > 0 ? (string) $count : null;
     }
     
     public static function getNavigationBadgeColor(): ?string

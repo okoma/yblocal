@@ -1,8 +1,4 @@
 <?php
-// ============================================
-// app/Providers/Filament/BusinessPanelProvider.php
-// FILAMENT V3.3 COMPATIBLE
-// ============================================
 
 namespace App\Providers\Filament;
 
@@ -12,7 +8,11 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
+use Filament\Support\Assets\Css;
+use Filament\Support\Assets\Js;
 use Filament\Support\Colors\Color;
+use Filament\Support\Facades\FilamentAsset;
+use Filament\View\PanelsRenderHook;
 use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -21,14 +21,14 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
-use App\Filament\Business\Resources\AdPackageResource;
+
 class BusinessPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
         return $panel
             ->id('business')
-            ->path('dashboard') 
+            ->path('dashboard')
             ->login()
             ->brandName('YellowBooks')
             ->brandLogo(asset('images/logo.png'))
@@ -44,14 +44,12 @@ class BusinessPanelProvider extends PanelProvider
             ->discoverPages(in: app_path('Filament/Business/Pages'), for: 'App\\Filament\\Business\\Pages')
             ->pages([
                 Pages\Dashboard::class,
-                
-                
             ])
             ->discoverWidgets(in: app_path('Filament/Business/Widgets'), for: 'App\\Filament\\Business\\Widgets')
             ->widgets([
                 //Widgets\AccountWidget::class,
             ])
-          
+            ->renderHook(PanelsRenderHook::CONTENT_END, fn () => view('filament.components.global-footer'))
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
@@ -69,5 +67,14 @@ class BusinessPanelProvider extends PanelProvider
             ->databaseNotifications()
             ->databaseNotificationsPolling('30s')
             ->spa();
+    }
+
+    public function boot(): void
+    {
+        FilamentAsset::register([
+            Css::make('business-panel-styles', asset('css/filament-panels/business.css?v=' . time())),
+            // Add JS if needed
+            Js::make('business-panel-js', asset('js/filament-panels/business.js?v=' . time())),
+        ], 'business');
     }
 }
