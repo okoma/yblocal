@@ -50,24 +50,13 @@ class EnsureActiveBusiness
             return $next($request);
         }
 
-        // Get available businesses
-        $selectable = $this->activeBusiness->getSelectableBusinesses();
-        
-        // No businesses at all - redirect to onboarding
-        if ($selectable->isEmpty()) {
-            // ✅ FIX 2: Only redirect on GET requests (not AJAX)
-            if ($request->isMethod('GET') && !$request->ajax()) {
-                return redirect()->route('filament.business.pages.select-business');
-            }
-            return $next($request);
+        // No active business set - redirect to select page
+        // User must explicitly choose a business (no auto-select to preserve SPA)
+        if ($request->isMethod('GET') && !$request->ajax()) {
+            return redirect()->route('filament.business.pages.select-business');
         }
-
-        // ✅ FIX 3: Auto-select first business instead of redirecting
-        // This prevents redirect loops during navigation
-        $firstBusiness = $selectable->first();
-        $this->activeBusiness->setActiveBusinessId($firstBusiness->id);
         
-        // Continue without redirect - preserves SPA
+        // For AJAX/POST, proceed (Livewire will handle)
         return $next($request);
     }
 }

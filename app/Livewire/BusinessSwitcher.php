@@ -28,8 +28,9 @@ class BusinessSwitcher extends Component
         }
         $active->setActiveBusinessId($id);
         
-        // Redirect to dashboard - Filament SPA handles this smoothly
-        $this->redirect(route('filament.business.pages.dashboard'));
+        // Force full page reload to dashboard with new business context
+        // After this reload, all subsequent nav will use Filament SPA
+        $this->js('window.location.href = "' . route('filament.business.pages.dashboard') . '"');
     }
 
     public function render(): View
