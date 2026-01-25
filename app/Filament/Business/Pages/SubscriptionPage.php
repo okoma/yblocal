@@ -59,6 +59,7 @@ class SubscriptionPage extends Page implements HasForms, HasActions
     public function getAllPlans()
     {
         return SubscriptionPlan::where('is_active', true)
+            ->where('slug', '!=', 'free')
             ->orderBy('order')
             ->get();
     }
@@ -67,8 +68,9 @@ class SubscriptionPage extends Page implements HasForms, HasActions
      * Button state per plan: label + disabled.
      * - No active sub: Subscribe Now.
      * - Current plan: Current Plan, disabled.
-     * - Upgrade: only when 7 days to expire OR current is free/basic.
-     * - Downgrade: always allowed when target < current.
+     * - Upgrade: always allowed; modal shows no-refund warning + agree.
+     * - Downgrade: disabled unless ≤7 days to expiry; then allowed.
+     * - ≤7 days: all (upgrade + downgrade) allowed.
      */
     public function getPlanButtonState(SubscriptionPlan $plan): array
     {
@@ -83,12 +85,26 @@ class SubscriptionPage extends Page implements HasForms, HasActions
         }
 
         $isUpgrade = $plan->isHigherTierThan($currentPlan);
+        $withinSevenDays = $current->daysRemaining() <= 7;
+
         if ($isUpgrade) {
-            $allow = $current->daysRemaining() <= 7 || $currentPlan->isFreeOrBasic();
-            return ['label' => 'Upgrade', 'disabled' => !$allow];
+            return ['label' => 'Upgrade', 'disabled' => false];
         }
 
-        return ['label' => 'Downgrade', 'disabled' => false];
+        // Downgrade: disabled unless ≤7 days to expiry
+        return [
+            'label' => 'Downgrade',
+            'disabled' => !$withinSevenDays,
+        ];
+    }
+
+    public function isUpgradeForPlan(SubscriptionPlan $plan): bool
+    {
+        $current = $this->getCurrentSubscription();
+        if (!$current) {
+            return false;
+        }
+        return $plan->isHigherTierThan($current->plan);
     }
     
     public function openSubscriptionModal(int $planId): void
@@ -159,6 +175,18 @@ class SubscriptionPage extends Page implements HasForms, HasActions
                         ->default($plan->id),
                     Forms\Components\Hidden::make('business_id')
                         ->default(fn () => app(ActiveBusiness::class)->getActiveBusinessId()),
+                    
+                    // Upgrade: no-refund warning + agree (only when upgrading)
+                    Forms\Components\Section::make('Upgrade notice')
+                        ->description('You will not receive a refund if you upgrade before your current plan expires.')
+                        ->schema([
+                            Forms\Components\Checkbox::make('upgrade_no_refund_ack')
+                                ->label('I understand I will not receive a refund if I upgrade before my current plan\'s expiry date.')
+                                ->required(fn () => $this->isUpgradeForPlan($plan))
+                                ->dehydrated(false),
+                        ])
+                        ->visible(fn () => $this->isUpgradeForPlan($plan))
+                        ->columnSpanFull(),
                     
                     // Billing Period
                     Forms\Components\Section::make('Billing Period')
@@ -428,13 +456,16 @@ class SubscriptionPage extends Page implements HasForms, HasActions
             if ($existingSubscription) {
                 $existingPlan = $existingSubscription->plan;
                 if ($existingPlan->id === $plan->id) {
-                    return null; // Same plan – should be disabled in UI
+                    return null; // Same plan – disabled in UI
                 }
                 $isUpgrade = $plan->isHigherTierThan($existingPlan);
+                $withinSevenDays = $existingSubscription->daysRemaining() <= 7;
                 if ($isUpgrade) {
-                    $allow = $existingSubscription->daysRemaining() <= 7 || $existingPlan->isFreeOrBasic();
-                    if (!$allow) {
-                        return null; // Upgrade not allowed – should be disabled in UI
+                    // Upgrade: always allowed (modal shows no-refund warning + agree)
+                } else {
+                    // Downgrade: only when ≤7 days to expiry
+                    if (!$withinSevenDays) {
+                        return null;
                     }
                 }
                 $existingSubscription->cancel('Plan change');
