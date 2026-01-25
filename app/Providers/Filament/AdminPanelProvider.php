@@ -61,7 +61,7 @@ class AdminPanelProvider extends PanelProvider
                 Authenticate::class,
             ])
             ->databaseNotifications()
-            ->databaseNotificationsPolling('30s')
+            // ->databaseNotificationsPolling('30s') // Temporarily disabled to test SPA
             ->spa();
     }
 }
