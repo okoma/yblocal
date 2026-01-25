@@ -28,7 +28,10 @@ class BusinessSwitcher extends Component
             return;
         }
         $active->setActiveBusinessId($id);
-        $this->dispatch('business-switched');
+        
+        // Redirect to dashboard to reload with new business context
+        // This avoids multiple $refresh calls conflicting and causing full reload
+        $this->redirect(route('filament.business.pages.dashboard'));
     }
 
     public function render(): View
