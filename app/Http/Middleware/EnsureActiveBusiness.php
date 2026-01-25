@@ -15,20 +15,27 @@ class EnsureActiveBusiness
 
     public function handle(Request $request, Closure $next): Response
     {
+        // Skip for unauthenticated users
         if (!auth()->check()) {
             return $next($request);
         }
 
+        // ✅ FIX 1: Don't interfere with Livewire component updates
+        if ($request->header('X-Livewire')) {
+            return $next($request);
+        }
+
+        // Allow business selector page
         if ($request->routeIs('filament.business.pages.select-business')) {
             return $next($request);
         }
 
-        // Allow create so "Add New Business" from select-business works
+        // Allow business creation
         if ($request->routeIs('filament.business.resources.businesses.create')) {
             return $next($request);
         }
 
-        // Allow profile settings pages when user has no businesses
+        // Allow profile pages
         if ($request->routeIs([
             'filament.business.pages.profile-settings',
             'filament.business.pages.account-preferences',
@@ -37,16 +44,30 @@ class EnsureActiveBusiness
         }
 
         $id = $this->activeBusiness->getActiveBusinessId();
+        
+        // If active business is set and valid, proceed
         if ($id !== null && $this->activeBusiness->isValid($id)) {
             return $next($request);
         }
 
+        // Get available businesses
         $selectable = $this->activeBusiness->getSelectableBusinesses();
-        // If no businesses, force redirect to Get Started (select-business page)
+        
+        // No businesses at all - redirect to onboarding
         if ($selectable->isEmpty()) {
-            return redirect()->route('filament.business.pages.select-business');
+            // ✅ FIX 2: Only redirect on GET requests (not AJAX)
+            if ($request->isMethod('GET') && !$request->ajax()) {
+                return redirect()->route('filament.business.pages.select-business');
+            }
+            return $next($request);
         }
 
-        return redirect()->route('filament.business.pages.select-business');
+        // ✅ FIX 3: Auto-select first business instead of redirecting
+        // This prevents redirect loops during navigation
+        $firstBusiness = $selectable->first();
+        $this->activeBusiness->setActiveBusinessId($firstBusiness->id);
+        
+        // Continue without redirect - preserves SPA
+        return $next($request);
     }
 }

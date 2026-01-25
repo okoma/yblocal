@@ -8,7 +8,6 @@ use Livewire\Component;
 
 class BusinessSwitcher extends Component
 {
-    protected $listeners = ['business-switched' => '$refresh'];
     public function getActiveBusinessProperty(): ?object
     {
         $active = app(ActiveBusiness::class);
@@ -29,8 +28,7 @@ class BusinessSwitcher extends Component
         }
         $active->setActiveBusinessId($id);
         
-        // Redirect to dashboard to reload with new business context
-        // This avoids multiple $refresh calls conflicting and causing full reload
+        // Redirect to dashboard - Filament SPA handles this smoothly
         $this->redirect(route('filament.business.pages.dashboard'));
     }
 
