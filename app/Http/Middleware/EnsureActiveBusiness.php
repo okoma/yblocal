@@ -50,21 +50,24 @@ class EnsureActiveBusiness
             return $next($request);
         }
 
-        // No active business set - auto-select first business
+        // No active business set - auto-select first business (only once per session)
         $selectable = $this->activeBusiness->getSelectableBusinesses();
         
         // If no businesses at all, redirect to get started page
         if ($selectable->isEmpty()) {
-            if ($request->isMethod('GET') && !$request->ajax()) {
+            if ($request->isMethod('GET') && !$request->ajax() && !$request->header('X-Livewire')) {
                 return redirect()->route('filament.business.pages.select-business');
             }
             return $next($request);
         }
         
-        // Auto-select first business (happens once on first login)
-        // After this, session persists and all nav uses SPA
-        $firstBusiness = $selectable->first();
-        $this->activeBusiness->setActiveBusinessId($firstBusiness->id);
+        // Auto-select first business (only on first request, not on every SPA nav)
+        // Check if we've already tried to set business this session
+        if (!session()->has('_business_auto_selected')) {
+            $firstBusiness = $selectable->first();
+            $this->activeBusiness->setActiveBusinessId($firstBusiness->id);
+            session()->put('_business_auto_selected', true);
+        }
         
         // Continue to requested page - no redirect needed
         return $next($request);
