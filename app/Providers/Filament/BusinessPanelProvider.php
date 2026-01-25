@@ -50,7 +50,7 @@ class BusinessPanelProvider extends PanelProvider
             ->widgets([
                 //Widgets\AccountWidget::class,
             ])
-            ->renderHook(PanelsRenderHook::SIDEBAR_NAV_START, fn () => view('filament.components.business-switcher-sidebar'))
+            // ->renderHook(PanelsRenderHook::SIDEBAR_NAV_START, fn () => view('filament.components.business-switcher-sidebar'))
             ->renderHook(PanelsRenderHook::CONTENT_END, fn () => view('filament.components.global-footer'))
             ->middleware([
                 EncryptCookies::class,
