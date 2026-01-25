@@ -4,7 +4,7 @@ namespace App\Filament\Business\Resources;
 
 use App\Filament\Business\Resources\ManagerInvitationResource\Pages;
 use App\Models\ManagerInvitation;
-use App\Models\Business;
+use App\Services\ActiveBusiness;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -35,14 +35,13 @@ class ManagerInvitationResource extends Resource
                     ->schema([
                         Forms\Components\Select::make('business_id')
                             ->label('Business')
-                            ->relationship(
-                                'business',
-                                'business_name',
-                                fn($query) => $query->where('user_id', Auth::id())
-                            )
+                            ->options(function () {
+                                $active = app(ActiveBusiness::class);
+                                $b = $active->getActiveBusiness();
+                                return $b ? [$b->id => $b->business_name] : [];
+                            })
+                            ->default(fn () => app(ActiveBusiness::class)->getActiveBusinessId())
                             ->required()
-                            ->searchable()
-                            ->preload()
                             ->disabled(fn($context) => $context === 'edit'),
                         
                         Forms\Components\TextInput::make('email')
@@ -102,13 +101,14 @@ class ManagerInvitationResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table
-            ->query(
-                ManagerInvitation::query()
-                    ->whereHas('business', function ($query) {
-                        $query->where('user_id', Auth::id());
-                    })
-            )
+        $id = app(ActiveBusiness::class)->getActiveBusinessId();
+        $query = ManagerInvitation::query();
+        if ($id === null) {
+            $query->whereIn('business_id', []);
+        } else {
+            $query->where('business_id', $id);
+        }
+        return $table->query($query)
             ->columns([
                 Tables\Columns\TextColumn::make('business.business_name')
                     ->label('Business')
@@ -196,12 +196,6 @@ class ManagerInvitationResource extends Resource
                         'declined' => 'Declined',
                         'expired' => 'Expired',
                     ]),
-                
-                Tables\Filters\SelectFilter::make('business_id')
-                    ->label('Business')
-                    ->relationship('business', 'business_name', fn($query) => $query->where('user_id', Auth::id()))
-                    ->searchable()
-                    ->preload(),
             ])
             ->actions([
                 Tables\Actions\Action::make('resend')

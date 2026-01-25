@@ -13,6 +13,8 @@ class Dashboard extends BaseDashboard
     protected static ?string $navigationIcon = 'heroicon-o-home';
     
     protected static string $view = 'filament.business.pages.dashboard';
+
+    protected $listeners = ['business-switched' => '$refresh'];
     
     public function getWidgets(): array
     {

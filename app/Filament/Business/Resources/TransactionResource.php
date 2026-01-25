@@ -3,7 +3,11 @@
 namespace App\Filament\Business\Resources;
 
 use App\Filament\Business\Resources\TransactionResource\Pages;
+use App\Models\AdCampaign;
+use App\Models\Subscription;
 use App\Models\Transaction;
+use App\Services\ActiveBusiness;
+use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -11,7 +15,6 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
-use Filament\Facades\Filament;
 
 class TransactionResource extends Resource
 {
@@ -27,10 +30,18 @@ class TransactionResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
-            ->with(['gateway', 'transactionable']) // Eager load relationships to prevent N+1 queries
+        $id = app(ActiveBusiness::class)->getActiveBusinessId();
+        $query = parent::getEloquentQuery()
+            ->with(['gateway', 'transactionable'])
             ->where('user_id', Filament::auth()->id())
             ->latest();
+        if ($id === null) {
+            return $query->whereRaw('1 = 0');
+        }
+        return $query->where(function (Builder $q) use ($id) {
+            $q->whereHasMorph('transactionable', [Subscription::class], fn (Builder $m) => $m->where('business_id', $id))
+                ->orWhereHasMorph('transactionable', [AdCampaign::class], fn (Builder $m) => $m->where('business_id', $id));
+        });
     }
 
     public static function form(Form $form): Form
@@ -212,10 +223,17 @@ class TransactionResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
+        $id = app(ActiveBusiness::class)->getActiveBusinessId();
+        if ($id === null) {
+            return null;
+        }
         $pending = static::getModel()::where('user_id', Filament::auth()->id())
             ->where('status', 'pending')
+            ->where(function (Builder $q) use ($id) {
+                $q->whereHasMorph('transactionable', [Subscription::class], fn (Builder $m) => $m->where('business_id', $id))
+                    ->orWhereHasMorph('transactionable', [AdCampaign::class], fn (Builder $m) => $m->where('business_id', $id));
+            })
             ->count();
-        
         return $pending > 0 ? (string) $pending : null;
     }
 

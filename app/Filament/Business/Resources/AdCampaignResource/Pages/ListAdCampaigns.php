@@ -1,21 +1,30 @@
 <?php
-// ============================================
-// app/Filament/Business/Resources/AdCampaignResource/Pages/ListAdCampaigns.php
-// ============================================
 
 namespace App\Filament\Business\Resources\AdCampaignResource\Pages;
 
 use App\Filament\Business\Resources\AdCampaignResource;
 use App\Filament\Business\Resources\AdPackageResource;
-use App\Filament\Business\Pages\Wallet; 
+use App\Services\ActiveBusiness;
 use Filament\Actions;
-use Filament\Resources\Pages\ListRecords;
 use Filament\Resources\Components\Tab;
+use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder;
 
 class ListAdCampaigns extends ListRecords
 {
     protected static string $resource = AdCampaignResource::class;
+
+    protected $listeners = ['business-switched' => '$refresh'];
+
+    protected function baseQuery(): Builder
+    {
+        $id = app(ActiveBusiness::class)->getActiveBusinessId();
+        $q = $this->getModel()::where('purchased_by', auth()->id());
+        if ($id === null) {
+            return $q->whereIn('business_id', []);
+        }
+        return $q->where('business_id', $id);
+    }
 
     protected function getHeaderActions(): array
     {
@@ -43,91 +52,39 @@ class ListAdCampaigns extends ListRecords
     {
         return [
             'all' => Tab::make('All')
-                ->badge(fn () => $this->getModel()::where('purchased_by', auth()->id())->count()),
-
+                ->badge(fn () => $this->baseQuery()->count()),
             'active' => Tab::make('Active')
-                ->badge(fn () => $this->getModel()::where('purchased_by', auth()->id())
-                    ->where('is_active', true)
-                    ->where('starts_at', '<=', now())
-                    ->where('ends_at', '>=', now())
-                    ->count())
+                ->badge(fn () => $this->baseQuery()->where('is_active', true)->where('starts_at', '<=', now())->where('ends_at', '>=', now())->count())
                 ->badgeColor('success')
-                ->modifyQueryUsing(fn (Builder $query) => 
-                    $query->where('is_active', true)
-                          ->where('starts_at', '<=', now())
-                          ->where('ends_at', '>=', now())
-                ),
-
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('is_active', true)->where('starts_at', '<=', now())->where('ends_at', '>=', now())),
             'scheduled' => Tab::make('Scheduled')
-                ->badge(fn () => $this->getModel()::where('purchased_by', auth()->id())
-                    ->where('starts_at', '>', now())
-                    ->count())
+                ->badge(fn () => $this->baseQuery()->where('starts_at', '>', now())->count())
                 ->badgeColor('info')
-                ->modifyQueryUsing(fn (Builder $query) => 
-                    $query->where('starts_at', '>', now())
-                ),
-
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('starts_at', '>', now())),
             'expiring_soon' => Tab::make('Expiring Soon')
-                ->badge(fn () => $this->getModel()::where('purchased_by', auth()->id())
-                    ->where('is_active', true)
-                    ->whereBetween('ends_at', [now(), now()->addDays(3)])
-                    ->count())
+                ->badge(fn () => $this->baseQuery()->where('is_active', true)->whereBetween('ends_at', [now(), now()->addDays(3)])->count())
                 ->badgeColor('warning')
-                ->modifyQueryUsing(fn (Builder $query) => 
-                    $query->where('is_active', true)
-                          ->whereBetween('ends_at', [now(), now()->addDays(3)])
-                ),
-
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('is_active', true)->whereBetween('ends_at', [now(), now()->addDays(3)])),
             'paused' => Tab::make('Paused')
-                ->badge(fn () => $this->getModel()::where('purchased_by', auth()->id())
-                    ->where('is_active', false)
-                    ->where('ends_at', '>=', now())
-                    ->count())
+                ->badge(fn () => $this->baseQuery()->where('is_active', false)->where('ends_at', '>=', now())->count())
                 ->badgeColor('gray')
-                ->modifyQueryUsing(fn (Builder $query) => 
-                    $query->where('is_active', false)
-                          ->where('ends_at', '>=', now())
-                ),
-
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('is_active', false)->where('ends_at', '>=', now())),
             'expired' => Tab::make('Expired')
-                ->badge(fn () => $this->getModel()::where('purchased_by', auth()->id())
-                    ->where('ends_at', '<', now())
-                    ->count())
+                ->badge(fn () => $this->baseQuery()->where('ends_at', '<', now())->count())
                 ->badgeColor('danger')
-                ->modifyQueryUsing(fn (Builder $query) => 
-                    $query->where('ends_at', '<', now())
-                ),
-
-            // Campaign Types
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('ends_at', '<', now())),
             'bump_up' => Tab::make('Bump Up')
-                ->badge(fn () => $this->getModel()::where('purchased_by', auth()->id())
-                    ->where('type', 'bump_up')
-                    ->where('is_active', true)
-                    ->count())
+                ->badge(fn () => $this->baseQuery()->where('type', 'bump_up')->where('is_active', true)->count())
                 ->badgeColor('info')
-                ->modifyQueryUsing(fn (Builder $query) => 
-                    $query->where('type', 'bump_up')
-                ),
-
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('type', 'bump_up')),
             'sponsored' => Tab::make('Sponsored')
-                ->badge(fn () => $this->getModel()::where('purchased_by', auth()->id())
-                    ->where('type', 'sponsored')
-                    ->where('is_active', true)
-                    ->count())
+                ->badge(fn () => $this->baseQuery()->where('type', 'sponsored')->where('is_active', true)->count())
                 ->badgeColor('warning')
-                ->modifyQueryUsing(fn (Builder $query) => 
-                    $query->where('type', 'sponsored')
-                ),
-
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('type', 'sponsored')),
             'featured' => Tab::make('Featured')
-                ->badge(fn () => $this->getModel()::where('purchased_by', auth()->id())
-                    ->where('type', 'featured')
-                    ->where('is_active', true)
-                    ->count())
+                ->badge(fn () => $this->baseQuery()->where('type', 'featured')->where('is_active', true)->count())
                 ->badgeColor('success')
-                ->modifyQueryUsing(fn (Builder $query) => 
-                    $query->where('type', 'featured')
-                ),
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('type', 'featured')),
         ];
     }
 

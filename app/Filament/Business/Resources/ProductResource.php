@@ -8,6 +8,7 @@ namespace App\Filament\Business\Resources;
 
 use App\Filament\Business\Resources\ProductResource\Pages;
 use App\Models\Product;
+use App\Services\ActiveBusiness;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -38,23 +39,16 @@ class ProductResource extends Resource
                     ->schema([
                         Forms\Components\Select::make('business_id')
                             ->label('Business')
-                            ->relationship(
-                                'business',
-                                'business_name',
-                                function($query) {
-                                    $user = Auth::user();
-                                    return $query->where(function ($q) use ($user) {
-                                        $q->where('user_id', $user->id)
-                                          ->orWhereHas('managers', function ($query) use ($user) {
-                                              $query->where('user_id', $user->id)
-                                                    ->where('is_active', true)
-                                                    ->whereJsonContains('permissions->can_manage_products', true);
-                                          });
-                                    });
+                            ->options(function () {
+                                $active = app(ActiveBusiness::class);
+                                $id = $active->getActiveBusinessId();
+                                if ($id === null) {
+                                    return [];
                                 }
-                            )
-                            ->searchable()
-                            ->preload()
+                                $b = $active->getActiveBusiness();
+                                return $b ? [$b->id => $b->business_name] : [];
+                            })
+                            ->default(fn () => app(ActiveBusiness::class)->getActiveBusinessId())
                             ->required()
                             ->disabled(fn($context) => $context === 'edit'),
                     ])
@@ -218,12 +212,6 @@ class ProductResource extends Resource
                     ->toggleable(),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('business_id')
-                    ->label('Business')
-                    ->relationship('business', 'business_name')
-                    ->searchable()
-                    ->preload(),
-                
                 Tables\Filters\SelectFilter::make('header_title')
                     ->label('Category'),
                 
@@ -270,28 +258,12 @@ class ProductResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        $user = Auth::user();
-        $businessIds = static::getAccessibleBusinessIds($user);
-        
-        return parent::getEloquentQuery()
-            ->whereIn('business_id', $businessIds);
-    }
-    
-    /**
-     * Get business IDs that the user can manage products for
-     */
-    protected static function getAccessibleBusinessIds($user): array
-    {
-        // Businesses owned by user
-        $ownedBusinessIds = $user->businesses()->pluck('id')->toArray();
-        
-        // Businesses managed by user with can_manage_products permission
-        $managedBusinessIds = $user->activeBusinessManagers()
-            ->whereJsonContains('permissions->can_manage_products', true)
-            ->pluck('business_id')
-            ->toArray();
-        
-        return array_unique(array_merge($ownedBusinessIds, $managedBusinessIds));
+        $id = app(ActiveBusiness::class)->getActiveBusinessId();
+        $query = parent::getEloquentQuery();
+        if ($id === null) {
+            return $query->whereIn('business_id', []);
+        }
+        return $query->where('business_id', $id);
     }
     
     public static function canCreate(): bool

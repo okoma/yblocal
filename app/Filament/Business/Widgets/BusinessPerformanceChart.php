@@ -1,52 +1,45 @@
 <?php
-// ============================================
-// app/Filament/Business/Widgets/BusinessPerformanceChart.php
-// Chart showing views and leads over time
-// ============================================
 
 namespace App\Filament\Business\Widgets;
 
 use App\Models\BusinessView;
 use App\Models\Lead;
+use App\Services\ActiveBusiness;
 use Filament\Widgets\ChartWidget;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class BusinessPerformanceChart extends ChartWidget
 {
     protected static ?string $heading = 'Performance Overview (Last 30 Days)';
-    
+
     protected static ?int $sort = 3;
-    
+
     protected int | string | array $columnSpan = 'full';
+
+    protected $listeners = ['business-switched' => '$refresh'];
 
     protected function getData(): array
     {
-        $user = Auth::user();
-        
-        // Get all business IDs
-        $businesses = $user->businesses()->get();
-        $businessIds = $businesses->pluck('id');
-        
-        // Get last 30 days
+        $id = app(ActiveBusiness::class)->getActiveBusinessId();
         $dates = collect();
         for ($i = 29; $i >= 0; $i--) {
             $dates->push(now()->subDays($i)->format('Y-m-d'));
         }
-        
-        // Get views by date
-        $viewsByDate = BusinessView::whereIn('business_id', $businessIds)
-            ->where('view_date', '>=', now()->subDays(30))
-            ->select('view_date', DB::raw('count(*) as total'))
-            ->groupBy('view_date')
-            ->pluck('total', 'view_date');
-        
-        // Get leads by date
-        $leadsByDate = Lead::whereIn('business_id', $businessIds)
-            ->where('created_at', '>=', now()->subDays(30))
-            ->select(DB::raw('DATE(created_at) as date'), DB::raw('count(*) as total'))
-            ->groupBy('date')
-            ->pluck('total', 'date');
+
+        $viewsByDate = collect();
+        $leadsByDate = collect();
+        if ($id !== null) {
+            $viewsByDate = BusinessView::where('business_id', $id)
+                ->where('view_date', '>=', now()->subDays(30))
+                ->select('view_date', DB::raw('count(*) as total'))
+                ->groupBy('view_date')
+                ->pluck('total', 'view_date');
+            $leadsByDate = Lead::where('business_id', $id)
+                ->where('created_at', '>=', now()->subDays(30))
+                ->select(DB::raw('DATE(created_at) as date'), DB::raw('count(*) as total'))
+                ->groupBy('date')
+                ->pluck('total', 'date');
+        }
         
         // Map to dates
         $viewsData = $dates->map(fn($date) => $viewsByDate->get($date, 0))->toArray();

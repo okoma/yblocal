@@ -10,6 +10,8 @@ class ListBusinessManagers extends ListRecords
 {
     protected static string $resource = BusinessManagerResource::class;
 
+    protected $listeners = ['business-switched' => '$refresh'];
+
     protected function getHeaderActions(): array
     {
         return [

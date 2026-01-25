@@ -8,6 +8,7 @@ namespace App\Filament\Business\Resources;
 
 use App\Filament\Business\Resources\AdCampaignResource\Pages;
 use App\Models\AdCampaign;
+use App\Services\ActiveBusiness;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -30,9 +31,14 @@ class AdCampaignResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
+        $id = app(ActiveBusiness::class)->getActiveBusinessId();
+        $query = parent::getEloquentQuery()
             ->where('purchased_by', auth()->id())
             ->with(['business', 'package']);
+        if ($id === null) {
+            return $query->whereIn('business_id', []);
+        }
+        return $query->where('business_id', $id);
     }
 
     public static function form(Form $form): Form
@@ -237,10 +243,14 @@ class AdCampaignResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
+        $id = app(ActiveBusiness::class)->getActiveBusinessId();
+        if ($id === null) {
+            return null;
+        }
         $active = static::getModel()::where('purchased_by', auth()->id())
+            ->where('business_id', $id)
             ->where('is_active', true)
             ->count();
-
         return $active > 0 ? (string) $active : null;
     }
 

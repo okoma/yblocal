@@ -10,6 +10,8 @@ class ListManagerInvitations extends ListRecords
 {
     protected static string $resource = ManagerInvitationResource::class;
 
+    protected $listeners = ['business-switched' => '$refresh'];
+
     protected function getHeaderActions(): array
     {
         return [

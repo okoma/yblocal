@@ -16,6 +16,8 @@ class ListLeads extends ListRecords
 {
     protected static string $resource = LeadResource::class;
 
+    protected $listeners = ['business-switched' => '$refresh'];
+
     protected function getHeaderActions(): array
     {
         return [

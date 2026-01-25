@@ -1,62 +1,44 @@
 <?php
-// ============================================
-// ANALYTICS OVERVIEW PAGE - UPDATED VERSION
-// app/Filament/Business/Pages/AnalyticsPage.php
-// ============================================
 
 namespace App\Filament\Business\Pages;
 
-use Filament\Pages\Page;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
+use App\Services\ActiveBusiness;
 use App\Models\BusinessView;
 use App\Models\BusinessInteraction;
 use App\Models\Lead;
+use Filament\Pages\Page;
+use Illuminate\Support\Facades\DB;
 
 class AnalyticsPage extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-chart-bar';
-    
+
     protected static ?string $navigationLabel = 'Analytics';
-    
+
     protected static ?string $navigationGroup = null;
-    
+
     protected static ?int $navigationSort = 6;
 
     protected static string $view = 'filament.business.pages.analytics-page';
-    
-    public $dateRange = '30'; // Default 30 days
-    public $selectedBusinessId = 'all'; // Default show all businesses
-    
+
+    public $dateRange = '30';
+
+    protected $listeners = ['business-switched' => '$refresh'];
+
     public function getTitle(): string
     {
         return 'Analytics & Reports';
     }
-   public function getHeading(): string
-{
-    return ''; 
-}
 
-    /**
-     * Get all businesses for the dropdown
-     */
-    public function getBusinessesProperty()
+    public function getHeading(): string
     {
-        return Auth::user()->businesses;
+        return '';
     }
-    
-    /**
-     * Get filtered business IDs based on selection
-     */
-    protected function getFilteredBusinesses()
+
+    protected function getFilteredBusinessIds(): \Illuminate\Support\Collection
     {
-        if ($this->selectedBusinessId === 'all') {
-            // Show all businesses
-            return Auth::user()->businesses()->pluck('id');
-        }
-        
-        // Show specific business
-        return collect([(int)$this->selectedBusinessId]);
+        $id = app(ActiveBusiness::class)->getActiveBusinessId();
+        return $id === null ? collect() : collect([$id]);
     }
     
     /**
@@ -91,7 +73,7 @@ class AnalyticsPage extends Page
      */
     public function getViewsData()
     {
-        $businessIds = $this->getFilteredBusinesses();
+        $businessIds = $this->getFilteredBusinessIds();
         $dates = $this->getDateRanges();
         
         // Current Period Total Views
@@ -134,7 +116,7 @@ class AnalyticsPage extends Page
      */
     public function getInteractionsData()
     {
-        $businessIds = $this->getFilteredBusinesses();
+        $businessIds = $this->getFilteredBusinessIds();
         $dates = $this->getDateRanges();
         
         // Current Period Interactions
@@ -169,7 +151,7 @@ class AnalyticsPage extends Page
      */
     public function getLeadsData()
     {
-        $businessIds = $this->getFilteredBusinesses();
+        $businessIds = $this->getFilteredBusinessIds();
         $dates = $this->getDateRanges();
         
         // Current Period Leads
@@ -225,29 +207,8 @@ class AnalyticsPage extends Page
         ];
     }
     
-    /**
-     * Refresh data when date range changes
-     */
-    public function updatedDateRange()
+    public function updatedDateRange(): void
     {
-        // Data will auto-refresh due to Livewire reactivity
-    }
-    
-    /**
-     * Refresh data when selected business changes
-     */
-    public function updatedSelectedBusinessId()
-    {
-        // Reset branch selection when business changes
-        $this->selectedBranchId = 'all';
-        // Data will auto-refresh due to Livewire reactivity
-    }
-    
-    /**
-     * Refresh data when selected branch changes
-     */
-    public function updatedSelectedBranchId()
-    {
-        // Data will auto-refresh due to Livewire reactivity
+        // Data auto-refreshes via Livewire reactivity
     }
 }

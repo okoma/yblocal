@@ -9,6 +9,7 @@ namespace App\Filament\Business\Resources;
 use App\Filament\Business\Resources\SubscriptionResource\Pages;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
+use App\Services\ActiveBusiness;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -32,9 +33,12 @@ class SubscriptionResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
-            ->where('user_id', auth()->id())
-            ->with(['plan', 'business']);
+        $id = app(ActiveBusiness::class)->getActiveBusinessId();
+        $query = parent::getEloquentQuery()->where('user_id', auth()->id())->with(['plan', 'business']);
+        if ($id === null) {
+            return $query->whereIn('business_id', []);
+        }
+        return $query->where('business_id', $id);
     }
 
     public static function form(Form $form): Form
@@ -225,11 +229,15 @@ class SubscriptionResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
+        $id = app(ActiveBusiness::class)->getActiveBusinessId();
+        if ($id === null) {
+            return null;
+        }
         $expiring = static::getModel()::where('user_id', auth()->id())
+            ->where('business_id', $id)
             ->where('status', 'active')
             ->where('ends_at', '<=', now()->addDays(7))
             ->count();
-
         return $expiring > 0 ? (string) $expiring : null;
     }
 

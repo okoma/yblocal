@@ -108,17 +108,6 @@
                 <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Track your business performance and engagement metrics</p>
             </div>
             <div class="flex items-center gap-3">
-                <!-- Business Selector -->
-                <x-filament::input.wrapper>
-                    <x-filament::input.select wire:model.live="selectedBusinessId">
-                        <option value="all">All Businesses</option>
-                        @foreach($this->businesses as $business)
-                            <option value="{{ $business->id }}">{{ $business->business_name }}</option>
-                        @endforeach
-                    </x-filament::input.select>
-                </x-filament::input.wrapper>
-                
-                
                 <!-- Date Range Selector -->
                 <x-filament::input.wrapper>
                     <x-filament::input.select wire:model.live="dateRange">

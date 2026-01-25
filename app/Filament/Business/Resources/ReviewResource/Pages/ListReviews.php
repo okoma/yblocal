@@ -7,54 +7,52 @@
 namespace App\Filament\Business\Resources\ReviewResource\Pages;
 
 use App\Filament\Business\Resources\ReviewResource;
+use App\Services\ActiveBusiness;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Resources\Components\Tab;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Auth;
 
 class ListReviews extends ListRecords
 {
     protected static string $resource = ReviewResource::class;
 
+    protected $listeners = ['business-switched' => '$refresh'];
+
     public function getTabs(): array
     {
-        $query = function() {
-            $businesses = Auth::user()->businesses()->pluck('id');
-            return $this->getModel()::where('reviewable_type', 'App\Models\Business')
-                ->whereIn('reviewable_id', $businesses);
+        $baseQuery = function () {
+            $id = app(ActiveBusiness::class)->getActiveBusinessId();
+            $q = $this->getModel()::where('reviewable_type', 'App\Models\Business');
+            if ($id === null) {
+                return $q->whereIn('reviewable_id', []);
+            }
+            return $q->where('reviewable_id', $id);
         };
-        
         return [
             'all' => Tab::make('All Reviews')
-                ->badge(fn () => $query()->count()),
-            
+                ->badge(fn () => $baseQuery()->count()),
             'unreplied' => Tab::make('Unreplied')
-                ->badge(fn () => $query()->whereNull('reply')->count())
+                ->badge(fn () => $baseQuery()->whereNull('reply')->count())
                 ->badgeColor('danger')
                 ->modifyQueryUsing(fn (Builder $query) => $query->whereNull('reply')),
-            
             '5_stars' => Tab::make('5 Stars')
-                ->badge(fn () => $query()->where('rating', 5)->count())
+                ->badge(fn () => $baseQuery()->where('rating', 5)->count())
                 ->badgeColor('success')
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('rating', 5)),
-            
             '4_stars' => Tab::make('4 Stars')
-                ->badge(fn () => $query()->where('rating', 4)->count())
+                ->badge(fn () => $baseQuery()->where('rating', 4)->count())
                 ->badgeColor('info')
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('rating', 4)),
-            
             '3_stars' => Tab::make('3 Stars')
-                ->badge(fn () => $query()->where('rating', 3)->count())
+                ->badge(fn () => $baseQuery()->where('rating', 3)->count())
                 ->badgeColor('warning')
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('rating', 3)),
-            
             'low_ratings' => Tab::make('1-2 Stars')
-                ->badge(fn () => $query()->whereIn('rating', [1, 2])->count())
+                ->badge(fn () => $baseQuery()->whereIn('rating', [1, 2])->count())
                 ->badgeColor('danger')
                 ->modifyQueryUsing(fn (Builder $query) => $query->whereIn('rating', [1, 2])),
-            
             'verified' => Tab::make('Verified Purchase')
-                ->badge(fn () => $query()->where('is_verified_purchase', true)->count())
+                ->badge(fn () => $baseQuery()->where('is_verified_purchase', true)->count())
                 ->badgeColor('success')
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('is_verified_purchase', true)),
         ];

@@ -10,6 +10,7 @@ use App\Models\PaymentGateway;
 use App\Models\Coupon;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
+use App\Services\ActiveBusiness;
 use App\Services\PaymentService;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -36,6 +37,8 @@ class SubscriptionPage extends Page implements HasForms, HasActions
     protected static ?int $navigationSort = 7;
 
     protected static string $view = 'filament.business.pages.subscription-page';
+
+    protected $listeners = ['business-switched' => '$refresh'];
     
     public function getTitle(): string
     {
@@ -44,12 +47,10 @@ class SubscriptionPage extends Page implements HasForms, HasActions
     
     public function getCurrentSubscription()
     {
-        $business = Auth::user()->businesses()->first();
-        
+        $business = app(ActiveBusiness::class)->getActiveBusiness();
         if (!$business) {
             return null;
         }
-        
         return $business->subscriptions()
             ->with('plan')
             ->where('status', 'active')
@@ -216,14 +217,19 @@ class SubscriptionPage extends Page implements HasForms, HasActions
                         ])
                         ->columnSpanFull(),
                     
-                    // Business Selection
+                    // Business Selection (scoped to active business)
                     Forms\Components\Section::make('Select Business')
                         ->description('Choose which business this subscription is for')
                         ->icon('heroicon-o-building-office')
                         ->schema([
                             Forms\Components\Select::make('business_id')
                                 ->label('Business')
-                                ->options($user->businesses()->pluck('business_name', 'id'))
+                                ->options(function () {
+                                    $active = app(ActiveBusiness::class);
+                                    $b = $active->getActiveBusiness();
+                                    return $b ? [$b->id => $b->business_name] : [];
+                                })
+                                ->default(fn () => app(ActiveBusiness::class)->getActiveBusinessId())
                                 ->required()
                                 ->searchable()
                                 ->native(false)
