@@ -13,6 +13,7 @@ use App\Models\BusinessType;
 use App\Models\Category;
 use App\Models\PaymentMethod;
 use App\Models\Amenity;
+use App\Services\ActiveBusiness;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -27,7 +28,7 @@ class BusinessResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-building-storefront';
     
-    protected static ?string $navigationLabel = 'My Businesses';
+    protected static ?string $navigationLabel = 'My Business';
     
     protected static ?string $navigationGroup = null;
     
@@ -132,5 +133,19 @@ class BusinessResource extends Resource
             'view' => Pages\ViewBusiness::route('/{record}'),
             'edit' => Pages\EditBusiness::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Nav links to view of active business (dropdown = business list).
+     * No active business → select-business page.
+     */
+    public static function getNavigationUrl(): string
+    {
+        $active = app(ActiveBusiness::class);
+        $id = $active->getActiveBusinessId();
+        if ($id && $active->isValid($id)) {
+            return static::getUrl('view', ['record' => $id]);
+        }
+        return route('filament.business.pages.select-business');
     }
 }

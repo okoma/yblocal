@@ -88,6 +88,13 @@ class ViewBusiness extends ViewRecord
             }
         }
 
+        // Add New Business (list not in nav; dropdown = business list)
+        $actions[] = Actions\Action::make('add_new_business')
+            ->label('Add New Business')
+            ->icon('heroicon-o-plus')
+            ->url(BusinessResource::getUrl('create'))
+            ->color('gray');
+
         // Edit and Delete actions (moved to the end with icons)
         $actions[] = Actions\EditAction::make()
             ->icon('heroicon-o-pencil-square');

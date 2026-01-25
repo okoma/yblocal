@@ -2,9 +2,10 @@
 
 namespace App\Filament\Business\Pages;
 
+use App\Filament\Business\Resources\BusinessResource;
 use App\Services\ActiveBusiness;
-use Filament\Pages\Page;
 use Filament\Actions\Action;
+use Filament\Pages\Page;
 use Illuminate\Contracts\Support\Htmlable;
 
 class SelectBusinessPage extends Page
@@ -35,6 +36,17 @@ class SelectBusinessPage extends Page
     public function getBusinessesProperty(): \Illuminate\Support\Collection
     {
         return app(ActiveBusiness::class)->getSelectableBusinesses();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('add_new_business')
+                ->label('Add New Business')
+                ->icon('heroicon-o-plus')
+                ->url(BusinessResource::getUrl('create'))
+                ->color('primary'),
+        ];
     }
 
     public function selectBusiness(int $id): void

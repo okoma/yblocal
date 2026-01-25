@@ -23,6 +23,11 @@ class EnsureActiveBusiness
             return $next($request);
         }
 
+        // Allow create so "Add New Business" from select-business works
+        if ($request->routeIs('filament.business.resources.businesses.create')) {
+            return $next($request);
+        }
+
         $id = $this->activeBusiness->getActiveBusinessId();
         if ($id !== null && $this->activeBusiness->isValid($id)) {
             return $next($request);

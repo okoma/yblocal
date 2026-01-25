@@ -7,6 +7,7 @@
 namespace App\Filament\Business\Resources\BusinessResource\Pages;
 
 use App\Filament\Business\Resources\BusinessResource;
+use App\Services\ActiveBusiness;
 use App\Models\BusinessType;
 use App\Models\Category;
 use App\Models\PaymentMethod;
@@ -996,13 +997,15 @@ Wizard\Step::make('Business Hours')
                 ]);
             }
         }
+
+        app(ActiveBusiness::class)->setActiveBusinessId($business->id);
     }
     
     protected function getCreatedNotificationTitle(): ?string
     {
         return 'Business created successfully! It will be reviewed by our team.';
     }
-    
+
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('view', ['record' => $this->getRecord()]);
