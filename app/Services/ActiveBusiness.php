@@ -5,16 +5,15 @@ namespace App\Services;
 use App\Models\Business;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cookie;
+use Illuminate\Support\Facades\Session;
 
 class ActiveBusiness
 {
-    public const COOKIE_NAME = 'active_business_id';
-    public const COOKIE_LIFETIME = 60 * 24 * 30; // 30 days in minutes
+    public const SESSION_KEY = 'active_business_id';
 
     public function getActiveBusinessId(): ?int
     {
-        $id = Cookie::get(self::COOKIE_NAME) ?? request()->cookie(self::COOKIE_NAME);
+        $id = Session::get(self::SESSION_KEY);
         return $id ? (int) $id : null;
     }
 
@@ -23,19 +22,7 @@ class ActiveBusiness
         if (!$this->isValid($id)) {
             return;
         }
-        
-        // Queue cookie to be sent with next response
-        Cookie::queue(
-            self::COOKIE_NAME,
-            $id,
-            self::COOKIE_LIFETIME,
-            '/',
-            null,
-            true, // secure (HTTPS only in production)
-            false, // httpOnly = false so JS can read if needed
-            false,
-            'lax' // SameSite
-        );
+        Session::put(self::SESSION_KEY, $id);
     }
 
     public function getActiveBusiness(): ?Business
@@ -83,6 +70,6 @@ class ActiveBusiness
 
     public function clear(): void
     {
-        Cookie::queue(Cookie::forget(self::COOKIE_NAME));
+        Session::forget(self::SESSION_KEY);
     }
 }
