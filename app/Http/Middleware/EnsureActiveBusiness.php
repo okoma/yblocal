@@ -50,7 +50,7 @@ class EnsureActiveBusiness
             return $next($request);
         }
 
-        // No active business set - auto-select first business (only once per session)
+        // No active business set - auto-select first business
         $selectable = $this->activeBusiness->getSelectableBusinesses();
         
         // If no businesses at all, redirect to get started page
@@ -61,13 +61,10 @@ class EnsureActiveBusiness
             return $next($request);
         }
         
-        // Auto-select first business (only on first request, not on every SPA nav)
-        // Check if we've already tried to set business this session
-        if (!session()->has('_business_auto_selected')) {
-            $firstBusiness = $selectable->first();
-            $this->activeBusiness->setActiveBusinessId($firstBusiness->id);
-            session()->put('_business_auto_selected', true);
-        }
+        // Auto-select first business if none is set
+        // Cookie-based storage doesn't trigger session regeneration = SPA-friendly
+        $firstBusiness = $selectable->first();
+        $this->activeBusiness->setActiveBusinessId($firstBusiness->id);
         
         // Continue to requested page - no redirect needed
         return $next($request);
