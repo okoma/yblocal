@@ -8,6 +8,7 @@ use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Models\Review;
 
 class RecentActivityWidget extends BaseWidget
 {
@@ -56,55 +57,57 @@ class RecentActivityWidget extends BaseWidget
     {
         $userId = Auth::id();
         
-        // Combine recent reviews, saved businesses, and leads into one query
-        return DB::table(
-            DB::raw("(
-                SELECT 
-                    'Review' as type,
-                    b.business_name,
-                    CONCAT(r.rating, ' stars - ', LEFT(r.comment, 50)) as details,
-                    b.slug,
-                    bt.slug as business_type_slug,
-                    r.created_at,
-                    CONCAT('/', bt.slug, '/', b.slug) as url
-                FROM reviews r
-                JOIN businesses b ON r.reviewable_id = b.id AND r.reviewable_type = 'App\\\\Models\\\\Business'
-                LEFT JOIN business_types bt ON b.business_type_id = bt.id
-                WHERE r.user_id = {$userId}
-                
-                UNION ALL
-                
-                SELECT 
-                    'Saved Business' as type,
-                    b.business_name,
-                    CONCAT('Saved to favorites') as details,
-                    b.slug,
-                    bt.slug as business_type_slug,
-                    sb.created_at,
-                    CONCAT('/', bt.slug, '/', b.slug) as url
-                FROM saved_businesses sb
-                JOIN businesses b ON sb.business_id = b.id
-                LEFT JOIN business_types bt ON b.business_type_id = bt.id
-                WHERE sb.user_id = {$userId}
-                
-                UNION ALL
-                
-                SELECT 
-                    'Inquiry' as type,
-                    b.business_name,
-                    CONCAT('Inquiry: ', l.lead_button_text) as details,
-                    b.slug,
-                    bt.slug as business_type_slug,
-                    l.created_at,
-                    CONCAT('/', bt.slug, '/', b.slug) as url
-                FROM leads l
-                JOIN businesses b ON l.business_id = b.id
-                LEFT JOIN business_types bt ON b.business_type_id = bt.id
-                WHERE l.user_id = {$userId}
-                
-                ORDER BY created_at DESC
-                LIMIT 20
-            ) as activities")
-        );
+        // Use Review model as the base and apply the union query
+        return Review::query()
+            ->select([
+                DB::raw("'Review' as type"),
+                'b.business_name',
+                DB::raw("CONCAT(reviews.rating, ' stars - ', LEFT(reviews.comment, 50)) as details"),
+                'b.slug',
+                'bt.slug as business_type_slug',
+                'reviews.created_at',
+                DB::raw("CONCAT('/', bt.slug, '/', b.slug) as url")
+            ])
+            ->join('businesses as b', function ($join) {
+                $join->on('reviews.reviewable_id', '=', 'b.id')
+                     ->where('reviews.reviewable_type', '=', 'App\\Models\\Business');
+            })
+            ->leftJoin('business_types as bt', 'b.business_type_id', '=', 'bt.id')
+            ->where('reviews.user_id', $userId)
+            
+            ->unionAll(
+                DB::table('saved_businesses as sb')
+                    ->select([
+                        DB::raw("'Saved Business' as type"),
+                        'b.business_name',
+                        DB::raw("'Saved to favorites' as details"),
+                        'b.slug',
+                        'bt.slug as business_type_slug',
+                        'sb.created_at',
+                        DB::raw("CONCAT('/', bt.slug, '/', b.slug) as url")
+                    ])
+                    ->join('businesses as b', 'sb.business_id', '=', 'b.id')
+                    ->leftJoin('business_types as bt', 'b.business_type_id', '=', 'bt.id')
+                    ->where('sb.user_id', $userId)
+            )
+            
+            ->unionAll(
+                DB::table('leads as l')
+                    ->select([
+                        DB::raw("'Inquiry' as type"),
+                        'b.business_name',
+                        DB::raw("CONCAT('Inquiry: ', l.lead_button_text) as details"),
+                        'b.slug',
+                        'bt.slug as business_type_slug',
+                        'l.created_at',
+                        DB::raw("CONCAT('/', bt.slug, '/', b.slug) as url")
+                    ])
+                    ->join('businesses as b', 'l.business_id', '=', 'b.id')
+                    ->leftJoin('business_types as bt', 'b.business_type_id', '=', 'bt.id')
+                    ->where('l.user_id', $userId)
+            )
+            
+            ->orderBy('created_at', 'desc')
+            ->limit(20);
     }
 }
