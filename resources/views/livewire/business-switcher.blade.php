@@ -70,7 +70,7 @@
                         {{ $business->name }}
                     </span>
                     @if ($isActive)
-                        <span class="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">Currently active</span>
+                        <span class="flex text-xs text-gray-500 dark:text-gray-400 mt-0.5">Currently active</span>
                     @endif
                 </div>
                 <div class="flex items-center gap-1.5 shrink-0">
@@ -78,9 +78,9 @@
                         {{ $statusDisplay }}
                     </span>
                     @if ($business->is_claimed)
-                    <x-filament::icon icon="heroicon-o-check-badge" class="h-4 w-4 text-green-600 dark:text-green-400" />
+                    <x-filament::icon icon="heroicon-o-check-badge" class="h-4 w-4 !text-green-600 !dark:text-green-400" />
                     @else
-                    <x-filament::icon icon="heroicon-o-building-storefront" class="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                    <x-filament::icon icon="heroicon-o-building-storefront" class="h-4 w-4 !text-gray-600 !dark:text-gray-400" />
                     @endif
                 </div>
             </button>
