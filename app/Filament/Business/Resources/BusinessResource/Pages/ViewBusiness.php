@@ -21,7 +21,7 @@ class ViewBusiness extends ViewRecord
 {
     protected static string $resource = BusinessResource::class;
 
-    protected function getBreadcrumbs(): array
+    public function getBreadcrumbs(): array
     {
         return [];
     }
