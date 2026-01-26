@@ -16,6 +16,7 @@ use App\Models\FAQ;
 use App\Models\SocialAccount;
 use App\Models\Official;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Contracts\View\View;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Forms\Components\Wizard;
