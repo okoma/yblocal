@@ -76,3 +76,86 @@ footer {
   z-index: 20;
   min-height: 2.5rem;
 }
+
+.fi-sidebar-group-items.mt-1.space-y-1.ps-2.overflow-visible {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-top: 0px;
+    box-shadow: 0px 4px 6px -1px rgba(0, 0, 0, 0.1), 0px 2px 4px -1px rgba(0, 0, 0, 0.06);
+    border-radius: 12px !important;
+    padding: 8px;
+    margin-top: 8px !important;
+}
+
+.business-switcher-wrapper.fi-sidebar-item {
+    border-bottom: 0px !important;
+}
+
+/* Dark mode dropdown styling */
+.dark .fi-sidebar-group-items.mt-1.space-y-1.ps-2.overflow-visible {
+    background: rgb(31, 41, 55);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0px 4px 6px -1px rgba(0, 0, 0, 0.3), 0px 2px 4px -1px rgba(0, 0, 0, 0.2);
+}
+
+/* Business item hover effect */
+.business-item {
+    position: relative;
+    overflow: hidden;
+}
+
+.business-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 3px;
+    background: transparent;
+    transition: background 0.2s ease;
+}
+
+.business-item.active::before {
+    background: #6b7280;
+}
+
+.business-item:hover::before {
+    background: #9ca3af;
+}
+
+/* Smooth transitions */
+.business-item {
+    transition: all 0.2s ease;
+}
+
+/* Divider styling */
+.business-divider {
+    margin: 8px 0 !important;
+    padding-top: 8px !important;
+    border-top: 1px solid #e5e7eb;
+}
+
+.dark .business-divider {
+    border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Create button special styling */
+.create-business-btn {
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    border: 1px dashed #d1d5db;
+}
+
+.dark .create-business-btn {
+    background: linear-gradient(135deg, rgba(55, 65, 81, 0.5) 0%, rgba(31, 41, 55, 0.5) 100%);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.create-business-btn:hover {
+    border-style: solid;
+    transform: translateY(-1px);
+}
+
+/* Dropdown animation improvements */
+.dropdown-content {
+    transform-origin: top;
+}
