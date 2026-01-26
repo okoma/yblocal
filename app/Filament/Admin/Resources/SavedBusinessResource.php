@@ -34,17 +34,16 @@ class SavedBusinessResource extends Resource
                     ->description(fn ($record) => $record->user->email)
                     ->url(fn ($record) => route('filament.admin.resources.users.view', $record->user)),
                 
-                Tables\Columns\TextColumn::make('branch.business.business_name')
+                Tables\Columns\TextColumn::make('business.business_name')
                     ->label('Business')
                     ->searchable()
                     ->sortable()
-                    ->description(fn ($record) => $record->branch->branch_title)
                     ->limit(30),
                 
-                Tables\Columns\TextColumn::make('branch.city')
+                Tables\Columns\TextColumn::make('business.city')
                     ->label('Location')
                     ->searchable()
-                    ->description(fn ($record) => $record->branch->state),
+                    ->description(fn ($record) => $record->business->state),
                 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Saved On')

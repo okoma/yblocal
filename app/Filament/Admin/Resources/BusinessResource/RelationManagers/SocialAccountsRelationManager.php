@@ -1,9 +1,6 @@
 <?php
 // ============================================
-// UNIVERSAL SocialAccountsRelationManager
-// Use EXACT SAME FILE for both:
-// - app/Filament/Admin/Resources/BusinessResource/RelationManagers/SocialAccountsRelationManager.php
-// - app/Filament/Admin/Resources/BusinessBranchResource/RelationManagers/SocialAccountsRelationManager.php
+// SocialAccountsRelationManager
 // ============================================
 
 namespace App\Filament\Admin\Resources\BusinessResource\RelationManagers;

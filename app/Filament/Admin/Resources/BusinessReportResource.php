@@ -153,9 +153,6 @@ class BusinessReportResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->limit(40)
-                    ->description(fn ($record) => 
-                        $record->branch ? "Branch: {$record->branch->branch_title}" : 'General Report'
-                    )
                     ->url(fn ($record) => route('filament.admin.resources.businesses.view', $record->business)),
                 
                 Tables\Columns\TextColumn::make('reporter.name')
@@ -509,15 +506,6 @@ class BusinessReportResource extends Resource
                             ->url(fn ($record) => route('filament.admin.resources.businesses.view', $record->business))
                             ->color('primary')
                             ->icon('heroicon-o-building-office'),
-                        
-                        Components\TextEntry::make('branch.branch_title')
-                            ->label('Specific Branch')
-                            ->url(fn ($record) => $record->branch 
-                                ? route('filament.admin.resources.business-branches.view', $record->branch) 
-                                : null)
-                            ->color('primary')
-                            ->visible(fn ($record) => $record->branch)
-                            ->placeholder('General report for entire business'),
                         
                         Components\TextEntry::make('reason')
                             ->badge()

@@ -168,7 +168,6 @@ class ViewNotification extends ViewRecord
                                         'admin' => 'danger',
                                         'moderator' => 'warning',
                                         'business_owner' => 'success',
-                                        'branch_manager' => 'info',
                                         default => 'secondary',
                                     }),
                                 

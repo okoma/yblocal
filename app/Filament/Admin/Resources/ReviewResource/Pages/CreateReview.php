@@ -13,7 +13,7 @@ class CreateReview extends CreateRecord
         return $data;
     }
     protected function afterCreate(): void {
-        $this->record->branch->updateRating();
+        // Rating update removed - no branch support
     }
     protected function getRedirectUrl(): string { return $this->getResource()::getUrl('index'); }
 }

@@ -4,7 +4,7 @@
 // Location: app/Filament/Admin/Resources/LeadResource.php
 // Panel: Admin Panel (/admin)
 // Access: Admins, Moderators
-// Purpose: System-wide lead/inquiry management - supports BOTH standalone businesses AND branches
+// Purpose: System-wide lead/inquiry management
 // ============================================
 
 namespace App\Filament\Admin\Resources;
@@ -547,6 +547,6 @@ class LeadResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->with(['business', 'branch.business', 'user']);
+            ->with(['business', 'user']);
     }
 }

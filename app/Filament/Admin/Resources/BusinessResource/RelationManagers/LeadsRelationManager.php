@@ -1,9 +1,6 @@
 <?php
 // ============================================
-// UNIVERSAL LeadsRelationManager
-// Use EXACT SAME FILE for both:
-// - app/Filament/Admin/Resources/BusinessResource/RelationManagers/LeadsRelationManager.php (NEW)
-// - app/Filament/Admin/Resources/BusinessBranchResource/RelationManagers/LeadsRelationManager.php (EXISTING)
+// LeadsRelationManager
 // ============================================
 
 namespace App\Filament\Admin\Resources\BusinessResource\RelationManagers;

@@ -147,7 +147,6 @@ class UserResource extends Resource
                         UserRole::ADMIN => 'danger',
                         UserRole::MODERATOR => 'warning',
                         UserRole::BUSINESS_OWNER => 'success',
-                        UserRole::BRANCH_MANAGER => 'info',
                         UserRole::CUSTOMER => 'gray',
                     }),
                 
@@ -162,11 +161,6 @@ class UserResource extends Resource
                 Tables\Columns\TextColumn::make('businesses_count')
                     ->counts('businesses')
                     ->label('Businesses')
-                    ->sortable()
-                    ->toggleable(),
-                
-                Tables\Columns\TextColumn::make('managing_branches_count')
-                    ->label('Managing Branches')
                     ->sortable()
                     ->toggleable(),
                 
@@ -196,12 +190,6 @@ class UserResource extends Resource
                     ->placeholder('All users')
                     ->trueLabel('Banned only')
                     ->falseLabel('Not banned'),
-                
-                Tables\Filters\TernaryFilter::make('is_branch_manager')
-                    ->label('Branch Managers')
-                    ->placeholder('All users')
-                    ->trueLabel('Managers only')
-                    ->falseLabel('Non-managers'),
                 
                 Tables\Filters\Filter::make('created_at')
                     ->form([

@@ -50,9 +50,7 @@ class ViewUser extends ViewRecord
                         Components\TextEntry::make('businesses_count')
                             ->label('Owned Businesses')
                             ->state(fn ($record) => $record->businesses()->count()),
-                        Components\TextEntry::make('managing_branches_count')
-                            ->label('Managing Branches'),
-                        Components\TextEntry::make('reviews_count')
+Components\TextEntry::make('reviews_count')
                             ->label('Reviews Written')
                             ->state(fn ($record) => $record->reviews()->count()),
                         Components\TextEntry::make('created_at')

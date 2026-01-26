@@ -1,7 +1,6 @@
 <?php
 // ============================================
 // OfficialsRelationManager
-// For BusinessResource or BusinessBranchResource
 // ============================================
 
 namespace App\Filament\Admin\Resources\BusinessResource\RelationManagers;
