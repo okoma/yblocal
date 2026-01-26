@@ -891,11 +891,11 @@ Wizard\Step::make('Business Hours')
                 'business_id' => $business->id,
                 'user_id' => $user->id,
                 'subscription_plan_id' => $freePlan->id,
-                'billing_interval' => 'monthly',
+                'billing_interval' => 'yearly',
                 'status' => 'active',
                 'starts_at' => now(),
-                'ends_at' => now()->addYears(100),
-                'auto_renew' => false,
+                'ends_at' => now()->addYear(),
+                'auto_renew' => true,
             ]);
         }
 
