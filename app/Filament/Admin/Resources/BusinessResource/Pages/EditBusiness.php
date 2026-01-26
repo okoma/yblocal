@@ -24,6 +24,7 @@ use Filament\Resources\Pages\EditRecord;
 use Filament\Resources\Pages\EditRecord\Concerns\HasWizard;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Str;
+use Illuminate\Contracts\View\View;
 
 class EditBusiness extends EditRecord
 {
@@ -1115,8 +1116,8 @@ class EditBusiness extends EditRecord
     /**
      * Add Google Places Autocomplete JavaScript to the page
      */
-    public function getFooter(): string
+    public function getFooter(): ?View
     {
-        return view('filament.widgets.google-places-autocomplete')->render();
+        return view('filament.widgets.google-places-autocomplete');
     }
 }

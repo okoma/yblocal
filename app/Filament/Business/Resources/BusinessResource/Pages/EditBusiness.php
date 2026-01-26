@@ -1144,8 +1144,8 @@ Wizard\Step::make('Business Hours')
     /**
      * Add Google Places Autocomplete JavaScript to the page
      */
-    public function getFooter(): string
+    public function getFooter(): ?View
     {
-        return view('filament.widgets.google-places-autocomplete')->render();
+        return view('filament.widgets.google-places-autocomplete');
     }
 }

@@ -23,6 +23,7 @@ use Filament\Forms\Components\Wizard;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Resources\Pages\CreateRecord\Concerns\HasWizard;
 use Illuminate\Support\Str;
+use Illuminate\Contracts\View\View;
 
 class CreateBusiness extends CreateRecord
 {
@@ -980,8 +981,8 @@ class CreateBusiness extends CreateRecord
     /**
      * Add Google Places Autocomplete JavaScript to the page
      */
-    public function getFooter(): string
+    public function getFooter(): ?View
     {
-        return view('filament.widgets.google-places-autocomplete')->render();
+        return view('filament.widgets.google-places-autocomplete');
     }
 }
