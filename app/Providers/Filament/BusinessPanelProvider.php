@@ -72,11 +72,15 @@ class BusinessPanelProvider extends PanelProvider
             ->spa();
     }
 
+    /** Bump this (e.g. v1 → v2) with each push to bust cache for business panel CSS/JS. */
+    private const BUSINESS_ASSET_VERSION = 'v1';
+
     public function boot(): void
     {
+        $v = '?v=' . self::BUSINESS_ASSET_VERSION;
         FilamentAsset::register([
-            Css::make('business-panel-styles', asset('css/filament-panels/business.css')),
-            Js::make('business-panel-js', asset('js/filament-panels/business.js')),
+            Css::make('business-panel-styles', asset('css/filament-panels/business.css') . $v),
+            Js::make('business-panel-js', asset('js/filament-panels/business.js') . $v),
         ], 'business');
     }
 }
