@@ -8,7 +8,6 @@ use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use App\Models\Review;
 
 class RecentActivityWidget extends BaseWidget
 {
@@ -56,63 +55,69 @@ class RecentActivityWidget extends BaseWidget
     {
         $userId = Auth::id();
         
-        // Wrap the union query in a fromSub to allow proper ordering
-        return Review::query()
-            ->fromSub(function ($query) use ($userId) {
-                // First query - Reviews
-                $query->from('reviews as r')
+        // Create a simple model instance to get an Eloquent Builder
+        // We'll use DB facade but cast it properly
+        $query = DB::table('reviews as r')
+            ->select([
+                DB::raw("'Review' as type"),
+                'b.business_name',
+                DB::raw("CONCAT(r.rating, ' stars - ', LEFT(r.comment, 50)) as details"),
+                'b.slug',
+                'bt.slug as business_type_slug',
+                'r.created_at',
+                DB::raw("CONCAT('/', bt.slug, '/', b.slug) as url"),
+                DB::raw("'review' as source_type"),
+                'r.id as source_id'
+            ])
+            ->join('businesses as b', function ($join) {
+                $join->on('r.reviewable_id', '=', 'b.id')
+                     ->where('r.reviewable_type', '=', 'App\\Models\\Business');
+            })
+            ->leftJoin('business_types as bt', 'b.business_type_id', '=', 'bt.id')
+            ->where('r.user_id', $userId)
+            ->whereNull('r.deleted_at')
+            
+            ->unionAll(
+                DB::table('saved_businesses as sb')
                     ->select([
-                        DB::raw("'Review' as type"),
+                        DB::raw("'Saved Business' as type"),
                         'b.business_name',
-                        DB::raw("CONCAT(r.rating, ' stars - ', LEFT(r.comment, 50)) as details"),
+                        DB::raw("'Saved to favorites' as details"),
                         'b.slug',
                         'bt.slug as business_type_slug',
-                        'r.created_at',
-                        DB::raw("CONCAT('/', bt.slug, '/', b.slug) as url")
+                        'sb.created_at',
+                        DB::raw("CONCAT('/', bt.slug, '/', b.slug) as url"),
+                        DB::raw("'saved' as source_type"),
+                        'sb.id as source_id'
                     ])
-                    ->join('businesses as b', function ($join) {
-                        $join->on('r.reviewable_id', '=', 'b.id')
-                             ->where('r.reviewable_type', '=', 'App\\Models\\Business');
-                    })
+                    ->join('businesses as b', 'sb.business_id', '=', 'b.id')
                     ->leftJoin('business_types as bt', 'b.business_type_id', '=', 'bt.id')
-                    ->where('r.user_id', $userId)
-                    ->whereNull('r.deleted_at')
-                    
-                    ->unionAll(
-                        // Second query - Saved Businesses
-                        DB::table('saved_businesses as sb')
-                            ->select([
-                                DB::raw("'Saved Business' as type"),
-                                'b.business_name',
-                                DB::raw("'Saved to favorites' as details"),
-                                'b.slug',
-                                'bt.slug as business_type_slug',
-                                'sb.created_at',
-                                DB::raw("CONCAT('/', bt.slug, '/', b.slug) as url")
-                            ])
-                            ->join('businesses as b', 'sb.business_id', '=', 'b.id')
-                            ->leftJoin('business_types as bt', 'b.business_type_id', '=', 'bt.id')
-                            ->where('sb.user_id', $userId)
-                    )
-                    
-                    ->unionAll(
-                        // Third query - Leads/Inquiries
-                        DB::table('leads as l')
-                            ->select([
-                                DB::raw("'Inquiry' as type"),
-                                'b.business_name',
-                                DB::raw("CONCAT('Inquiry: ', l.lead_button_text) as details"),
-                                'b.slug',
-                                'bt.slug as business_type_slug',
-                                'l.created_at',
-                                DB::raw("CONCAT('/', bt.slug, '/', b.slug) as url")
-                            ])
-                            ->join('businesses as b', 'l.business_id', '=', 'b.id')
-                            ->leftJoin('business_types as bt', 'b.business_type_id', '=', 'bt.id')
-                            ->where('l.user_id', $userId)
-                    );
-            }, 'activities')
-            ->orderBy('created_at', 'desc')
+                    ->where('sb.user_id', $userId)
+            )
+            
+            ->unionAll(
+                DB::table('leads as l')
+                    ->select([
+                        DB::raw("'Inquiry' as type"),
+                        'b.business_name',
+                        DB::raw("CONCAT('Inquiry: ', l.lead_button_text) as details"),
+                        'b.slug',
+                        'bt.slug as business_type_slug',
+                        'l.created_at',
+                        DB::raw("CONCAT('/', bt.slug, '/', b.slug) as url"),
+                        DB::raw("'lead' as source_type"),
+                        'l.id as source_id'
+                    ])
+                    ->join('businesses as b', 'l.business_id', '=', 'b.id')
+                    ->leftJoin('business_types as bt', 'b.business_type_id', '=', 'bt.id')
+                    ->where('l.user_id', $userId)
+            )
+            ->orderByRaw('created_at DESC')
             ->limit(20);
+        
+        // Convert to Eloquent Builder by using a dummy model
+        return \App\Models\Review::query()
+            ->fromSub($query, 'activities')
+            ->select('activities.*');
     }
 }
