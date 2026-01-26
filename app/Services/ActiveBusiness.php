@@ -55,7 +55,9 @@ class ActiveBusiness
         
         return $businesses->map(fn (Business $b) => (object) [
             'id' => $b->id, 
-            'name' => $b->business_name
+            'name' => $b->business_name,
+            'status' => $b->status,
+            'is_claimed' => $b->is_claimed,
         ]);
     }
 

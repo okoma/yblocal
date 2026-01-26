@@ -39,6 +39,24 @@
         @foreach ($this->businesses as $business)
             @php
                 $isActive = ($this->activeBusiness?->id ?? null) === $business->id;
+                // Format status for display: pending_review -> Pending, active -> Active, etc.
+                $statusDisplay = match($business->status) {
+                    'pending_review' => 'Pending',
+                    'active' => 'Active',
+                    'suspended' => 'Suspended',
+                    'closed' => 'Closed',
+                    'draft' => 'Draft',
+                    default => ucfirst(str_replace('_', ' ', $business->status))
+                };
+                // Status badge colors
+                $statusBadgeClass = match($business->status) {
+                    'active' => 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
+                    'pending_review' => 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400',
+                    'suspended' => 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400',
+                    'closed' => 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
+                    'draft' => 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300',
+                    default => 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                };
             @endphp
             <button
                 type="button"
@@ -46,6 +64,13 @@
                 @if ($isActive) @click="open = false" @endif
                 class="business-item {{ $isActive ? 'active bg-gray-50 dark:bg-gray-800' : '' }} group flex w-full items-center gap-x-3 rounded-lg px-3 py-2.5 text-sm outline-none transition-all duration-150 hover:bg-gray-50 dark:hover:bg-white/5"
             >
+                <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 shrink-0">
+                    @if ($business->is_claimed)
+                        <x-filament::icon icon="heroicon-o-check-badge" class="h-4 w-4 text-green-600 dark:text-green-400" />
+                    @else
+                        <x-filament::icon icon="heroicon-o-building-storefront" class="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                    @endif
+                </div>
                 <div class="flex-1 min-w-0">
                     <span class="block truncate text-start {{ $isActive ? 'text-gray-900 dark:text-gray-100 font-semibold' : 'text-gray-600 dark:text-gray-300 font-medium' }}">
                         {{ $business->name }}
@@ -54,16 +79,16 @@
                         <span class="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">Currently active</span>
                     @endif
                 </div>
-                @if ($isActive)
-                    <div class="flex items-center gap-1.5">
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-                            Active
-                        </span>
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ $statusBadgeClass }}">
+                        {{ $statusDisplay }}
+                    </span>
+                    @if ($business->is_claimed)
                         <x-filament::icon icon="heroicon-m-check-circle" class="h-5 w-5 shrink-0 text-green-600 dark:text-green-400" />
-                    </div>
-                @else
-                    <x-filament::icon icon="heroicon-m-arrow-right" class="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-                @endif
+                    @else
+                        <x-filament::icon icon="heroicon-m-arrow-right" class="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    @endif
+                </div>
             </button>
         @endforeach
         
