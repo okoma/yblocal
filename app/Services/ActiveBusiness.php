@@ -36,7 +36,8 @@ class ActiveBusiness
     }
 
     /**
-     * Businesses the user can select (owned + managed).
+     * Businesses the user can select (owned + managed) - lightweight DTOs.
+     * Use this for UI display purposes (dropdowns, lists, etc.)
      */
     public function getSelectableBusinesses(): Collection
     {
@@ -61,6 +62,26 @@ class ActiveBusiness
             'is_claimed' => $b->is_claimed,
             'is_verified' => $b->is_verified,
         ]);
+    }
+
+    /**
+     * Get full Business model instances that the user can select.
+     * Use this when you need complete Business models with all relationships and methods.
+     */
+    public function getSelectableBusinessModels(): Collection
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return collect();
+        }
+        
+        // Explicitly specify table name to avoid ambiguous column error
+        $ownedIds = $user->businesses()->pluck('businesses.id');
+        $managedIds = $user->managedBusinesses()->pluck('businesses.id');
+        
+        $ids = $ownedIds->merge($managedIds)->unique()->values();
+        
+        return Business::whereIn('id', $ids)->orderBy('business_name')->get();
     }
 
     public function isValid(?int $id): bool

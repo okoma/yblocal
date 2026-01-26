@@ -52,7 +52,8 @@ class EnsureActiveBusiness
         }
 
         // No active business set - auto-select first business
-        $selectable = $this->activeBusiness->getSelectableBusinesses();
+        // ✅ FIX 2: Use getSelectableBusinessModels() to get full Business model instances
+        $selectable = $this->activeBusiness->getSelectableBusinessModels();
         
         // If no businesses at all, redirect to get started page
         if ($selectable->isEmpty()) {
@@ -64,10 +65,10 @@ class EnsureActiveBusiness
         
         // Auto-select first business if none is set
         // Cookie-based storage doesn't trigger session regeneration = SPA-friendly
-        $firstBusiness = $selectable->first();
+        $firstBusiness = $selectable->first(); // This is now a Business model instance
         $this->activeBusiness->setActiveBusinessId($firstBusiness->id);
         
-        // Ensure the auto-selected business has an active subscription
+        // ✅ FIX 3: Pass the Business model directly (no type error)
         app(EnsureBusinessSubscription::class)->ensure($firstBusiness);
         
         // Continue to requested page - no redirect needed
