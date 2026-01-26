@@ -99,7 +99,7 @@
                     <span class="flex-1 truncate text-start font-semibold text-primary-600 dark:text-primary-400">
                         Create New Business
                     </span>
-                    <x-filament::icon icon="heroicon-m-arrow-right" class="h-4 w-4 shrink-0 text-primary-600 dark:text-primary-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <x-filament::icon icon="heroicon-m-arrow-right" class="h-4 w-4 shrink-0 text-primary-600 dark:text-primary-400 group-hover:opacity-100 transition-opacity" />
                 </a>
             </div>
         @endif

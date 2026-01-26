@@ -146,13 +146,13 @@ footer {
 
 /* Create button special styling */
 .create-business-btn {
-    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
-    border: 1px dashed #d1d5db;
+    background: linear-gradient(135deg, #e2feff 0%, #e8f9ff 100%);
+    border: 1px dashed #ffffff;
 }
 
 .dark .create-business-btn {
-    background: linear-gradient(135deg, rgba(55, 65, 81, 0.5) 0%, rgba(31, 41, 55, 0.5) 100%);
-    border-color: rgba(255, 255, 255, 0.2);
+    background: linear-gradient(135deg, #e2feff 0%, #e8f9ff 100%);
+    border: 1px dashed #ffffff;
 }
 
 .create-business-btn:hover {
