@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Services\ActiveBusiness;
+use App\Services\EnsureBusinessSubscription;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -65,6 +66,9 @@ class EnsureActiveBusiness
         // Cookie-based storage doesn't trigger session regeneration = SPA-friendly
         $firstBusiness = $selectable->first();
         $this->activeBusiness->setActiveBusinessId($firstBusiness->id);
+        
+        // Ensure the auto-selected business has an active subscription
+        app(EnsureBusinessSubscription::class)->ensure($firstBusiness);
         
         // Continue to requested page - no redirect needed
         return $next($request);

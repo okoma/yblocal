@@ -130,9 +130,18 @@ class Business extends Model
      */
     public function activeSubscription()
     {
+        // Return active subscriptions OR cancelled subscriptions that haven't expired yet
+        // (cancelled subscriptions remain valid until ends_at)
         return $this->subscriptions()
-            ->where('status', 'active')
+            ->where(function ($query) {
+                $query->where('status', 'active')
+                    ->orWhere(function ($q) {
+                        $q->where('status', 'cancelled')
+                          ->where('ends_at', '>', now());
+                    });
+            })
             ->where('ends_at', '>', now())
+            ->orderBy('ends_at', 'desc')
             ->first();
     }
 

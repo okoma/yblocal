@@ -6,6 +6,7 @@
 namespace App\Filament\Admin\Resources\BusinessResource\Pages;
 
 use App\Filament\Admin\Resources\BusinessResource;
+use App\Services\EnsureBusinessSubscription;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Str;
 
@@ -32,6 +33,12 @@ class CreateBusiness extends CreateRecord
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('index');
+    }
+
+    protected function afterCreate(): void
+    {
+        // Ensure the newly created business has an active subscription
+        app(EnsureBusinessSubscription::class)->ensure($this->record);
     }
 
     protected function getCreatedNotificationTitle(): ?string
