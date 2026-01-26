@@ -44,6 +44,22 @@ Schedule::command('subscriptions:check-expired')
         ]);
     });
 
+// Send expiring subscription notifications (using notification classes)
+Schedule::command('notifications:send-expiring')
+    ->dailyAt('09:00')
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->onSuccess(function () {
+        Log::info('Expiring notifications sent successfully', [
+            'scheduled_at' => now()->toDateTimeString(),
+        ]);
+    })
+    ->onFailure(function () {
+        Log::error('Failed to send expiring notifications', [
+            'scheduled_at' => now()->toDateTimeString(),
+        ]);
+    });
+
 // Optional: Send expiration reminders 7 days before
 Schedule::call(function () {
     $subscriptions = Subscription::where('status', 'active')
@@ -138,6 +154,12 @@ Schedule::call(function () {
 // ============================================
 // Optional: Database cleanup tasks
 // ============================================
+
+// Clean up old failed jobs (older than 48 hours)
+Schedule::command('queue:prune-failed --hours=48')
+    ->daily()
+    ->at('03:00')
+    ->withoutOverlapping();
 
 // Clean up old notifications (older than 30 days)
 Schedule::call(function () {

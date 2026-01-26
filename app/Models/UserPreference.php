@@ -15,7 +15,7 @@ class UserPreference extends Model
 
     protected $fillable = [
         'user_id',
-        // Notification Preferences
+        // Business Owner Notification Preferences
         'email_notifications',
         'telegram_notifications',
         'telegram_username',
@@ -39,6 +39,16 @@ class UserPreference extends Model
         'notify_verifications',
         'notify_premium_expiring',
         'notify_campaign_updates',
+        // Customer Notification Preferences (when businesses interact with them)
+        'notify_review_reply_received',
+        'notify_inquiry_response_received',
+        'notify_saved_business_updates',
+        'notify_promotions_customer',
+        'notify_newsletter_customer',
+        'notify_review_reply_app',
+        'notify_inquiry_response_app',
+        'notify_saved_business_updates_app',
+        'notify_promotions_app',
         // Display Preferences
         'theme',
         'language',
@@ -71,6 +81,17 @@ class UserPreference extends Model
         'notify_verifications' => 'boolean',
         'notify_premium_expiring' => 'boolean',
         'notify_campaign_updates' => 'boolean',
+        // Customer notification casts
+        'notify_review_reply_received' => 'boolean',
+        'notify_inquiry_response_received' => 'boolean',
+        'notify_saved_business_updates' => 'boolean',
+        'notify_promotions_customer' => 'boolean',
+        'notify_newsletter_customer' => 'boolean',
+        'notify_review_reply_app' => 'boolean',
+        'notify_inquiry_response_app' => 'boolean',
+        'notify_saved_business_updates_app' => 'boolean',
+        'notify_promotions_app' => 'boolean',
+        // Other
         'show_email' => 'boolean',
         'show_phone' => 'boolean',
     ];
@@ -97,6 +118,7 @@ class UserPreference extends Model
         return static::firstOrCreate(
             ['user_id' => $userId],
             [
+                // Business Owner Email Notifications
                 'email_notifications' => true,
                 'telegram_notifications' => true,
                 'notify_new_leads_telegram' => false,
@@ -115,6 +137,17 @@ class UserPreference extends Model
                 'notify_verifications' => true,
                 'notify_premium_expiring' => true,
                 'notify_campaign_updates' => true,
+                // Customer Notifications (defaults)
+                'notify_review_reply_received' => true,
+                'notify_inquiry_response_received' => true,
+                'notify_saved_business_updates' => true,
+                'notify_promotions_customer' => true,
+                'notify_newsletter_customer' => true,
+                'notify_review_reply_app' => true,
+                'notify_inquiry_response_app' => true,
+                'notify_saved_business_updates_app' => true,
+                'notify_promotions_app' => false, // Off by default
+                // Display & Privacy
                 'theme' => 'system',
                 'language' => 'en',
                 'timezone' => 'Africa/Lagos',
