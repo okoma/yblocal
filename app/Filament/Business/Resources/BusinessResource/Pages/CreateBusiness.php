@@ -821,8 +821,8 @@ Wizard\Step::make('Business Hours')
         // Set ownership
         $data['user_id'] = Auth::id();
         $data['status'] = 'pending_review';
-        $data['is_claimed'] = true;
-        $data['claimed_by'] = Auth::id();
+        $data['is_claimed'] = false;
+        $data['claimed_by'] = null;
         
         // ✅ FIXED: Transform business_hours from individual fields to keyed array
         $businessHours = [];
