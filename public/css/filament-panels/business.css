@@ -88,7 +88,11 @@ footer {
 }
 
 .business-switcher-wrapper.fi-sidebar-item {
-    border-bottom: 0px !important;
+    border-bottom: 1px !important;
+    padding-top: 0px;
+    background: #f7f7f7;
+    border-radius: 8px;
+    margin-bottom: 0;
 }
 
 /* Dark mode dropdown styling */
