@@ -124,14 +124,62 @@ class BusinessResource extends Resource
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\ViewAction::make(),
                     Tables\Actions\EditAction::make(),
-                    Tables\Actions\DeleteAction::make(),
-                    Tables\Actions\RestoreAction::make(),
+                    Tables\Actions\DeleteAction::make()
+                        ->requiresConfirmation()
+                        ->modalHeading('Delete Business')
+                        ->modalDescription('This will soft delete the business. It will be hidden but can be restored later.')
+                        ->successNotification(
+                            Notification::make()
+                                ->success()
+                                ->title('Business deleted')
+                                ->body('The business has been soft deleted.')
+                        ),
+                    Tables\Actions\RestoreAction::make()
+                        ->successNotification(
+                            Notification::make()
+                                ->success()
+                                ->title('Business restored')
+                                ->body('The business has been restored.')
+                        ),
+                    Tables\Actions\ForceDeleteAction::make()
+                        ->requiresConfirmation()
+                        ->modalHeading('Permanently Delete Business')
+                        ->modalDescription('Are you sure? This will permanently delete the business and all its related data (products, reviews, FAQs, team members, etc.). This action cannot be undone.')
+                        ->successNotification(
+                            Notification::make()
+                                ->success()
+                                ->title('Business permanently deleted')
+                                ->body('The business has been permanently removed from the database.')
+                        ),
                 ]),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                    Tables\Actions\RestoreBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->requiresConfirmation()
+                        ->successNotification(
+                            Notification::make()
+                                ->success()
+                                ->title('Businesses deleted')
+                                ->body('The selected businesses have been soft deleted.')
+                        ),
+                    Tables\Actions\RestoreBulkAction::make()
+                        ->successNotification(
+                            Notification::make()
+                                ->success()
+                                ->title('Businesses restored')
+                                ->body('The selected businesses have been restored.')
+                        ),
+                    Tables\Actions\ForceDeleteBulkAction::make()
+                        ->requiresConfirmation()
+                        ->modalHeading('Permanently Delete Businesses')
+                        ->modalDescription('This will permanently delete the selected businesses and all their related data. This action cannot be undone.')
+                        ->successNotification(
+                            Notification::make()
+                                ->success()
+                                ->title('Businesses permanently deleted')
+                                ->body('The selected businesses have been permanently removed.')
+                        ),
                 ]),
             ]);
     }
