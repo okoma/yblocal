@@ -164,3 +164,68 @@ footer {
 .dropdown-content {
     transform-origin: top;
 }
+/* Active */
+.status-active {
+    background-color: #dcfce7;
+    color: #15803d;
+}
+
+.dark .status-active {
+    background-color: rgba(20, 83, 45, 0.3);
+    color: #4ade80;
+}
+
+/* Pending Review */
+.status-pending-review {
+    background-color: #fef9c3;
+    color: #a16207;
+}
+
+.dark .status-pending-review {
+    background-color: rgba(113, 63, 18, 0.3);
+    color: #facc15;
+}
+
+/* Suspended */
+.status-suspended {
+    background-color: #ffedd5;
+    color: #c2410c;
+}
+
+.dark .status-suspended {
+    background-color: rgba(124, 45, 18, 0.3);
+    color: #fb923c;
+}
+
+/* Closed */
+.status-closed {
+    background-color: #fee2e2;
+    color: #b91c1c;
+}
+
+.dark .status-closed {
+    background-color: rgba(127, 29, 29, 0.3);
+    color: #f87171;
+}
+
+/* Draft */
+.status-draft {
+    background-color: #f3f4f6;
+    color: #374151;
+}
+
+.dark .status-draft {
+    background-color: #1f2937;
+    color: #d1d5db;
+}
+
+/* Default */
+.status-default {
+    background-color: #e5e7eb;
+    color: #374151;
+}
+
+.dark .status-default {
+    background-color: #374151;
+    color: #d1d5db;
+}

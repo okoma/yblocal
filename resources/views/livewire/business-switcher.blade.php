@@ -50,13 +50,13 @@
                 };
                 // Status badge colors
                 $statusBadgeClass = match($business->status) {
-                    'active' => 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
-                    'pending_review' => 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400',
-                    'suspended' => 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400',
-                    'closed' => 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
-                    'draft' => 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300',
-                    default => 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                };
+                  'active' => 'status-active',
+                  'pending_review' => 'status-pending-review',
+                  'suspended' => 'status-suspended',
+                 'closed' => 'status-closed',
+                 'draft' => 'status-draft',
+        default => 'status-default'
+            };
             @endphp
             <button
                 type="button"
@@ -64,13 +64,7 @@
                 @if ($isActive) @click="open = false" @endif
                 class="business-item {{ $isActive ? 'active bg-gray-50 dark:bg-gray-800' : '' }} group flex w-full items-center gap-x-3 rounded-lg px-3 py-2.5 text-sm outline-none transition-all duration-150 hover:bg-gray-50 dark:hover:bg-white/5"
             >
-                <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 shrink-0">
-                    @if ($business->is_claimed)
-                        <x-filament::icon icon="heroicon-o-check-badge" class="h-4 w-4 text-green-600 dark:text-green-400" />
-                    @else
-                        <x-filament::icon icon="heroicon-o-building-storefront" class="h-4 w-4 text-gray-600 dark:text-gray-400" />
-                    @endif
-                </div>
+            
                 <div class="flex-1 min-w-0">
                     <span class="block truncate text-start {{ $isActive ? 'text-gray-900 dark:text-gray-100 font-semibold' : 'text-gray-600 dark:text-gray-300 font-medium' }}">
                         {{ $business->name }}
@@ -84,9 +78,9 @@
                         {{ $statusDisplay }}
                     </span>
                     @if ($business->is_claimed)
-                        <x-filament::icon icon="heroicon-m-check-circle" class="h-5 w-5 shrink-0 text-green-600 dark:text-green-400" />
+                    <x-filament::icon icon="heroicon-o-check-badge" class="h-4 w-4 text-green-600 dark:text-green-400" />
                     @else
-                        <x-filament::icon icon="heroicon-m-arrow-right" class="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <x-filament::icon icon="heroicon-o-building-storefront" class="h-4 w-4 text-gray-600 dark:text-gray-400" />
                     @endif
                 </div>
             </button>
