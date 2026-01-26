@@ -73,7 +73,7 @@ class BusinessPanelProvider extends PanelProvider
     }
 
     /** Bump this (e.g. v1 → v2) with each push to bust cache for business panel CSS/JS. */
-    private const BUSINESS_ASSET_VERSION = 'v1';
+    private const BUSINESS_ASSET_VERSION = 'v2';
 
     public function boot(): void
     {
