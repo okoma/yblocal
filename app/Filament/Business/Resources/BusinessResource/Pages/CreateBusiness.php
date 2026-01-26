@@ -25,6 +25,9 @@ use Filament\Forms\Form;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Resources\Pages\CreateRecord\Concerns\HasWizard;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Contracts\View\View;
+
+
 
 class CreateBusiness extends CreateRecord
 {
@@ -1007,8 +1010,8 @@ Wizard\Step::make('Business Hours')
         return [];
     }
     
-    public function getFooter(): string
+    public function getFooter(): ?View
     {
-        return view('filament.widgets.google-places-autocomplete')->render();
+        return view('filament.widgets.google-places-autocomplete');
     }
 }
