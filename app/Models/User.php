@@ -142,6 +142,11 @@ class User extends Authenticatable implements FilamentUser
     {
         return $this->hasMany(Review::class);
     }
+    
+    public function leads()
+    {
+        return $this->hasMany(Lead::class);
+    }
 
     public function savedBusinesses()
     {
@@ -551,4 +556,5 @@ public function getPreferencesAttribute()
     {
         return $this->subscription()->exists();
     }
+
 }

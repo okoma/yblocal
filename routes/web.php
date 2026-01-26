@@ -2,10 +2,79 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ManagerInvitationController;
+use App\Http\Controllers\BusinessController;
+use App\Http\Controllers\DiscoveryController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\LocationController;
+use App\Http\Controllers\BusinessTypeController;
+use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\LeadController;
+use App\Http\Controllers\FilterController;
+use App\Http\Controllers\PhotoController;
+use App\Http\Controllers\MapController;
 
 //welcome
 Route::get('/', function () {
     return view('welcome');
+});
+
+// ============================================
+// DISCOVERY & SEARCH ROUTES
+// Unified discovery for all listing pages
+// ============================================
+Route::prefix('discover')->name('discover.')->group(function () {
+    Route::get('/', [DiscoveryController::class, 'index'])->name('index');
+});
+
+// Public Business Routes (with tracking)
+Route::prefix('businesses')->name('businesses.')->group(function () {
+    // Business listing (redirects to discover)
+    Route::get('/', [DiscoveryController::class, 'index'])->name('index');
+    
+    // Business search (redirects to discover)
+    Route::get('/search', [DiscoveryController::class, 'index'])->name('search');
+});
+
+// Business Type Based Routes (e.g., /hotel/grand-hotel, /restaurant/my-restaurant)
+Route::name('businesses.')->group(function () {
+    // Single business detail page
+    Route::get('/{businessType}/{slug}', [BusinessController::class, 'show'])->name('show');
+    
+    // Reviews (Public)
+    Route::get('/{businessType}/{slug}/reviews', [ReviewController::class, 'index'])->name('reviews.index');
+    Route::post('/{businessType}/{slug}/reviews', [ReviewController::class, 'store'])->name('reviews.store');
+    
+    // Leads/Inquiries (Public)
+    Route::post('/{businessType}/{slug}/leads', [LeadController::class, 'store'])->name('leads.store');
+    
+    // Photos/Gallery (Public)
+    Route::get('/{businessType}/{slug}/photos', [PhotoController::class, 'index'])->name('photos.index');
+    Route::post('/{businessType}/{slug}/photos', [PhotoController::class, 'store'])->name('photos.store'); // Optional: for user submissions
+    Route::delete('/{businessType}/{slug}/photos/{photoPath}', [PhotoController::class, 'destroy'])->name('photos.destroy'); // Optional
+});
+
+// Filter Routes (AJAX endpoints for filter metadata)
+Route::prefix('api/filters')->name('filters.')->group(function () {
+    Route::get('/', [FilterController::class, 'index'])->name('index');
+    Route::get('/states/{stateSlug}/cities', [FilterController::class, 'getCitiesByState'])->name('cities.by-state');
+});
+
+// API Routes for Locations (keep prefix to avoid conflicts)
+Route::prefix('api')->name('api.')->group(function () {
+    Route::get('locations/states', [LocationController::class, 'getStates'])->name('locations.states');
+    Route::get('locations/states/{stateSlug}/cities', [LocationController::class, 'getCitiesByState'])->name('locations.cities');
+});
+
+// Review Voting (Optional - for helpful/not helpful)
+Route::prefix('reviews')->name('reviews.')->group(function () {
+    Route::post('/{reviewId}/vote', [ReviewController::class, 'vote'])->name('vote');
+});
+
+// Map Routes (For map-based business discovery)
+Route::prefix('map')->name('map.')->group(function () {
+    Route::get('/businesses', [MapController::class, 'index'])->name('businesses.index');
+    Route::get('/businesses/{slug}', [MapController::class, 'show'])->name('businesses.show');
+    Route::get('/nearby', [MapController::class, 'nearby'])->name('nearby');
 });
 
 
@@ -38,3 +107,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/business/transaction/{transaction}/receipt', [\App\Http\Controllers\PaymentController::class, 'downloadReceipt'])
         ->name('business.transaction.receipt');
 });
+
+// ============================================
+// CLEAN URL ROUTES (MUST BE LAST!)
+// These handle: /lagos, /hotels, /lagos/hotels
+// Order: Most specific routes first
+// ============================================
+Route::get('/{location}/{category}', [DiscoveryController::class, 'index'])->name('discovery.combined');
+Route::get('/{locationOrCategory}', [DiscoveryController::class, 'index'])->name('discovery.single');

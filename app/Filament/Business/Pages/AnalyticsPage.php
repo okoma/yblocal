@@ -5,6 +5,8 @@ namespace App\Filament\Business\Pages;
 use App\Services\ActiveBusiness;
 use App\Models\BusinessView;
 use App\Models\BusinessInteraction;
+use App\Models\BusinessImpression;
+use App\Models\BusinessClick;
 use App\Models\Lead;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\DB;
@@ -58,10 +60,10 @@ class AnalyticsPage extends Page
                 'previous_end' => now()->subDays(2)->endOfDay(),
             ],
             default => [
-                'current_start' => now()->subDays((int)$this->dateRange),
-                'current_end' => now(),
-                'previous_start' => now()->subDays((int)$this->dateRange * 2),
-                'previous_end' => now()->subDays((int)$this->dateRange),
+                'current_start' => now()->subDays((int)$this->dateRange)->startOfDay(),
+                'current_end' => now()->endOfDay(),
+                'previous_start' => now()->subDays((int)$this->dateRange * 2)->startOfDay(),
+                'previous_end' => now()->subDays((int)$this->dateRange)->endOfDay(),
             ]
         };
     }
@@ -202,6 +204,121 @@ class AnalyticsPage extends Page
             'by_status' => $currentLeadsByStatus,
             'conversion_rate' => $currentConversionRate,
             'previous_conversion_rate' => $previousConversionRate,
+        ];
+    }
+    
+    /**
+     * Get Impressions Data with Previous Period Comparison
+     * Impressions = when business listings are visible on archive/category/search pages
+     */
+    public function getImpressionsData()
+    {
+        $businessIds = $this->getFilteredBusinessIds();
+        $dates = $this->getDateRanges();
+        
+        // Current Period Total Impressions
+        $totalImpressions = BusinessImpression::whereIn('business_id', $businessIds)
+            ->whereBetween('impression_date', [$dates['current_start'], $dates['current_end']])
+            ->count();
+        
+        // Previous Period Total Impressions
+        $previousTotalImpressions = BusinessImpression::whereIn('business_id', $businessIds)
+            ->whereBetween('impression_date', [$dates['previous_start'], $dates['previous_end']])
+            ->count();
+        
+        // Impressions by Source (Current Period)
+        $impressionsBySource = BusinessImpression::whereIn('business_id', $businessIds)
+            ->whereBetween('impression_date', [$dates['current_start'], $dates['current_end']])
+            ->select('referral_source', DB::raw('count(*) as total'))
+            ->groupBy('referral_source')
+            ->get()
+            ->pluck('total', 'referral_source')
+            ->toArray();
+        
+        // Impressions by Page Type (Current Period)
+        $impressionsByPageType = BusinessImpression::whereIn('business_id', $businessIds)
+            ->whereBetween('impression_date', [$dates['current_start'], $dates['current_end']])
+            ->select('page_type', DB::raw('count(*) as total'))
+            ->groupBy('page_type')
+            ->get()
+            ->pluck('total', 'page_type')
+            ->toArray();
+        
+        return [
+            'total' => $totalImpressions,
+            'previous_total' => $previousTotalImpressions,
+            'by_source' => $impressionsBySource,
+            'by_page_type' => $impressionsByPageType,
+        ];
+    }
+    
+    /**
+     * Get Clicks Data with Previous Period Comparison
+     * Clicks = when someone visits business detail page (cookie-based, one per person)
+     */
+    public function getClicksData()
+    {
+        $businessIds = $this->getFilteredBusinessIds();
+        $dates = $this->getDateRanges();
+        
+        // Current Period Total Clicks
+        $totalClicks = BusinessClick::whereIn('business_id', $businessIds)
+            ->whereBetween('click_date', [$dates['current_start'], $dates['current_end']])
+            ->count();
+        
+        // Previous Period Total Clicks
+        $previousTotalClicks = BusinessClick::whereIn('business_id', $businessIds)
+            ->whereBetween('click_date', [$dates['previous_start'], $dates['previous_end']])
+            ->count();
+        
+        // Clicks by Source (Current Period)
+        $clicksBySource = BusinessClick::whereIn('business_id', $businessIds)
+            ->whereBetween('click_date', [$dates['current_start'], $dates['current_end']])
+            ->select('referral_source', DB::raw('count(*) as total'))
+            ->groupBy('referral_source')
+            ->get()
+            ->pluck('total', 'referral_source')
+            ->toArray();
+        
+        // Clicks by Page Type (Current Period)
+        $clicksByPageType = BusinessClick::whereIn('business_id', $businessIds)
+            ->whereBetween('click_date', [$dates['current_start'], $dates['current_end']])
+            ->select('source_page_type', DB::raw('count(*) as total'))
+            ->groupBy('source_page_type')
+            ->get()
+            ->pluck('total', 'source_page_type')
+            ->toArray();
+        
+        return [
+            'total' => $totalClicks,
+            'previous_total' => $previousTotalClicks,
+            'by_source' => $clicksBySource,
+            'by_page_type' => $clicksByPageType,
+        ];
+    }
+    
+    /**
+     * Get CTR (Click-Through Rate) Data with Previous Period Comparison
+     * CTR = (Clicks / Impressions) × 100
+     */
+    public function getCTRData()
+    {
+        $clicks = $this->getClicksData();
+        $impressions = $this->getImpressionsData();
+        
+        // Current CTR
+        $currentCTR = $impressions['total'] > 0 
+            ? round(($clicks['total'] / $impressions['total']) * 100, 1) 
+            : 0;
+        
+        // Previous CTR
+        $previousCTR = $impressions['previous_total'] > 0 
+            ? round(($clicks['previous_total'] / $impressions['previous_total']) * 100, 1) 
+            : 0;
+        
+        return [
+            'total' => $currentCTR,
+            'previous_total' => $previousCTR,
         ];
     }
     

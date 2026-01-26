@@ -245,9 +245,11 @@ class EditBusiness extends EditRecord
                             Forms\Components\TextInput::make('address')
                                 ->required()
                                 ->maxLength(255)
-                                ->placeholder('e.g., 123 Main Street, Suite 100')
+                                ->placeholder('Start typing an address...')
                                 ->columnSpanFull()
-                                ->helperText('Street address or building name'),
+                                ->helperText('Start typing to see address suggestions from Google Maps')
+                                ->id('address-autocomplete')
+                                ->extraAttributes(['data-google-autocomplete' => 'true']),
                             
                             Forms\Components\TextInput::make('area')
                                 ->label('Area/Neighborhood')
@@ -261,15 +263,21 @@ class EditBusiness extends EditRecord
                                         ->label('Latitude (GPS)')
                                         ->numeric()
                                         ->step(0.0000001)
+                                        ->minValue(-90)
+                                        ->maxValue(90)
                                         ->placeholder('e.g., 6.5244')
-                                        ->helperText('Optional: For map display'),
+                                        ->helperText('Auto-filled from address or enter manually')
+                                        ->id('latitude-field'),
                                     
                                     Forms\Components\TextInput::make('longitude')
                                         ->label('Longitude (GPS)')
                                         ->numeric()
                                         ->step(0.0000001)
+                                        ->minValue(-180)
+                                        ->maxValue(180)
                                         ->placeholder('e.g., 3.3792')
-                                        ->helperText('Optional: For map display'),
+                                        ->helperText('Auto-filled from address or enter manually')
+                                        ->id('longitude-field'),
                                 ]),
                         ])
                         ->columns(2),
@@ -1103,4 +1111,12 @@ class EditBusiness extends EditRecord
     protected ?array $faqsData = null;
     protected ?array $socialAccountsData = null;
     protected ?array $officialsData = null;
+    
+    /**
+     * Add Google Places Autocomplete JavaScript to the page
+     */
+    public function getFooter(): string
+    {
+        return view('filament.widgets.google-places-autocomplete')->render();
+    }
 }

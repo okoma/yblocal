@@ -283,6 +283,22 @@ class Business extends Model
     }
 
     /**
+     * Business Impressions (when listings are visible on archive/category/search pages)
+     */
+    public function impressions(): HasMany
+    {
+        return $this->hasMany(BusinessImpression::class);
+    }
+
+    /**
+     * Business Clicks (cookie-based, one per person)
+     */
+    public function clicks(): HasMany
+    {
+        return $this->hasMany(BusinessClick::class);
+    }
+
+    /**
      * View Summaries (aggregated analytics)
      */
     public function viewSummaries(): HasMany
@@ -407,6 +423,25 @@ class Business extends Model
 // ============================================
 
 /**
+ * Get the URL for this business
+ * Format: /{business-type}/{business-slug}
+ */
+public function getUrl()
+{
+    if (!$this->businessType) {
+        return route('businesses.show', [
+            'businessType' => 'business',
+            'slug' => $this->slug
+        ]);
+    }
+    
+    return route('businesses.show', [
+        'businessType' => $this->businessType->slug,
+        'slug' => $this->slug
+    ]);
+}
+
+/**
  * Get the canonical URL for this business
  */
 public function getCanonicalUrl()
@@ -416,8 +451,8 @@ public function getCanonicalUrl()
         return $this->canonical_url;
     }
 
-    // Default: self-referencing
-    return route('business.show', $this->slug);
+    // Default: self-referencing with business type
+    return $this->getUrl();
 }
 
 /**
@@ -688,6 +723,39 @@ public function isOpen()
             type: $type,
             referralSource: $referralSource,
             userId: $userId
+        );
+    }
+
+    /**
+     * Record an impression when business listing is visible
+     * 
+     * @param string $pageType Where listing is visible ('archive', 'category', 'search', etc.)
+     * @param string $referralSource Source of traffic ('yellowbooks', 'google', 'direct', etc.)
+     * @return static
+     */
+    public function recordImpression(string $pageType = 'archive', string $referralSource = 'direct')
+    {
+        return BusinessImpression::recordImpression(
+            businessId: $this->id,
+            pageType: $pageType,
+            referralSource: $referralSource
+        );
+    }
+
+    /**
+     * Record a click when someone visits business detail page
+     * Cookie-based: only records once per person (until cookie expires)
+     * 
+     * @param string $referralSource Source of traffic ('yellowbooks', 'google', 'direct', etc.)
+     * @param string|null $sourcePageType Where click came from ('archive', 'category', 'external', etc.)
+     * @return static|null Returns null if click already recorded (duplicate)
+     */
+    public function recordClick(string $referralSource = 'direct', ?string $sourcePageType = null)
+    {
+        return BusinessClick::recordClick(
+            businessId: $this->id,
+            referralSource: $referralSource,
+            sourcePageType: $sourcePageType
         );
     }
 

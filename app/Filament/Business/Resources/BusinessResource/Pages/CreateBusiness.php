@@ -208,9 +208,11 @@ class CreateBusiness extends CreateRecord
                             Forms\Components\TextInput::make('address')
                                 ->required()
                                 ->maxLength(255)
-                                ->placeholder('e.g., 123 Main Street, Suite 100')
+                                ->placeholder('Start typing an address...')
                                 ->columnSpanFull()
-                                ->helperText('Street address or building name'),
+                                ->helperText('Start typing to see address suggestions from Google Maps')
+                                ->id('address-autocomplete')
+                                ->extraAttributes(['data-google-autocomplete' => 'true']),
                             
                             Forms\Components\TextInput::make('area')
                                 ->label('Area/Neighborhood')
@@ -227,7 +229,8 @@ class CreateBusiness extends CreateRecord
                                         ->minValue(-90)
                                         ->maxValue(90)
                                         ->placeholder('e.g., 6.5244')
-                                        ->helperText('Latitude must be between -90 and 90'),
+                                        ->helperText('Auto-filled from address or enter manually')
+                                        ->id('latitude-field'),
                                     
                                     Forms\Components\TextInput::make('longitude')
                                         ->label('Longitude (GPS)')
@@ -236,7 +239,8 @@ class CreateBusiness extends CreateRecord
                                         ->minValue(-180)
                                         ->maxValue(180)
                                         ->placeholder('e.g., 3.3792')
-                                        ->helperText('Longitude must be between -180 and 180'),
+                                        ->helperText('Auto-filled from address or enter manually')
+                                        ->id('longitude-field'),
                                 ]),
                         ])
                         ->columns(2),
@@ -993,4 +997,18 @@ Wizard\Step::make('Business Hours')
     protected array $faqsData = [];
     protected array $socialAccountsData = [];
     protected array $officialsData = [];
+    
+    /**
+     * Add Google Places Autocomplete JavaScript to the page
+     */
+    protected function getHeaderActions(): array
+    {
+        // This will render our custom view with the Google Places script
+        return [];
+    }
+    
+    public function getFooter(): string
+    {
+        return view('filament.widgets.google-places-autocomplete')->render();
+    }
 }

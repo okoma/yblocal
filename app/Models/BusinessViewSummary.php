@@ -20,6 +20,12 @@ class BusinessViewSummary extends Model
         'views_by_source',       // JSON: {'yellowbooks': 100, 'google': 50, ...}
         'views_by_country',      // JSON: {'NG': 200, 'US': 50, ...}
         'views_by_device',       // JSON: {'mobile': 150, 'desktop': 100, 'tablet': 50}
+        'total_impressions',     // Total impressions (listings visible)
+        'impressions_by_source', // JSON: {'yellowbooks': 500, 'google': 200, ...}
+        'impressions_by_page_type', // JSON: {'archive': 400, 'category': 200, 'search': 100}
+        'total_clicks',          // Total clicks (cookie-based, one per person)
+        'clicks_by_source',      // JSON: {'yellowbooks': 50, 'google': 30, ...}
+        'clicks_by_page_type',  // JSON: {'archive': 40, 'category': 20, 'external': 20}
         'total_calls',
         'total_whatsapp',
         'total_emails',
@@ -31,6 +37,10 @@ class BusinessViewSummary extends Model
         'views_by_source' => 'array',
         'views_by_country' => 'array',
         'views_by_device' => 'array',
+        'impressions_by_source' => 'array',
+        'impressions_by_page_type' => 'array',
+        'clicks_by_source' => 'array',
+        'clicks_by_page_type' => 'array',
     ];
 
     // ============================================
@@ -124,6 +134,46 @@ class BusinessViewSummary extends Model
         );
         $interactions = $interactionsQuery->get();
 
+        // Build base query for impressions
+        $impressionsQuery = BusinessImpression::query();
+        if ($businessId) {
+            $impressionsQuery->where('business_id', $businessId);
+        } else {
+            $impressionsQuery->where('business_branch_id', $branchId);
+        }
+
+        // Apply period filter
+        $impressionsQuery = static::applyPeriodFilter(
+            $impressionsQuery, 
+            $periodType, 
+            $periodKey, 
+            'impression_date', 
+            'impression_hour', 
+            'impression_month', 
+            'impression_year'
+        );
+        $impressions = $impressionsQuery->get();
+
+        // Build base query for clicks
+        $clicksQuery = BusinessClick::query();
+        if ($businessId) {
+            $clicksQuery->where('business_id', $businessId);
+        } else {
+            $clicksQuery->where('business_branch_id', $branchId);
+        }
+
+        // Apply period filter
+        $clicksQuery = static::applyPeriodFilter(
+            $clicksQuery, 
+            $periodType, 
+            $periodKey, 
+            'click_date', 
+            'click_hour', 
+            'click_month', 
+            'click_year'
+        );
+        $clicks = $clicksQuery->get();
+
         return static::updateOrCreate(
             [
                 'business_id' => $businessId,
@@ -136,6 +186,12 @@ class BusinessViewSummary extends Model
                 'views_by_source' => $views->groupBy('referral_source')->map->count()->toArray(),
                 'views_by_country' => $views->groupBy('country')->map->count()->toArray(),
                 'views_by_device' => $views->groupBy('device_type')->map->count()->toArray(),
+                'total_impressions' => $impressions->count(),
+                'impressions_by_source' => $impressions->groupBy('referral_source')->map->count()->toArray(),
+                'impressions_by_page_type' => $impressions->groupBy('page_type')->map->count()->toArray(),
+                'total_clicks' => $clicks->count(),
+                'clicks_by_source' => $clicks->groupBy('referral_source')->map->count()->toArray(),
+                'clicks_by_page_type' => $clicks->groupBy('source_page_type')->map->count()->toArray(),
                 'total_calls' => $interactions->where('interaction_type', 'call')->count(),
                 'total_whatsapp' => $interactions->where('interaction_type', 'whatsapp')->count(),
                 'total_emails' => $interactions->where('interaction_type', 'email')->count(),

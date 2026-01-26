@@ -126,6 +126,9 @@
             $views = $this->getViewsData();
             $interactions = $this->getInteractionsData();
             $leads = $this->getLeadsData();
+            $clicks = $this->getClicksData();
+            $impressions = $this->getImpressionsData();
+            $ctr = $this->getCTRData();
             
             // Calculate trends with proper handling
             $viewsTrend = 0;
@@ -181,6 +184,40 @@
                 $conversionTrend = round($leads['conversion_rate'] - $leads['previous_conversion_rate'], 1);
                 $conversionTrendDirection = $conversionTrend > 0 ? 'up' : ($conversionTrend < 0 ? 'down' : 'neutral');
             }
+            
+            // Clicks trend
+            $clicksTrend = 0;
+            $clicksTrendDirection = 'neutral';
+            if (isset($clicks['previous_total'])) {
+                if ($clicks['previous_total'] > 0) {
+                    $clicksTrend = round((($clicks['total'] - $clicks['previous_total']) / $clicks['previous_total']) * 100, 1);
+                    $clicksTrendDirection = $clicksTrend > 0 ? 'up' : ($clicksTrend < 0 ? 'down' : 'neutral');
+                } elseif ($clicks['total'] > 0) {
+                    $clicksTrend = 100;
+                    $clicksTrendDirection = 'up';
+                }
+            }
+            
+            // Impressions trend
+            $impressionsTrend = 0;
+            $impressionsTrendDirection = 'neutral';
+            if (isset($impressions['previous_total'])) {
+                if ($impressions['previous_total'] > 0) {
+                    $impressionsTrend = round((($impressions['total'] - $impressions['previous_total']) / $impressions['previous_total']) * 100, 1);
+                    $impressionsTrendDirection = $impressionsTrend > 0 ? 'up' : ($impressionsTrend < 0 ? 'down' : 'neutral');
+                } elseif ($impressions['total'] > 0) {
+                    $impressionsTrend = 100;
+                    $impressionsTrendDirection = 'up';
+                }
+            }
+            
+            // CTR trend
+            $ctrTrend = 0;
+            $ctrTrendDirection = 'neutral';
+            if (isset($ctr['previous_total'])) {
+                $ctrTrend = round($ctr['total'] - $ctr['previous_total'], 1);
+                $ctrTrendDirection = $ctrTrend > 0 ? 'up' : ($ctrTrend < 0 ? 'down' : 'neutral');
+            }
         @endphp
                                                                                                
 
@@ -192,15 +229,31 @@
             <div class="flex-1">
                 <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Clicks</p>
                 <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
-                    2,847
+                    {{ number_format($clicks['total']) }}
                 </p>
                 <div class="mt-3 flex items-center gap-2">
-                    <span class="inline-flex items-center gap-1 rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 up-trend px-2.5 py-1 text-xs font-semibold">
-                        <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
-                        </svg>
-                        12.5%
-                    </span>
+                    @if($clicksTrendDirection === 'up')
+                        <span class="up-trend inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold">
+                            <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            {{ abs($clicksTrend) }}%
+                        </span>
+                    @elseif($clicksTrendDirection === 'down')
+                        <span class="down-trend inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold">
+                            <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            {{ abs($clicksTrend) }}%
+                        </span>
+                    @else
+                        <span class="neutral-trend inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold">
+                            <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/>
+                            </svg>
+                            0%
+                        </span>
+                    @endif
                     <span class="text-xs text-gray-500 dark:text-gray-400">vs previous period</span>
                 </div>
             </div>
@@ -218,15 +271,31 @@
             <div class="flex-1">
                 <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Impressions</p>
                 <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
-                    45,892
+                    {{ number_format($impressions['total']) }}
                 </p>
                 <div class="mt-3 flex items-center gap-2">
-                    <span class="inline-flex items-center gap-1 rounded-full up-trend bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 px-2.5 py-1 text-xs font-semibold">
-                        <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
-                        </svg>
-                        8.3%
-                    </span>
+                    @if($impressionsTrendDirection === 'up')
+                        <span class="up-trend inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold">
+                            <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            {{ abs($impressionsTrend) }}%
+                        </span>
+                    @elseif($impressionsTrendDirection === 'down')
+                        <span class="down-trend inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold">
+                            <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            {{ abs($impressionsTrend) }}%
+                        </span>
+                    @else
+                        <span class="neutral-trend inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold">
+                            <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/>
+                            </svg>
+                            0%
+                        </span>
+                    @endif
                     <span class="text-xs text-gray-500 dark:text-gray-400">vs previous period</span>
                 </div>
             </div>
@@ -413,15 +482,31 @@
             <div class="flex-1">
                 <p class="text-sm font-medium text-gray-600 dark:text-gray-400">CTR</p>
                 <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
-                    6.2%
+                    {{ $ctr['total'] }}%
                 </p>
                 <div class="mt-3 flex items-center gap-2">
-                    <span class="inline-flex items-center gap-1 rounded-full bg-green-100 up-trend text-green-800 dark:bg-green-900/30 dark:text-green-400 px-2.5 py-1 text-xs font-semibold">
-                        <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
-                        </svg>
-                        3.8%
-                    </span>
+                    @if($ctrTrendDirection === 'up')
+                        <span class="up-trend inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold">
+                            <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            {{ abs($ctrTrend) }}%
+                        </span>
+                    @elseif($ctrTrendDirection === 'down')
+                        <span class="down-trend inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold">
+                            <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            {{ abs($ctrTrend) }}%
+                        </span>
+                    @else
+                        <span class="neutral-trend inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold">
+                            <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/>
+                            </svg>
+                            0%
+                        </span>
+                    @endif
                     <span class="text-xs text-gray-500 dark:text-gray-400">vs previous period</span>
                 </div>
             </div>
@@ -445,23 +530,33 @@
                 </div>
             </x-slot>
             
-            <div class="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                @foreach($views['by_source'] as $source => $count)
-                    <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-4 transition hover:shadow-md">
-                        <div class="flex items-center justify-between">
-                            <div class="flex-1">
-                                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">{{ ucfirst($source) }}</p>
-                                <p class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{{ number_format($count) }}</p>
-                            </div>
-                            <div class="ml-3 flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-white dark:bg-gray-700">
-                                <span class="text-lg font-semibold text-primary-600">
-                                    {{ $views['total'] > 0 ? round($count / $views['total'] * 100) : 0 }}%
-                                </span>
+            @if(empty($views['by_source']))
+                <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-8 text-center">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                    <p class="mt-4 text-sm font-medium text-gray-900 dark:text-white">No views data available</p>
+                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Views will appear here once your business starts receiving traffic.</p>
+                </div>
+            @else
+                <div class="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    @foreach($views['by_source'] as $source => $count)
+                        <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-4 transition hover:shadow-md">
+                            <div class="flex items-center justify-between">
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">{{ ucfirst($source) }}</p>
+                                    <p class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{{ number_format($count) }}</p>
+                                </div>
+                                <div class="ml-3 flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-white dark:bg-gray-700">
+                                    <span class="text-lg font-semibold text-primary-600">
+                                        {{ $views['total'] > 0 ? round($count / $views['total'] * 100) : 0 }}%
+                                    </span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                @endforeach
-            </div>
+                    @endforeach
+                </div>
+            @endif
         </x-filament::section>
 
         <!-- Customer Interactions Breakdown -->
