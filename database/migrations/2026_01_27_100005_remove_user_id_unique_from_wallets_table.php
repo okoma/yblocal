@@ -19,16 +19,44 @@ return new class extends Migration
         // Keep user_id as a regular foreign key (for audit purposes)
         
         Schema::table('wallets', function (Blueprint $table) {
-            // Drop unique constraint by name (Laravel convention: {table}_{column}_unique)
+            // Step 1: Drop the foreign key constraint first (required before dropping unique)
+            $table->dropForeign(['user_id']);
+        });
+        
+        Schema::table('wallets', function (Blueprint $table) {
+            // Step 2: Drop unique constraint by name (Laravel convention: {table}_{column}_unique)
             $table->dropUnique('wallets_user_id_unique');
+        });
+        
+        Schema::table('wallets', function (Blueprint $table) {
+            // Step 3: Re-add the foreign key constraint (without unique)
+            $table->foreign('user_id')
+                ->references('id')
+                ->on('users')
+                ->onDelete('cascade');
         });
     }
 
     public function down(): void
     {
+        // Reverse the process: drop foreign key, add unique, re-add foreign key with unique
         Schema::table('wallets', function (Blueprint $table) {
-            // Restore unique constraint on user_id (for rollback)
+            // Step 1: Drop the foreign key
+            $table->dropForeign(['user_id']);
+        });
+        
+        Schema::table('wallets', function (Blueprint $table) {
+            // Step 2: Add unique constraint back
             $table->unique('user_id');
+        });
+        
+        Schema::table('wallets', function (Blueprint $table) {
+            // Step 3: Re-add foreign key (note: this won't be unique anymore in Laravel's way,
+            // but the unique constraint above handles uniqueness)
+            $table->foreign('user_id')
+                ->references('id')
+                ->on('users')
+                ->onDelete('cascade');
         });
     }
 };
