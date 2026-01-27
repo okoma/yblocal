@@ -15,6 +15,7 @@ class Wallet extends Model
 
     protected $fillable = [
         'user_id',
+        'business_id',
         'balance',
         'currency',
         'ad_credits',
@@ -28,6 +29,11 @@ class Wallet extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function business()
+    {
+        return $this->belongsTo(Business::class);
     }
 
     /**
@@ -66,6 +72,7 @@ class Wallet extends Model
 
         return WalletTransaction::create([
             'wallet_id' => $this->id,
+            'business_id' => $this->business_id,
             'user_id' => $this->user_id,
             'type' => 'deposit',
             'amount' => $amount,
@@ -90,6 +97,7 @@ class Wallet extends Model
 
         return WalletTransaction::create([
             'wallet_id' => $this->id,
+            'business_id' => $this->business_id,
             'user_id' => $this->user_id,
             'type' => 'withdrawal',
             'amount' => $amount,
@@ -121,6 +129,7 @@ class Wallet extends Model
 
         $payload = [
             'wallet_id' => $this->id,
+            'business_id' => $this->business_id,
             'user_id' => $this->user_id,
             'type' => 'purchase',
             'amount' => $amount,
@@ -156,6 +165,7 @@ class Wallet extends Model
 
         return WalletTransaction::create([
             'wallet_id' => $this->id,
+            'business_id' => $this->business_id,
             'user_id' => $this->user_id,
             'type' => 'credit_purchase',
             'amount' => $amount !== null ? (float) $amount : 0,
@@ -184,6 +194,7 @@ class Wallet extends Model
 
         return WalletTransaction::create([
             'wallet_id' => $this->id,
+            'business_id' => $this->business_id,
             'user_id' => $this->user_id,
             'type' => 'credit_usage',
             'credits' => $credits,

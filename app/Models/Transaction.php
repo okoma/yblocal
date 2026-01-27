@@ -17,6 +17,7 @@ class Transaction extends Model
 
     protected $fillable = [
         'user_id',
+        'business_id',
         'payment_gateway_id',
         'transaction_ref',
         'payment_gateway_ref',
@@ -55,6 +56,11 @@ class Transaction extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function business()
+    {
+        return $this->belongsTo(Business::class);
     }
 
     public function gateway()

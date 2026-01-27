@@ -10,6 +10,7 @@ use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Models\PaymentGateway;
 use App\Services\PaymentService;
+use App\Services\ActiveBusiness;
 use Filament\Pages\Page;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -676,9 +677,15 @@ class WalletPage extends Page implements HasTable, HasActions
 
     public function table(Table $table): Table
     {
+        $businessId = app(ActiveBusiness::class)->getActiveBusinessId();
+        
+        if (!$businessId) {
+            return $table->query(WalletTransaction::whereRaw('1 = 0'));
+        }
+        
         return $table
             ->query(
-                WalletTransaction::where('user_id', auth()->id())
+                WalletTransaction::where('business_id', $businessId)
                     ->orderBy('created_at', 'desc')
             )
             ->columns([

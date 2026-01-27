@@ -16,6 +16,7 @@ class WalletTransaction extends Model
 
     protected $fillable = [
         'wallet_id',
+        'business_id',
         'user_id',
         'type',
         'amount',
@@ -39,6 +40,11 @@ class WalletTransaction extends Model
     public function wallet()
     {
         return $this->belongsTo(Wallet::class);
+    }
+
+    public function business()
+    {
+        return $this->belongsTo(Business::class);
     }
 
     public function user()

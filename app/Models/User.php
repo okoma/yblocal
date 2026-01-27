@@ -159,9 +159,41 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasMany(Notification::class);
     }
 
+    /**
+     * Get wallet for a specific business
+     * @param int $businessId
+     * @return Wallet|null
+     */
+    public function walletForBusiness(int $businessId): ?Wallet
+    {
+        return Wallet::where('business_id', $businessId)
+            ->where('user_id', $this->id)
+            ->first();
+    }
+
+    /**
+     * All wallets for businesses this user owns or manages
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function wallets()
+    {
+        $businessIds = $this->businesses()->pluck('id')
+            ->merge($this->managedBusinesses()->pluck('id'))
+            ->unique();
+        
+        return Wallet::whereIn('business_id', $businessIds)
+            ->where('user_id', $this->id)
+            ->get();
+    }
+
+    /**
+     * @deprecated Use walletForBusiness() or wallets() instead. Wallets are now business-scoped.
+     */
     public function wallet()
     {
-        return $this->hasOne(Wallet::class);
+        // Return wallet for first business (for backward compatibility)
+        $business = $this->businesses()->first() ?? $this->managedBusinesses()->first();
+        return $business ? $this->walletForBusiness($business->id) : null;
     }
 
     public function subscription()
@@ -174,9 +206,31 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasMany(Subscription::class);
     }
 
+    /**
+     * Get transactions for a specific business
+     * @param int $businessId
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function transactionsForBusiness(int $businessId)
+    {
+        return Transaction::where('business_id', $businessId)
+            ->where('user_id', $this->id)
+            ->get();
+    }
+
+    /**
+     * All transactions for businesses this user owns or manages
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
     public function transactions()
     {
-        return $this->hasMany(Transaction::class);
+        $businessIds = $this->businesses()->pluck('id')
+            ->merge($this->managedBusinesses()->pluck('id'))
+            ->unique();
+        
+        return Transaction::whereIn('business_id', $businessIds)
+            ->where('user_id', $this->id)
+            ->get();
     }
 
     public function referrer()

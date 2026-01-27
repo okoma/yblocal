@@ -148,8 +148,27 @@ class PaymentService
     ): Transaction {
         $prefix = $this->getTransactionPrefix($payable);
         
+        // Get business_id from payable object
+        $businessId = null;
+        if (method_exists($payable, 'getBusinessId')) {
+            $businessId = $payable->getBusinessId();
+        } elseif (isset($payable->business_id)) {
+            $businessId = $payable->business_id;
+        } elseif ($payable instanceof \App\Models\Subscription) {
+            $businessId = $payable->business_id;
+        } elseif ($payable instanceof \App\Models\AdCampaign) {
+            $businessId = $payable->business_id;
+        } elseif ($payable instanceof \App\Models\Wallet) {
+            $businessId = $payable->business_id;
+        }
+        
+        if (!$businessId) {
+            throw new \Exception('Cannot determine business_id for transaction. Payable object must have business_id.');
+        }
+        
         return Transaction::create([
             'user_id' => $user->id,
+            'business_id' => $businessId,
             'payment_gateway_id' => $gateway->id,
             'transaction_ref' => $this->generateReference($prefix),
             'transactionable_type' => get_class($payable),

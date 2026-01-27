@@ -33,15 +33,12 @@ class TransactionResource extends Resource
         $id = app(ActiveBusiness::class)->getActiveBusinessId();
         $query = parent::getEloquentQuery()
             ->with(['gateway', 'transactionable'])
-            ->where('user_id', Filament::auth()->id())
             ->latest();
         if ($id === null) {
             return $query->whereRaw('1 = 0');
         }
-        return $query->where(function (Builder $q) use ($id) {
-            $q->whereHasMorph('transactionable', [Subscription::class], fn (Builder $m) => $m->where('business_id', $id))
-                ->orWhereHasMorph('transactionable', [AdCampaign::class], fn (Builder $m) => $m->where('business_id', $id));
-        });
+        // Filter by business_id directly (now that transactions are business-scoped)
+        return $query->where('business_id', $id);
     }
 
     public static function form(Form $form): Form
@@ -227,12 +224,8 @@ class TransactionResource extends Resource
         if ($id === null) {
             return null;
         }
-        $pending = static::getModel()::where('user_id', Filament::auth()->id())
+        $pending = static::getModel()::where('business_id', $id)
             ->where('status', 'pending')
-            ->where(function (Builder $q) use ($id) {
-                $q->whereHasMorph('transactionable', [Subscription::class], fn (Builder $m) => $m->where('business_id', $id))
-                    ->orWhereHasMorph('transactionable', [AdCampaign::class], fn (Builder $m) => $m->where('business_id', $id));
-            })
             ->count();
         return $pending > 0 ? (string) $pending : null;
     }
