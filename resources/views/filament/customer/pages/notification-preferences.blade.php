@@ -32,7 +32,7 @@
         </form>
         
         {{-- Privacy Note --}}
-        <div class="mt-6 bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+        <div class="mt-6 bg-gray-50 border border-gray-200 dark:bg-gray-800 rounded-lg p-4">
             <div class="flex items-start gap-3">
                 <div class="flex-shrink-0">
                     <svg class="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
