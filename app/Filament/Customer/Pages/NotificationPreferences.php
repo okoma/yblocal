@@ -184,16 +184,4 @@ class NotificationPreferences extends Page
             ->body('Your notification preferences have been saved successfully.')
             ->send();
     }
-    
-    protected function getFormActions(): array
-    {
-        return [
-            Forms\Components\Actions\Action::make('save')
-                ->label('Save Preferences')
-                ->action('updatePreferences')
-                ->keyBindings(['mod+s'])
-                ->icon('heroicon-o-check-circle')
-                ->color('primary'),
-        ];
-    }
 }

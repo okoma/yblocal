@@ -23,9 +23,11 @@
         <form wire:submit="updatePreferences">
             {{ $this->form }}
             
-            {{-- Form Actions --}}
-            <div class="mt-6">
-                {{ $this->formActions }}
+            {{-- Save Button --}}
+            <div class="mt-6 flex justify-end">
+                <x-filament::button type="submit" size="lg">
+                    Save Preferences
+                </x-filament::button>
             </div>
         </form>
         
