@@ -126,4 +126,14 @@ class Profile extends Page
             ->body('Your profile has been updated successfully.')
             ->send();
     }
+    
+    public function deleteAccount(): void
+    {
+        // This would require additional confirmation and handling
+        Notification::make()
+            ->warning()
+            ->title('Account Deletion')
+            ->body('Please contact support to delete your account.')
+            ->send();
+    }
 }

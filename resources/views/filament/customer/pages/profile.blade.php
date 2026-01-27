@@ -1,11 +1,49 @@
 <x-filament-panels::page>
-    <form wire:submit="updateProfile">
-        {{ $this->form }}
-        
-        <div class="mt-6 flex justify-end">
-            <x-filament::button type="submit">
-                Save Changes
-            </x-filament::button>
-        </div>
-    </form>
+    <div class="space-y-6">
+        {{-- Profile Information Form --}}
+        <x-filament::card>
+            <form wire:submit="updateProfile">
+                {{ $this->form }}
+                
+                <div class="mt-6 flex justify-end">
+                    <x-filament::button 
+                        type="submit"
+                        wire:loading.attr="disabled"
+                        wire:target="updateProfile"
+                    >
+                        <span wire:loading.remove wire:target="updateProfile">Save Changes</span>
+                        <span wire:loading wire:target="updateProfile">Save Changes</span>
+                    </x-filament::button>
+                </div>
+            </form>
+        </x-filament::card>
+
+        {{-- Danger Zone --}}
+        <x-filament::card>
+            <x-filament::section>
+                <x-slot name="heading">
+                    Danger Zone
+                </x-slot>
+
+                <x-slot name="description">
+                    Permanently delete your account and all associated data.
+                </x-slot>
+
+                <div class="space-y-4">
+                    <p class="text-sm text-gray-600 dark:text-gray-400">
+                        Once your account is deleted, all of your resources and data will be permanently deleted. 
+                        Before deleting your account, please download any data or information that you wish to retain.
+                    </p>
+
+                    <x-filament::button 
+                        wire:click="deleteAccount" 
+                        color="danger"
+                        outlined
+                    >
+                        Delete Account
+                    </x-filament::button>
+                </div>
+            </x-filament::section>
+        </x-filament::card>
+    </div>
 </x-filament-panels::page>
