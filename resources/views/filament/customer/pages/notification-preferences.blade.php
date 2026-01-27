@@ -31,35 +31,6 @@
             </div>
         </form>
         
-        {{-- Additional Info --}}
-        <div class="mt-8 border-t border-gray-200 dark:border-gray-700 pt-6">
-            <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-4">
-                💡 Notification Types Explained
-            </h3>
-            <div class="grid grid-cols-1 gap-4">
-                <div class="flex gap-3">
-                    <dt class="font-medium text-gray-700 dark:text-gray-300 min-w-[140px]">Review Replies:</dt>
-                    <dd class="text-gray-600 dark:text-gray-400 flex-1">When a business owner responds to your review</dd>
-                </div>
-                <div class="flex gap-3">
-                    <dt class="font-medium text-gray-700 dark:text-gray-300 min-w-[140px]">Inquiry Responses:</dt>
-                    <dd class="text-gray-600 dark:text-gray-400 flex-1">When a business replies to your contact inquiry</dd>
-                </div>
-                <div class="flex gap-3">
-                    <dt class="font-medium text-gray-700 dark:text-gray-300 min-w-[140px]">Business Updates:</dt>
-                    <dd class="text-gray-600 dark:text-gray-400 flex-1">News and announcements from businesses you've saved</dd>
-                </div>
-                <div class="flex gap-3">
-                    <dt class="font-medium text-gray-700 dark:text-gray-300 min-w-[140px]">Promotions:</dt>
-                    <dd class="text-gray-600 dark:text-gray-400 flex-1">Special offers, deals, and exclusive discounts</dd>
-                </div>
-                <div class="flex gap-3">
-                    <dt class="font-medium text-gray-700 dark:text-gray-300 min-w-[140px]">Newsletter:</dt>
-                    <dd class="text-gray-600 dark:text-gray-400 flex-1">Platform updates, tips, and featured businesses</dd>
-                </div>
-            </div>
-        </div>
-        
         {{-- Privacy Note --}}
         <div class="mt-6 bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
             <div class="flex items-start gap-3">

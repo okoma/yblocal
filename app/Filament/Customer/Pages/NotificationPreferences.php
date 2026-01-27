@@ -162,6 +162,33 @@ class NotificationPreferences extends Page
                     ])
                     ->collapsible()
                     ->collapsed(),
+                
+                Forms\Components\Section::make('💡 Notification Types Explained')
+                    ->description('Learn more about each notification type')
+                    ->schema([
+                        Forms\Components\Placeholder::make('review_replies_info')
+                            ->label('Review Replies')
+                            ->content('When a business owner responds to your review'),
+                        
+                        Forms\Components\Placeholder::make('inquiry_responses_info')
+                            ->label('Inquiry Responses')
+                            ->content('When a business replies to your contact inquiry'),
+                        
+                        Forms\Components\Placeholder::make('business_updates_info')
+                            ->label('Business Updates')
+                            ->content('News and announcements from businesses you\'ve saved'),
+                        
+                        Forms\Components\Placeholder::make('promotions_info')
+                            ->label('Promotions')
+                            ->content('Special offers, deals, and exclusive discounts'),
+                        
+                        Forms\Components\Placeholder::make('newsletter_info')
+                            ->label('Newsletter')
+                            ->content('Platform updates, tips, and featured businesses'),
+                    ])
+                    ->columns(1)
+                    ->collapsible()
+                    ->collapsed(),
             ])
             ->statePath('data');
     }
