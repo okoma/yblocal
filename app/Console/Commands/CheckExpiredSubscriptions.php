@@ -180,13 +180,17 @@ class CheckExpiredSubscriptions extends Command
                 return ['success' => false, 'reason' => 'Wallet payment gateway not available'];
             }
 
+            // Get wallet from subscription's business (wallets are now business-scoped)
+            $wallet = \App\Models\Wallet::where('business_id', $subscription->business_id)->first();
+            
             // Check if user has sufficient wallet balance
-            if (!$user->wallet || $user->wallet->balance < $amount) {
-                $balance = $user->wallet ? $user->wallet->balance : 0;
+            if (!$wallet || $wallet->balance < $amount) {
+                $balance = $wallet ? $wallet->balance : 0;
                 $shortfall = $amount - $balance;
 
                 Log::info('Insufficient wallet balance for auto-renewal', [
                     'subscription_id' => $subscription->id,
+                    'business_id' => $subscription->business_id,
                     'user_id' => $user->id,
                     'required' => $amount,
                     'available' => $balance,

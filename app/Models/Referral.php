@@ -71,17 +71,22 @@ class Referral extends Model
 
     public function payRewards()
     {
+        // Get wallets for referrer and referred (using their first business)
+        // Wallets are now business-scoped, so we get the first business wallet
+        $referrerWallet = $this->getUserWallet($this->referrer);
+        $referredWallet = $this->getUserWallet($this->referred);
+        
         // Pay referrer
-        if ($this->referrer_reward > 0) {
-            $this->referrer->wallet->deposit(
+        if ($this->referrer_reward > 0 && $referrerWallet) {
+            $referrerWallet->deposit(
                 $this->referrer_reward,
                 'Referral reward for referring ' . $this->referred->name,
                 $this
             );
         }
 
-        if ($this->referrer_credits > 0) {
-            $this->referrer->wallet->addCredits(
+        if ($this->referrer_credits > 0 && $referrerWallet) {
+            $referrerWallet->addCredits(
                 $this->referrer_credits,
                 'Referral credits for referring ' . $this->referred->name,
                 $this
@@ -89,16 +94,16 @@ class Referral extends Model
         }
 
         // Pay referred
-        if ($this->referred_reward > 0) {
-            $this->referred->wallet->deposit(
+        if ($this->referred_reward > 0 && $referredWallet) {
+            $referredWallet->deposit(
                 $this->referred_reward,
                 'Welcome bonus from referral',
                 $this
             );
         }
 
-        if ($this->referred_credits > 0) {
-            $this->referred->wallet->addCredits(
+        if ($this->referred_credits > 0 && $referredWallet) {
+            $referredWallet->addCredits(
                 $this->referred_credits,
                 'Welcome bonus credits',
                 $this
@@ -106,5 +111,34 @@ class Referral extends Model
         }
 
         $this->update(['rewards_paid' => true]);
+    }
+    
+    /**
+     * Get wallet for user's first business (or create if needed)
+     */
+    protected function getUserWallet(User $user): ?Wallet
+    {
+        // Get user's first business (owned or managed)
+        $business = $user->businesses()->first() ?? $user->managedBusinesses()->first();
+        
+        if (!$business) {
+            // User has no business yet - can't create wallet without business
+            \Illuminate\Support\Facades\Log::warning('Cannot pay referral reward: user has no business', [
+                'user_id' => $user->id,
+                'referral_id' => $this->id,
+            ]);
+            return null;
+        }
+        
+        // Get or create wallet for the business
+        return Wallet::firstOrCreate(
+            ['business_id' => $business->id],
+            [
+                'user_id' => $user->id,
+                'balance' => 0,
+                'currency' => 'NGN',
+                'ad_credits' => 0,
+            ]
+        );
     }
 }

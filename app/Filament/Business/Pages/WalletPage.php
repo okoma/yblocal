@@ -41,11 +41,17 @@ class WalletPage extends Page implements HasTable, HasActions
     public function getWallet()
     {
         $user = auth()->user();
+        $businessId = app(ActiveBusiness::class)->getActiveBusinessId();
         
-        // Get or create wallet
+        if (!$businessId) {
+            throw new \Exception('No active business selected. Please select a business first.');
+        }
+        
+        // Get or create wallet for the active business
         return Wallet::firstOrCreate(
-            ['user_id' => $user->id],
+            ['business_id' => $businessId],
             [
+                'user_id' => $user->id,
                 'balance' => 0,
                 'currency' => 'NGN',
                 'ad_credits' => 0,

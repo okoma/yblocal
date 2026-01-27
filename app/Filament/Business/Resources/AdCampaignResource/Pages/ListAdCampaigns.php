@@ -38,7 +38,11 @@ class ListAdCampaigns extends ListRecords
                 ->color('success')
                 ->url(fn () => route('filament.business.pages.wallet-page'))
                 ->badge(function () {
-                    $wallet = auth()->user()->wallet;
+                    $businessId = app(ActiveBusiness::class)->getActiveBusinessId();
+                    if (!$businessId) {
+                        return null;
+                    }
+                    $wallet = \App\Models\Wallet::where('business_id', $businessId)->first();
                     return $wallet ? '₦' . number_format($wallet->balance, 0) : null;
                 })
                 ->badgeColor('success'),

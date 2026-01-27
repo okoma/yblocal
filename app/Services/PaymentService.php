@@ -422,11 +422,20 @@ class PaymentService
         float $amount
     ): PaymentResult {
         try {
-            $wallet = $user->wallet;
+            // Get wallet from transaction's business_id (wallets are now business-scoped)
+            if (!$transaction->business_id) {
+                Log::error('Transaction has no business_id', ['transaction_id' => $transaction->id]);
+                return PaymentResult::failed('Invalid transaction. Please contact support.');
+            }
+            
+            $wallet = Wallet::where('business_id', $transaction->business_id)->first();
             
             // Validate wallet exists
             if (!$wallet) {
-                Log::error('Wallet not found for user', ['user_id' => $user->id]);
+                Log::error('Wallet not found for business', [
+                    'business_id' => $transaction->business_id,
+                    'user_id' => $user->id
+                ]);
                 return PaymentResult::failed('Wallet not found. Please contact support.');
             }
             
