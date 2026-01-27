@@ -176,7 +176,7 @@ class SubscriptionPage extends Page implements HasForms, HasActions
                     Forms\Components\Hidden::make('business_id')
                         ->default(fn () => app(ActiveBusiness::class)->getActiveBusinessId()),
                     
-                    // Upgrade: no-refund warning + agree (only when upgrading)
+                    // Upgrade: no-refund warning + agree (only when upgrading, and not for free plans)
                     Forms\Components\Section::make('Upgrade notice')
                         ->description('You will not receive a refund if you upgrade before your current plan expires.')
                         ->schema([
@@ -185,7 +185,7 @@ class SubscriptionPage extends Page implements HasForms, HasActions
                                 ->required(fn () => $this->isUpgradeForPlan($plan))
                                 ->dehydrated(false),
                         ])
-                        ->visible(fn () => $this->isUpgradeForPlan($plan))
+                        ->visible(fn () => $this->isUpgradeForPlan($plan) && !$plan->isFree())
                         ->columnSpanFull(),
                     
                     // Billing Period
