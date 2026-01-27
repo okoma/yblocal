@@ -124,7 +124,15 @@ class Wallet extends Model
         $ref = $reference ?? $this;
         $balanceBefore = $this->balance;
         $creditsBefore = $credits !== null ? (int) $this->ad_credits : 0;
+        
+        // Deduct balance
         $this->decrement('balance', $amount);
+        
+        // If credits are provided, increment ad_credits
+        if ($credits !== null && $credits > 0) {
+            $this->increment('ad_credits', $credits);
+        }
+        
         $this->refresh();
 
         $payload = [
@@ -143,7 +151,7 @@ class Wallet extends Model
         if ($credits !== null && $credits > 0) {
             $payload['credits'] = $credits;
             $payload['credits_before'] = $creditsBefore;
-            $payload['credits_after'] = $creditsBefore + $credits;
+            $payload['credits_after'] = $this->ad_credits;
         }
 
         return WalletTransaction::create($payload);
