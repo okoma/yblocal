@@ -130,6 +130,7 @@ class SubscriptionPage extends Page implements HasForms, HasActions
                 ->label('Subscribe Now')
                 ->icon('heroicon-o-credit-card')
             )
+            ->modalCancelAction(fn ($action) => $action->label('Cancel'))
             ->modalFooterActionsAlignment('end')
             ->fillForm(function (array $arguments): array {
                 return [
