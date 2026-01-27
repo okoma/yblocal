@@ -1,10 +1,8 @@
 <?php
-
 // ============================================
 // database/migrations/2026_01_26_120000_create_business_impressions_table.php
 // Track impressions when business listings are visible on archive/category/search pages
 // ============================================
-
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -15,31 +13,13 @@ return new class extends Migration
     {
         Schema::create('business_impressions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('business_id')->nullable()->constrained('businesses')->onDelete('cascade');
-            $table->foreignId('business_branch_id')->nullable()->constrained('business_branches')->onDelete('cascade');
+            $table->foreignId('business_id')->constrained('businesses')->onDelete('cascade');
             
             // Page Type (where the impression occurred)
-            $table->enum('page_type', [
-                'archive',      // Archive/listing page
-                'category',     // Category page
-                'search',       // Search results page
-                'related',      // Related businesses section
-                'featured',     // Featured listings section
-                'other'         // Other pages
-            ])->default('archive');
+            $table->string('page_type', 20)->default('archive')->index();
             
             // Referral Source (where the user came from)
-            $table->enum('referral_source', [
-                'yellowbooks',  // Internal YellowBooks navigation
-                'google',       // Google Search
-                'bing',         // Bing Search
-                'facebook',     // Facebook
-                'instagram',    // Instagram
-                'twitter',      // Twitter/X
-                'linkedin',     // LinkedIn
-                'direct',       // Direct URL visit
-                'other'         // Other sources
-            ])->default('direct');
+            $table->string('referral_source', 20)->default('direct')->index();
             
             // Visitor Location (IP-based)
             $table->string('country')->default('Unknown');
@@ -50,7 +30,7 @@ return new class extends Migration
             
             // User Agent
             $table->text('user_agent')->nullable();
-            $table->string('device_type')->nullable(); // mobile, desktop, tablet
+            $table->string('device_type', 20)->nullable(); // mobile, desktop, tablet
             
             // Timestamps for hourly tracking
             $table->timestamp('impressed_at')->useCurrent();

@@ -1,10 +1,8 @@
 <?php
-
 // ============================================
 // database/migrations/2026_01_26_120001_create_business_clicks_table.php
 // Track clicks to business detail pages (cookie-based, one per person)
 // ============================================
-
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -19,31 +17,13 @@ return new class extends Migration
             $table->foreignId('business_branch_id')->nullable()->constrained('business_branches')->onDelete('cascade');
             
             // Cookie ID to prevent duplicate clicks from same person
-            $table->string('cookie_id', 64)->index(); // Unique identifier from cookie
+            $table->string('cookie_id', 64)->index(); // This already creates the index
             
             // Referral Source (where the click came from)
-            $table->enum('referral_source', [
-                'yellowbooks',  // Internal YellowBooks navigation (archive/category pages)
-                'google',       // Google Search
-                'bing',         // Bing Search
-                'facebook',     // Facebook
-                'instagram',    // Instagram
-                'twitter',      // Twitter/X
-                'linkedin',     // LinkedIn
-                'direct',       // Direct URL visit
-                'other'         // Other sources
-            ])->default('direct');
+            $table->string('referral_source')->default('direct');
             
             // Page Type (where the click originated from, if from YellowBooks)
-            $table->enum('source_page_type', [
-                'archive',      // Clicked from archive/listing page
-                'category',     // Clicked from category page
-                'search',       // Clicked from search results
-                'related',      // Clicked from related businesses
-                'featured',     // Clicked from featured section
-                'external',     // Clicked from external source (Google, etc.)
-                'other'         // Other
-            ])->nullable();
+            $table->string('source_page_type')->nullable();
             
             // Visitor Location (IP-based)
             $table->string('country')->default('Unknown');
@@ -73,7 +53,7 @@ return new class extends Migration
             $table->index(['business_id', 'click_month']);
             $table->index(['business_id', 'referral_source']);
             $table->index(['referral_source', 'click_date']);
-            $table->index('cookie_id');
+            // REMOVED: $table->index('cookie_id'); // Already indexed above on line 16
         });
     }
 

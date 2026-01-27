@@ -11,6 +11,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
+use App\Enums\ReferralSource;
+use App\Enums\PageType;
+use App\Enums\DeviceType;
 
 class BusinessClick extends Model
 {
@@ -18,17 +22,16 @@ class BusinessClick extends Model
 
     protected $fillable = [
         'business_id',
-        'business_branch_id',
         'cookie_id',            // Unique cookie identifier to prevent duplicates
-        'referral_source',      // 'yellowbooks', 'google', 'direct', etc.
-        'source_page_type',     // 'archive', 'category', 'search', 'external', etc.
+        'referral_source',      // ReferralSource enum
+        'source_page_type',     // PageType enum
         'country',
         'country_code',
         'region',
         'city',
         'ip_address',
         'user_agent',
-        'device_type',
+        'device_type',          // DeviceType enum
         'clicked_at',
         'click_date',
         'click_hour',
@@ -39,18 +42,41 @@ class BusinessClick extends Model
     protected $casts = [
         'clicked_at' => 'datetime',
         'click_date' => 'date',
+        'referral_source' => ReferralSource::class,
+        'source_page_type' => PageType::class,
+        'device_type' => DeviceType::class,
     ];
 
     // ============================================
     // RELATIONSHIPS
     // ============================================
 
-    /**
-     * Business (for standalone businesses)
-     */
     public function business(): BelongsTo
     {
         return $this->belongsTo(Business::class);
+    }
+
+    // ============================================
+    // BOOT METHOD - Auto-fill date/time fields
+    // ============================================
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($click) {
+            if (!$click->business_id) {
+                throw new \Exception('Click must belong to a business.');
+            }
+
+            $now = $click->clicked_at ? Carbon::parse($click->clicked_at) : now();
+            
+            $click->clicked_at = $now;
+            $click->click_date = $now->toDateString();
+            $click->click_hour = $now->format('H');
+            $click->click_month = $now->format('Y-m');
+            $click->click_year = $now->format('Y');
+        });
     }
 
     // ============================================
@@ -59,20 +85,15 @@ class BusinessClick extends Model
 
     /**
      * Get or create a unique cookie ID for the visitor
-     * This ensures one click per person per business
      */
-    public static function getCookieId($businessId): string
+    public static function getCookieId(int $businessId): string
     {
         $cookieName = "yb_click_{$businessId}";
         
-        // Try to get existing cookie from request
         $cookieId = request()->cookie($cookieName);
         
         if (!$cookieId) {
-            // Generate unique ID
             $cookieId = Str::random(32) . '_' . time();
-            
-            // Queue cookie to be set in response (30 days)
             Cookie::queue($cookieName, $cookieId, 60 * 24 * 30);
         }
         
@@ -81,205 +102,149 @@ class BusinessClick extends Model
 
     /**
      * Record a click when someone visits the business detail page
-     * Only records if this person hasn't clicked before (cookie-based)
      * 
      * @param int $businessId Business ID
-     * @param string $referralSource Source of traffic (e.g., 'yellowbooks', 'google', 'direct')
-     * @param string|null $sourcePageType Where the click came from ('archive', 'category', 'external', etc.)
-     * @return static|null Returns null if click already recorded (duplicate)
+     * @param ReferralSource|string|null $referralSource Source of traffic
+     * @param PageType|string|null $sourcePageType Where the click came from
+     * @return static|null Returns null if click already recorded
      */
-    public static function recordClick($businessId, $referralSource = 'direct', $sourcePageType = null)
-    {
-        if (!$businessId) {
-            throw new \InvalidArgumentException('Must provide businessId');
-        }
-
+    public static function recordClick(
+        int $businessId, 
+        ReferralSource|string|null $referralSource = null, 
+        PageType|string|null $sourcePageType = null
+    ): ?static {
         // Get or create cookie ID
         $cookieId = static::getCookieId($businessId);
         
-        // Check if this person already clicked this business
-        $existingClick = static::where('business_id', $businessId)
-            ->where('cookie_id', $cookieId)
-            ->first();
-        
-        // If already clicked, don't record again (cookie-based deduplication)
-        if ($existingClick) {
-            return null; // Click already recorded for this person
+        // Check if already clicked (deduplication)
+        if (static::where('business_id', $businessId)->where('cookie_id', $cookieId)->exists()) {
+            return null;
         }
 
-        $now = now();
+        // Convert strings to enums if needed
+        if (is_string($referralSource)) {
+            $referralSource = ReferralSource::tryFrom($referralSource) ?? ReferralSource::DIRECT;
+        }
+        if (is_string($sourcePageType)) {
+            $sourcePageType = PageType::tryFrom($sourcePageType);
+        }
+
+        // Auto-detect if not provided
+        $referralSource = $referralSource ?? static::detectReferralSource();
+        $sourcePageType = $sourcePageType ?? static::detectSourcePageType();
 
         return static::create([
             'business_id' => $businessId,
             'cookie_id' => $cookieId,
             'referral_source' => $referralSource,
             'source_page_type' => $sourcePageType,
-            'country' => 'Unknown', // TODO: Integrate with IP geolocation service
+            'country' => 'Unknown', // TODO: IP geolocation
             'country_code' => null,
             'region' => 'Unknown',
             'city' => 'Unknown',
             'ip_address' => request()->ip(),
             'user_agent' => request()->userAgent(),
-            'device_type' => static::detectDevice(),
-            'clicked_at' => $now,
-            'click_date' => $now->toDateString(),
-            'click_hour' => $now->format('H'),
-            'click_month' => $now->format('Y-m'),
-            'click_year' => $now->format('Y'),
+            'device_type' => DeviceType::detect(request()->userAgent()),
         ]);
     }
 
     /**
-     * Detect device type from user agent
+     * Detect referral source from HTTP referer
      */
-    private static function detectDevice(): string
+    public static function detectReferralSource(?string $referer = null): ReferralSource
     {
-        $userAgent = request()->userAgent();
-        
-        if (preg_match('/mobile|android|iphone/i', $userAgent)) {
-            return 'mobile';
-        }
-        
-        if (preg_match('/tablet|ipad/i', $userAgent)) {
-            return 'tablet';
-        }
-        
-        return 'desktop';
-    }
-
-    /**
-     * Detect referral source from HTTP referer header
-     */
-    public static function detectReferralSource($referer = null): string
-    {
-        if (!$referer) {
-            $referer = request()->header('referer');
-        }
+        $referer = $referer ?? request()->header('referer');
         
         if (!$referer) {
-            return 'direct';
+            return ReferralSource::DIRECT;
         }
         
-        // Check if from YellowBooks
-        $appUrl = config('app.url');
+        $appUrl = parse_url(config('app.url'), PHP_URL_HOST);
         if (str_contains($referer, $appUrl)) {
-            // Determine page type from URL
-            if (str_contains($referer, '/category/')) {
-                return 'yellowbooks'; // Will be categorized by source_page_type
-            }
-            if (str_contains($referer, '/search')) {
-                return 'yellowbooks';
-            }
-            if (str_contains($referer, '/businesses') || str_contains($referer, '/archive')) {
-                return 'yellowbooks';
-            }
-            return 'yellowbooks';
+            return ReferralSource::YELLOWBOOKS;
         }
         
-        // External sources
-        if (str_contains($referer, 'google.com')) return 'google';
-        if (str_contains($referer, 'bing.com')) return 'bing';
-        if (str_contains($referer, 'facebook.com')) return 'facebook';
-        if (str_contains($referer, 'instagram.com')) return 'instagram';
-        if (str_contains($referer, 'twitter.com') || str_contains($referer, 'x.com')) return 'twitter';
-        if (str_contains($referer, 'linkedin.com')) return 'linkedin';
+        if (str_contains($referer, 'google.com')) return ReferralSource::GOOGLE;
+        if (str_contains($referer, 'bing.com')) return ReferralSource::BING;
+        if (str_contains($referer, 'facebook.com')) return ReferralSource::FACEBOOK;
+        if (str_contains($referer, 'instagram.com')) return ReferralSource::INSTAGRAM;
+        if (str_contains($referer, 'twitter.com') || str_contains($referer, 'x.com')) return ReferralSource::TWITTER;
+        if (str_contains($referer, 'linkedin.com')) return ReferralSource::LINKEDIN;
         
-        return 'other';
+        return ReferralSource::OTHER;
     }
 
     /**
      * Detect source page type from HTTP referer
      */
-    public static function detectSourcePageType($referer = null): ?string
+    public static function detectSourcePageType(?string $referer = null): ?PageType
     {
-        if (!$referer) {
-            $referer = request()->header('referer');
-        }
+        $referer = $referer ?? request()->header('referer');
         
         if (!$referer) {
-            return 'external'; // Direct visit
+            return null;
         }
         
-        $appUrl = config('app.url');
+        $appUrl = parse_url(config('app.url'), PHP_URL_HOST);
         if (!str_contains($referer, $appUrl)) {
-            return 'external'; // External source
+            return null; // External source
         }
         
-        // Determine from URL path
-        if (str_contains($referer, '/category/')) return 'category';
-        if (str_contains($referer, '/search')) return 'search';
-        if (str_contains($referer, '/businesses') || str_contains($referer, '/archive')) return 'archive';
-        if (str_contains($referer, '/related')) return 'related';
-        if (str_contains($referer, '/featured')) return 'featured';
+        if (str_contains($referer, '/category/')) return PageType::CATEGORY;
+        if (str_contains($referer, '/search')) return PageType::SEARCH;
+        if (str_contains($referer, '/businesses') || str_contains($referer, '/archive')) return PageType::ARCHIVE;
+        if (str_contains($referer, '/related')) return PageType::RELATED;
+        if (str_contains($referer, '/featured')) return PageType::FEATURED;
+        if ($referer === config('app.url') || $referer === config('app.url') . '/') return PageType::HOME;
         
-        return 'other';
+        return PageType::OTHER;
     }
 
     // ============================================
     // SCOPES
     // ============================================
 
-    /**
-     * Scope for clicks by referral source
-     */
-    public function scopeBySource($query, string $source)
+    public function scopeBySource($query, ReferralSource|string $source)
     {
+        if (is_string($source)) {
+            $source = ReferralSource::from($source);
+        }
         return $query->where('referral_source', $source);
     }
 
-    /**
-     * Scope for clicks by source page type
-     */
-    public function scopeBySourcePageType($query, string $pageType)
+    public function scopeBySourcePageType($query, PageType|string $pageType)
     {
+        if (is_string($pageType)) {
+            $pageType = PageType::from($pageType);
+        }
         return $query->where('source_page_type', $pageType);
     }
 
-    /**
-     * Scope for clicks of a specific business
-     */
     public function scopeForBusiness($query, int $businessId)
     {
         return $query->where('business_id', $businessId);
     }
 
-    /**
-     * Scope for today's clicks
-     */
     public function scopeToday($query)
     {
         return $query->whereDate('click_date', today());
     }
 
-    /**
-     * Scope for this month's clicks
-     */
     public function scopeThisMonth($query)
     {
         return $query->where('click_month', now()->format('Y-m'));
     }
 
-    /**
-     * Scope for clicks in date range
-     */
     public function scopeDateRange($query, $startDate, $endDate)
     {
         return $query->whereBetween('click_date', [$startDate, $endDate]);
     }
 
-    // ============================================
-    // VALIDATION
-    // ============================================
-
-    /**
-     * Boot method to ensure click belongs to a business
-     */
-    protected static function booted()
+    public function scopeByDevice($query, DeviceType|string $device)
     {
-        static::creating(function ($click) {
-            if (!$click->business_id) {
-                throw new \Exception('Click must belong to a business.');
-            }
-        });
+        if (is_string($device)) {
+            $device = DeviceType::from($device);
+        }
+        return $query->where('device_type', $device);
     }
 }

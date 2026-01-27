@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Business;
 use App\Models\BusinessClick;
 use App\Models\Location;
+use App\Enums\PageType;  // ← ADD THIS
 use Illuminate\Http\Request;
 
 class CategoryController extends Controller
@@ -16,7 +17,7 @@ class CategoryController extends Controller
      */
     public function show(Request $request, $categorySlug)
     {
-        $pageType = 'category';
+        $pageType = PageType::CATEGORY;  // ← CHANGE: Use enum instead of string
         $referralSource = BusinessClick::detectReferralSource();
         
         // Get category

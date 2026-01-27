@@ -7,6 +7,7 @@ use App\Models\Business;
 use App\Models\BusinessClick;
 use App\Models\BusinessType;
 use App\Models\Category;
+use App\Enums\PageType;  // ← ADD THIS
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -18,7 +19,7 @@ class LocationController extends Controller
      */
     public function show(Request $request, $locationSlug)
     {
-        $pageType = 'archive';
+        $pageType = PageType::LOCATION;  // ← CHANGE: Use enum instead of string
         $referralSource = BusinessClick::detectReferralSource();
         
         // Get location

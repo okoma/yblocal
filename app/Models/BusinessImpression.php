@@ -9,6 +9,10 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Carbon\Carbon;
+use App\Enums\ReferralSource;
+use App\Enums\PageType;
+use App\Enums\DeviceType;
 
 class BusinessImpression extends Model
 {
@@ -16,16 +20,15 @@ class BusinessImpression extends Model
 
     protected $fillable = [
         'business_id',
-        'business_branch_id',
-        'page_type',           // 'archive', 'category', 'search', etc.
-        'referral_source',     // 'yellowbooks', 'google', 'direct', etc.
+        'page_type',           // PageType enum
+        'referral_source',     // ReferralSource enum
         'country',
         'country_code',
         'region',
         'city',
         'ip_address',
         'user_agent',
-        'device_type',
+        'device_type',         // DeviceType enum
         'impressed_at',
         'impression_date',
         'impression_hour',
@@ -36,18 +39,41 @@ class BusinessImpression extends Model
     protected $casts = [
         'impressed_at' => 'datetime',
         'impression_date' => 'date',
+        'page_type' => PageType::class,
+        'referral_source' => ReferralSource::class,
+        'device_type' => DeviceType::class,
     ];
 
     // ============================================
     // RELATIONSHIPS
     // ============================================
 
-    /**
-     * Business (for standalone businesses)
-     */
     public function business(): BelongsTo
     {
         return $this->belongsTo(Business::class);
+    }
+
+    // ============================================
+    // BOOT METHOD - Auto-fill date/time fields
+    // ============================================
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($impression) {
+            if (!$impression->business_id) {
+                throw new \Exception('Impression must belong to a business.');
+            }
+
+            $now = $impression->impressed_at ? Carbon::parse($impression->impressed_at) : now();
+            
+            $impression->impressed_at = $now;
+            $impression->impression_date = $now->toDateString();
+            $impression->impression_hour = $now->format('H');
+            $impression->impression_month = $now->format('Y-m');
+            $impression->impression_year = $now->format('Y');
+        });
     }
 
     // ============================================
@@ -58,126 +84,127 @@ class BusinessImpression extends Model
      * Record an impression when a business listing is visible
      * 
      * @param int $businessId Business ID
-     * @param string $pageType Where the listing is visible ('archive', 'category', 'search', etc.)
-     * @param string $referralSource Source of traffic (e.g., 'yellowbooks', 'google', 'direct')
+     * @param PageType|string $pageType Where the listing is visible
+     * @param ReferralSource|string|null $referralSource Source of traffic
      * @return static
      */
-    public static function recordImpression($businessId, $pageType = 'archive', $referralSource = 'direct')
-    {
-        if (!$businessId) {
-            throw new \InvalidArgumentException('Must provide businessId');
+    public static function recordImpression(
+        int $businessId,
+        PageType|string $pageType = PageType::ARCHIVE,
+        ReferralSource|string|null $referralSource = null
+    ): static {
+        // Convert strings to enums if needed
+        if (is_string($pageType)) {
+            $pageType = PageType::from($pageType);
+        }
+        if (is_string($referralSource)) {
+            $referralSource = ReferralSource::tryFrom($referralSource) ?? ReferralSource::DIRECT;
         }
 
-        // Validate page type
-        $validPageTypes = ['archive', 'category', 'search', 'related', 'featured', 'other'];
-        if (!in_array($pageType, $validPageTypes)) {
-            throw new \InvalidArgumentException("Invalid page type: {$pageType}");
-        }
-
-        $now = now();
+        $referralSource = $referralSource ?? ReferralSource::DIRECT;
 
         return static::create([
             'business_id' => $businessId,
             'page_type' => $pageType,
             'referral_source' => $referralSource,
-            'country' => 'Unknown', // TODO: Integrate with IP geolocation service
+            'country' => 'Unknown', // TODO: IP geolocation
             'country_code' => null,
             'region' => 'Unknown',
             'city' => 'Unknown',
             'ip_address' => request()->ip(),
             'user_agent' => request()->userAgent(),
-            'device_type' => static::detectDevice(),
-            'impressed_at' => $now,
-            'impression_date' => $now->toDateString(),
-            'impression_hour' => $now->format('H'),
-            'impression_month' => $now->format('Y-m'),
-            'impression_year' => $now->format('Y'),
+            'device_type' => DeviceType::detect(request()->userAgent()),
         ]);
     }
 
     /**
-     * Detect device type from user agent
+     * Record bulk impressions (e.g., all businesses on a page)
      */
-    private static function detectDevice(): string
-    {
-        $userAgent = request()->userAgent();
+    public static function recordBulkImpressions(
+        array $businessIds,
+        PageType|string $pageType,
+        ReferralSource|string|null $referralSource = null
+    ): int {
+        if (is_string($pageType)) {
+            $pageType = PageType::from($pageType);
+        }
+        if (is_string($referralSource)) {
+            $referralSource = ReferralSource::tryFrom($referralSource) ?? ReferralSource::DIRECT;
+        }
+
+        $referralSource = $referralSource ?? ReferralSource::DIRECT;
+        $now = now();
+        $impressions = [];
         
-        if (preg_match('/mobile|android|iphone/i', $userAgent)) {
-            return 'mobile';
+        foreach ($businessIds as $businessId) {
+            $impressions[] = [
+                'business_id' => $businessId,
+                'page_type' => $pageType->value,
+                'referral_source' => $referralSource->value,
+                'country' => 'Unknown',
+                'region' => 'Unknown',
+                'city' => 'Unknown',
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+                'device_type' => DeviceType::detect(request()->userAgent())->value,
+                'impressed_at' => $now,
+                'impression_date' => $now->toDateString(),
+                'impression_hour' => $now->format('H'),
+                'impression_month' => $now->format('Y-m'),
+                'impression_year' => $now->format('Y'),
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
         }
         
-        if (preg_match('/tablet|ipad/i', $userAgent)) {
-            return 'tablet';
-        }
-        
-        return 'desktop';
+        return static::insert($impressions);
     }
 
     // ============================================
     // SCOPES
     // ============================================
 
-    /**
-     * Scope for impressions by page type
-     */
-    public function scopeByPageType($query, string $pageType)
+    public function scopeByPageType($query, PageType|string $pageType)
     {
+        if (is_string($pageType)) {
+            $pageType = PageType::from($pageType);
+        }
         return $query->where('page_type', $pageType);
     }
 
-    /**
-     * Scope for impressions by referral source
-     */
-    public function scopeBySource($query, string $source)
+    public function scopeBySource($query, ReferralSource|string $source)
     {
+        if (is_string($source)) {
+            $source = ReferralSource::from($source);
+        }
         return $query->where('referral_source', $source);
     }
 
-    /**
-     * Scope for impressions of a specific business
-     */
     public function scopeForBusiness($query, int $businessId)
     {
         return $query->where('business_id', $businessId);
     }
 
-    /**
-     * Scope for today's impressions
-     */
     public function scopeToday($query)
     {
         return $query->whereDate('impression_date', today());
     }
 
-    /**
-     * Scope for this month's impressions
-     */
     public function scopeThisMonth($query)
     {
         return $query->where('impression_month', now()->format('Y-m'));
     }
 
-    /**
-     * Scope for impressions in date range
-     */
     public function scopeDateRange($query, $startDate, $endDate)
     {
         return $query->whereBetween('impression_date', [$startDate, $endDate]);
     }
 
-    // ============================================
-    // VALIDATION
-    // ============================================
-
-    /**
-     * Boot method to ensure impression belongs to a business
-     */
-    protected static function booted()
+    public function scopeByDevice($query, DeviceType|string $device)
     {
-        static::creating(function ($impression) {
-            if (!$impression->business_id) {
-                throw new \Exception('Impression must belong to a business.');
-            }
-        });
+        if (is_string($device)) {
+            $device = DeviceType::from($device);
+        }
+        return $query->where('device_type', $device);
     }
 }

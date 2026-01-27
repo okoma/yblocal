@@ -7,6 +7,7 @@ use App\Models\Business;
 use App\Models\BusinessClick;
 use App\Models\Category;
 use App\Models\Location;
+use App\Enums\PageType;  // ← ADD THIS
 use Illuminate\Http\Request;
 
 class BusinessTypeController extends Controller
@@ -17,7 +18,7 @@ class BusinessTypeController extends Controller
      */
     public function show(Request $request, $businessTypeSlug)
     {
-        $pageType = 'archive';
+        $pageType = PageType::ARCHIVE;  // ← CHANGE: Use enum instead of string
         $referralSource = BusinessClick::detectReferralSource();
         
         // Get business type
