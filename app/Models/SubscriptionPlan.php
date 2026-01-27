@@ -95,9 +95,9 @@ class SubscriptionPlan extends Model
     }
 
     // Helper methods
-    public function isFree()
+    public function isFree(): bool
     {
-        return $this->price == 0;
+        return $this->slug === 'free';
     }
 
     public function hasFeature($feature)
