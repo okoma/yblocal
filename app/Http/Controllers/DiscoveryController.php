@@ -7,6 +7,7 @@ use App\Models\BusinessType;
 use App\Models\Category;
 use App\Models\Location;
 use App\Models\BusinessClick;
+use App\Enums\PageType;  // ← ADD THIS
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -315,27 +316,27 @@ class DiscoveryController extends Controller
     /**
      * Detect page type from request
      */
-    private function detectPageType(Request $request): string
+    private function detectPageType(Request $request): PageType  // ← CHANGE: Return PageType enum
     {
         $path = $request->path();
         
         if ($request->filled('q')) {
-            return 'search';
+            return PageType::SEARCH;  // ← CHANGE: Return enum
         }
         
         if ($request->filled('category')) {
-            return 'category';
+            return PageType::CATEGORY;  // ← CHANGE: Return enum
         }
         
         if ($request->filled('state') || $request->filled('city')) {
-            return 'location';
+            return PageType::LOCATION;  // ← CHANGE: Return enum (assuming you have LOCATION in your enum)
         }
         
         if ($request->filled('business_type')) {
-            return 'business_type';
+            return PageType::BUSINESS_TYPE;  // ← CHANGE: Return enum (assuming you have BUSINESS_TYPE in your enum)
         }
         
-        return 'archive';
+        return PageType::ARCHIVE;  // ← CHANGE: Return enum
     }
     
     /**
