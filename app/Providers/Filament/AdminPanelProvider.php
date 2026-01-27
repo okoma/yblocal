@@ -45,7 +45,7 @@ class AdminPanelProvider extends PanelProvider
                 //Widgets\AccountWidget::class,
             ])
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('filament.panels.assets-admin'))
-            ->renderHook(PanelsRenderHook::FOOTER, fn () => view('filament.components.global-footer'))
+            ->renderHook(PanelsRenderHook::CONTENT_END, fn () => view('filament.components.global-footer'))
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
@@ -61,7 +61,7 @@ class AdminPanelProvider extends PanelProvider
                 Authenticate::class,
             ])
             ->databaseNotifications()
-            // ->databaseNotificationsPolling('30s') // Temporarily disabled to test SPA
+            ->databaseNotificationsPolling('30s') // Temporarily disabled to test SPA
             ->spa();
     }
 }

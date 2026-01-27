@@ -68,7 +68,7 @@ class BusinessPanelProvider extends PanelProvider
                 Authenticate::class,
             ])
             ->databaseNotifications()
-            // ->databaseNotificationsPolling('30s') // Temporarily disabled to test SPA
+            ->databaseNotificationsPolling('30s') // Temporarily disabled to test SPA
             ->spa();
     }
 

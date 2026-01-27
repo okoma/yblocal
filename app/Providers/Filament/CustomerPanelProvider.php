@@ -45,10 +45,10 @@ class CustomerPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Customer/Widgets'), for: 'App\\Filament\\Customer\\Widgets')
             ->widgets([
-                Widgets\AccountWidget::class,
+                //Widgets\AccountWidget::class,
             ])
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('filament.panels.assets-customer'))
-            ->renderHook(PanelsRenderHook::FOOTER, fn () => view('filament.components.global-footer'))
+            ->renderHook(PanelsRenderHook::CONTENT_END, fn () => view('filament.components.global-footer'))
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
