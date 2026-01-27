@@ -25,6 +25,12 @@ class TransactionResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with(['user', 'business', 'gateway', 'transactionable']);
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -37,6 +43,14 @@ class TransactionResource extends Resource
                             ->searchable()
                             ->preload()
                             ->required(),
+
+                        Forms\Components\Select::make('business_id')
+                            ->label('Business')
+                            ->relationship('business', 'business_name')
+                            ->searchable()
+                            ->preload()
+                            ->required()
+                            ->disabled(fn ($context) => $context !== 'create'),
 
                         Forms\Components\TextInput::make('transaction_ref')
                             ->label('Transaction Reference')
@@ -158,6 +172,13 @@ class TransactionResource extends Resource
                     ->sortable()
                     ->url(fn ($record) => $record->user ? route('filament.admin.resources.users.view', $record->user) : null),
 
+                Tables\Columns\TextColumn::make('business.business_name')
+                    ->label('Business')
+                    ->searchable()
+                    ->sortable()
+                    ->url(fn ($record) => $record->business ? route('filament.admin.resources.businesses.view', $record->business) : null)
+                    ->toggleable(),
+
                 Tables\Columns\TextColumn::make('transactionable_type')
                     ->label('Type')
                     ->formatStateUsing(fn (string $state): string => match($state) {
@@ -248,6 +269,13 @@ class TransactionResource extends Resource
                         'App\Models\AdCampaign' => 'Ad Campaign',
                         'App\Models\Wallet' => 'Wallet Funding',
                     ])
+                    ->multiple(),
+
+                Tables\Filters\SelectFilter::make('business_id')
+                    ->label('Business')
+                    ->relationship('business', 'business_name')
+                    ->searchable()
+                    ->preload()
                     ->multiple(),
 
                 Tables\Filters\TernaryFilter::make('is_refunded')
