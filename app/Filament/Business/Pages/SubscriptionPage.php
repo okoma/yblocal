@@ -125,11 +125,12 @@ class SubscriptionPage extends Page implements HasForms, HasActions
         return Action::make('subscribe')
             ->label('Subscribe Now')
             ->icon('heroicon-o-credit-card')
-            ->modalWidth('2xl')
-            ->modalSubmitActionLabel('Subscribe Now')
-            ->modalCancelActionLabel('Cancel')
-            ->modalSubmitAction(fn ($action) => $action->icon('heroicon-o-credit-card'))
-            ->modalFooterActionsAlignment('right')
+            ->modalWidth('3xl')
+            ->modalSubmitAction(fn ($action) => $action
+                ->label('Subscribe Now')
+                ->icon('heroicon-o-credit-card')
+            )
+            ->modalFooterActionsAlignment('end')
             ->fillForm(function (array $arguments): array {
                 return [
                     'plan_id' => $arguments['planId'] ?? null,
