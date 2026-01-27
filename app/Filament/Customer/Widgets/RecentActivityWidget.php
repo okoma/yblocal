@@ -49,7 +49,10 @@ class RecentActivityWidget extends BaseWidget
                     ->sortable(),
             ])
             ->paginated([5, 10, 25])
-            ->defaultPaginationPageOption(5);
+            ->defaultPaginationPageOption(5)
+            ->emptyStateHeading('No Recent Activity')
+            ->emptyStateDescription('Your reviews, saved businesses, and inquiries will appear here.')
+            ->emptyStateIcon('heroicon-o-clock');
     }
     
     protected function getRecentActivityQuery(): Builder
