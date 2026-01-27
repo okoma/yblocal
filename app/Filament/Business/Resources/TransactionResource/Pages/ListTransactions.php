@@ -6,6 +6,7 @@ use App\Filament\Business\Resources\TransactionResource;
 use App\Models\AdCampaign;
 use App\Models\Subscription;
 use App\Models\Transaction;
+use App\Models\Wallet;
 use App\Services\ActiveBusiness;
 use Filament\Facades\Filament;
 use Filament\Resources\Components\Tab;
@@ -23,20 +24,19 @@ class ListTransactions extends ListRecords
     protected function baseQuery(): Builder
     {
         $id = app(ActiveBusiness::class)->getActiveBusinessId();
-        $q = Transaction::query()->where('user_id', Filament::auth()->id());
+        $q = Transaction::query();
         if ($id === null) {
             return $q->whereRaw('1 = 0');
         }
-        return $q->where(function (Builder $q) use ($id) {
-            $q->whereHasMorph('transactionable', [Subscription::class], fn (Builder $m) => $m->where('business_id', $id))
-                ->orWhereHasMorph('transactionable', [AdCampaign::class], fn (Builder $m) => $m->where('business_id', $id));
-        });
+        // Use business_id directly (now that transactions are business-scoped)
+        return $q->where('business_id', $id);
     }
 
     public function getTabs(): array
     {
         return [
-            'all' => Tab::make('All'),
+            'all' => Tab::make('All')
+                ->badge(fn () => $this->baseQuery()->count()),
             'pending' => Tab::make('Pending')
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'pending'))
                 ->badge(fn () => $this->baseQuery()->where('status', 'pending')->count())
@@ -47,10 +47,17 @@ class ListTransactions extends ListRecords
                 ->badgeColor('success'),
             'subscriptions' => Tab::make('Subscriptions')
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('transactionable_type', Subscription::class))
-                ->icon('heroicon-o-star'),
+                ->icon('heroicon-o-star')
+                ->badge(fn () => $this->baseQuery()->where('transactionable_type', Subscription::class)->count()),
             'campaigns' => Tab::make('Ad Campaigns')
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('transactionable_type', AdCampaign::class))
-                ->icon('heroicon-o-megaphone'),
+                ->icon('heroicon-o-megaphone')
+                ->badge(fn () => $this->baseQuery()->where('transactionable_type', AdCampaign::class)->count()),
+            'wallet_funding' => Tab::make('Wallet Funding')
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('transactionable_type', Wallet::class))
+                ->icon('heroicon-o-wallet')
+                ->badge(fn () => $this->baseQuery()->where('transactionable_type', Wallet::class)->count())
+                ->badgeColor('warning'),
         ];
     }
 }
