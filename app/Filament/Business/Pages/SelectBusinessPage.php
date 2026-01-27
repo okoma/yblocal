@@ -68,7 +68,8 @@ class SelectBusinessPage extends Page
         }
         $active->setActiveBusinessId($id);
         
-        // Force full reload to dashboard with selected business
+        // Redirect to dashboard only from the select business page
+        // (This page is specifically for selecting a business, so dashboard makes sense here)
         $this->js('window.location.href = "' . route('filament.business.pages.dashboard') . '"');
     }
 }
