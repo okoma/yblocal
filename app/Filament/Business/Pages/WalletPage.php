@@ -696,14 +696,21 @@ class WalletPage extends Page implements HasTable, HasActions
             ->columns([
                 Tables\Columns\TextColumn::make('type')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
+                    ->color(fn ($record) => match ($record->type) {
                         'deposit', 'refund', 'bonus' => 'success',
                         'withdrawal', 'purchase' => 'danger',
                         'credit_purchase' => 'primary',
                         'credit_usage' => 'warning',
                         default => 'gray',
                     })
-                    ->formatStateUsing(fn (string $state): string => ucwords(str_replace('_', ' ', $state))),
+                    ->formatStateUsing(function ($record): string {
+                        $state = $record->type;
+                        // Show "Credit Purchase" for purchase transactions with credits
+                        if ($state === 'purchase' && ($record->credits ?? 0) > 0) {
+                            return 'Credit Purchase';
+                        }
+                        return ucwords(str_replace('_', ' ', $state));
+                    }),
 
                 Tables\Columns\TextColumn::make('description')
                     ->searchable()
