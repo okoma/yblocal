@@ -25,8 +25,12 @@
             
             {{-- Save Button --}}
             <div class="mt-6 flex justify-end">
-                <x-filament::button type="submit" size="lg">
-                    Save Preferences
+                <x-filament::button type="submit" 
+                 wire:loading.attr="disabled"
+                wire:target="updatePreferences"
+                size="md">
+                    <span wire:loading.remove wire:target="updatePreferences">Save Preferences</span>
+                    <span wire:loading wire:target="updatePreferences">Saving...</span>
                 </x-filament::button>
             </div>
         </form>
