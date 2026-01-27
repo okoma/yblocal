@@ -125,7 +125,7 @@ class SubscriptionPage extends Page implements HasForms, HasActions
         return Action::make('subscribe')
             ->label('Subscribe Now')
             ->icon('heroicon-o-credit-card')
-            ->modalWidth('3xl')
+            ->modalWidth('2xl')
             ->modalSubmitActionLabel('Subscribe')
             ->modalFooterActionsAlignment('right')
             ->fillForm(function (array $arguments): array {
@@ -176,17 +176,30 @@ class SubscriptionPage extends Page implements HasForms, HasActions
                     Forms\Components\Hidden::make('business_id')
                         ->default(fn () => app(ActiveBusiness::class)->getActiveBusinessId()),
                     
-                    // Upgrade: no-refund warning + agree (only when upgrading, and not for free plans)
+                    // Upgrade: no-refund warning + agree (only when upgrading from paid plan to paid plan)
                     Forms\Components\Section::make('Upgrade notice')
                         ->description('You will not receive a refund if you upgrade before your current plan expires.')
                         ->schema([
                             Forms\Components\Checkbox::make('upgrade_no_refund_ack')
                                 ->label('I understand I will not receive a refund if I upgrade before my current plan\'s expiry date.')
-                                ->required(fn () => $this->isUpgradeForPlan($plan))
+                                ->required(function () use ($plan) {
+                                    $current = $this->getCurrentSubscription();
+                                    return $current 
+                                        && !$current->plan->isFree() 
+                                        && $this->isUpgradeForPlan($plan);
+                                })
                                 ->dehydrated(false),
                         ])
                         ->visible(function () use ($plan) {
-                            return $this->isUpgradeForPlan($plan) && !$plan->isFree();
+                            $current = $this->getCurrentSubscription();
+                            
+                            // Only show notice if:
+                            // 1. User has an active subscription
+                            // 2. Current plan is NOT free
+                            // 3. New plan is an upgrade
+                            return $current 
+                                && !$current->plan->isFree() 
+                                && $this->isUpgradeForPlan($plan);
                         })
                         ->columnSpanFull(),
                     
@@ -308,32 +321,6 @@ class SubscriptionPage extends Page implements HasForms, HasActions
                     return;
                 }
                 
-                return $this->processPayment($plan, $data);
-            })
-            ->requiresConfirmation(false);
-    }
-    
-    // Old method - keeping for reference but not used anymore
-    public function getSubscribeAction(int $planId): Action
-    {
-        $plan = SubscriptionPlan::where('id', $planId)
-            ->where('is_active', true)
-            ->firstOrFail();
-        
-        return Action::make('subscribe_' . $planId)
-            ->label('Subscribe Now')
-            ->icon('heroicon-o-credit-card')
-            ->color($plan->is_popular ? 'primary' : 'gray')
-            ->size('lg')
-            ->extraAttributes(['class' => 'w-full mt-6'])
-            ->modalWidth('3xl')
-            ->modalHeading(function () use ($plan) {
-                return view('filament.business.pages.subscription-modal-heading', ['plan' => $plan]);
-            })
-            ->form(function () use ($plan) {
-                return $this->getPaymentFormSchema($plan);
-            })
-            ->action(function (array $data) use ($plan) {
                 return $this->processPayment($plan, $data);
             })
             ->requiresConfirmation(false);
