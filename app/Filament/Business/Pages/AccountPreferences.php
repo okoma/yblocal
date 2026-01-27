@@ -92,33 +92,47 @@ class AccountPreferences extends Page
                                         Forms\Components\Toggle::make('email_notifications')
                                             ->label('Enable Email Notifications')
                                             ->helperText('Receive notifications via email')
-                                            ->live(),
+                                            ->live()
+                                            ->onIcon('heroicon-o-bell')
+                                            ->offIcon('heroicon-o-bell-slash'),
 
                                         Forms\Components\Grid::make(2)
                                             ->schema([
                                                 Forms\Components\Toggle::make('notify_new_leads')
                                                     ->label('New Leads')
-                                                    ->helperText('When someone submits a lead'),
+                                                    ->helperText('When someone submits a lead')
+                                                    ->onIcon('heroicon-o-bell')
+                                                    ->offIcon('heroicon-o-bell-slash'),
 
                                                 Forms\Components\Toggle::make('notify_new_reviews')
                                                     ->label('New Reviews')
-                                                    ->helperText('When you receive a new review'),
+                                                    ->helperText('When you receive a new review')
+                                                    ->onIcon('heroicon-o-bell')
+                                                    ->offIcon('heroicon-o-bell-slash'),
 
                                                 Forms\Components\Toggle::make('notify_review_replies')
                                                     ->label('Review Replies')
-                                                    ->helperText('When customers reply to your responses'),
+                                                    ->helperText('When customers reply to your responses')
+                                                    ->onIcon('heroicon-o-bell')
+                                                    ->offIcon('heroicon-o-bell-slash'),
 
                                                 Forms\Components\Toggle::make('notify_verifications')
                                                     ->label('Verification Updates')
-                                                    ->helperText('Status updates on verification requests'),
+                                                    ->helperText('Status updates on verification requests')
+                                                    ->onIcon('heroicon-o-bell')
+                                                    ->offIcon('heroicon-o-bell-slash'),
 
                                                 Forms\Components\Toggle::make('notify_premium_expiring')
                                                     ->label('Premium Expiring')
-                                                    ->helperText('When your premium subscription is expiring'),
+                                                    ->helperText('When your premium subscription is expiring')
+                                                    ->onIcon('heroicon-o-bell')
+                                                    ->offIcon('heroicon-o-bell-slash'),
 
                                                 Forms\Components\Toggle::make('notify_campaign_updates')
                                                     ->label('Campaign Updates')
-                                                    ->helperText('Updates about your ad campaigns'),
+                                                    ->helperText('Updates about your ad campaigns')
+                                                    ->onIcon('heroicon-o-bell')
+                                                    ->offIcon('heroicon-o-bell-slash'),
                                             ])
                                             ->visible(fn (Forms\Get $get) => $get('email_notifications')),
                                     ]),
@@ -130,7 +144,9 @@ class AccountPreferences extends Page
                                             ->label('Enable Telegram Notifications')
                                             ->helperText('Receive notifications via Telegram')
                                             ->default(true)
-                                            ->live(),
+                                            ->live()
+                                            ->onIcon('heroicon-o-bell')
+                                            ->offIcon('heroicon-o-bell-slash'),
                                         
                                         Forms\Components\TextInput::make('telegram_username')
                                             ->label('Telegram Username')
@@ -150,32 +166,44 @@ class AccountPreferences extends Page
                                                 Forms\Components\Toggle::make('notify_new_leads_telegram')
                                                     ->label('New Leads')
                                                     ->helperText('When someone submits a lead')
-                                                    ->default(false),
+                                                    ->default(false)
+                                                    ->onIcon('heroicon-o-bell')
+                                                    ->offIcon('heroicon-o-bell-slash'),
                                                 
                                                 Forms\Components\Toggle::make('notify_new_reviews_telegram')
                                                     ->label('New Reviews')
                                                     ->helperText('When you receive a new review')
-                                                    ->default(false),
+                                                    ->default(false)
+                                                    ->onIcon('heroicon-o-bell')
+                                                    ->offIcon('heroicon-o-bell-slash'),
                                                 
                                                 Forms\Components\Toggle::make('notify_review_replies_telegram')
                                                     ->label('Review Replies')
                                                     ->helperText('When customers reply to your responses')
-                                                    ->default(false),
+                                                    ->default(false)
+                                                    ->onIcon('heroicon-o-bell')
+                                                    ->offIcon('heroicon-o-bell-slash'),
                                                 
                                                 Forms\Components\Toggle::make('notify_verifications_telegram')
                                                     ->label('Verification Updates')
                                                     ->helperText('Status updates on verification requests')
-                                                    ->default(false),
+                                                    ->default(false)
+                                                    ->onIcon('heroicon-o-bell')
+                                                    ->offIcon('heroicon-o-bell-slash'),
                                                 
                                                 Forms\Components\Toggle::make('notify_premium_expiring_telegram')
                                                     ->label('Premium Expiring')
                                                     ->helperText('When your premium subscription is expiring')
-                                                    ->default(false),
+                                                    ->default(false)
+                                                    ->onIcon('heroicon-o-bell')
+                                                    ->offIcon('heroicon-o-bell-slash'),
                                                 
                                                 Forms\Components\Toggle::make('notify_campaign_updates_telegram')
                                                     ->label('Campaign Updates')
                                                     ->helperText('Updates about your ad campaigns')
-                                                    ->default(false),
+                                                    ->default(false)
+                                                    ->onIcon('heroicon-o-bell')
+                                                    ->offIcon('heroicon-o-bell-slash'),
                                             ])
                                             ->visible(fn (Forms\Get $get) => $get('telegram_notifications')),
                                     ]),
@@ -187,7 +215,9 @@ class AccountPreferences extends Page
                                             ->label('Enable WhatsApp Notifications')
                                             ->helperText('Receive notifications via WhatsApp')
                                             ->default(true)
-                                            ->live(),
+                                            ->live()
+                                            ->onIcon('heroicon-o-bell')
+                                            ->offIcon('heroicon-o-bell-slash'),
                                         
                                         Forms\Components\TextInput::make('whatsapp_number')
                                             ->label('WhatsApp Number')
@@ -249,13 +279,17 @@ class AccountPreferences extends Page
                                                     ->label('New Leads')
                                                     ->helperText('When someone submits a lead')
                                                     ->default(false)
-                                                    ->disabled(fn (Forms\Get $get) => !$get('whatsapp_verified')),
+                                                    ->disabled(fn (Forms\Get $get) => !$get('whatsapp_verified'))
+                                                    ->onIcon('heroicon-o-bell')
+                                                    ->offIcon('heroicon-o-bell-slash'),
                                                 
                                                 Forms\Components\Toggle::make('notify_new_reviews_whatsapp')
                                                     ->label('New Reviews')
                                                     ->helperText('When you receive a new review')
                                                     ->default(false)
-                                                    ->disabled(fn (Forms\Get $get) => !$get('whatsapp_verified')),
+                                                    ->disabled(fn (Forms\Get $get) => !$get('whatsapp_verified'))
+                                                    ->onIcon('heroicon-o-bell')
+                                                    ->offIcon('heroicon-o-bell-slash'),
                                             ])
                                             ->visible(fn (Forms\Get $get) => $get('whatsapp_notifications')),
                                         
@@ -339,11 +373,15 @@ class AccountPreferences extends Page
 
                                         Forms\Components\Toggle::make('show_email')
                                             ->label('Show Email on Profile')
-                                            ->helperText('Display your email publicly'),
+                                            ->helperText('Display your email publicly')
+                                            ->onIcon('heroicon-o-bell')
+                                            ->offIcon('heroicon-o-bell-slash'),
 
                                         Forms\Components\Toggle::make('show_phone')
                                             ->label('Show Phone on Profile')
-                                            ->helperText('Display your phone number publicly'),
+                                            ->helperText('Display your phone number publicly')
+                                            ->onIcon('heroicon-o-bell')
+                                            ->offIcon('heroicon-o-bell-slash'),
                                     ])
                                     ->columns(1),
                             ]),
