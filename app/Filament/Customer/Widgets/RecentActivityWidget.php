@@ -8,6 +8,7 @@ use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Models\Review;
 
 class RecentActivityWidget extends BaseWidget
 {
@@ -55,9 +56,8 @@ class RecentActivityWidget extends BaseWidget
     {
         $userId = Auth::id();
         
-        // Create a simple model instance to get an Eloquent Builder
-        // We'll use DB facade but cast it properly
-        $query = DB::table('reviews as r')
+        // Build the union query
+        $unionQuery = DB::table('reviews as r')
             ->select([
                 DB::raw("'Review' as type"),
                 'b.business_name',
@@ -66,8 +66,7 @@ class RecentActivityWidget extends BaseWidget
                 'bt.slug as business_type_slug',
                 'r.created_at',
                 DB::raw("CONCAT('/', bt.slug, '/', b.slug) as url"),
-                DB::raw("'review' as source_type"),
-                'r.id as source_id'
+                DB::raw("1 as id") // Add a dummy id column
             ])
             ->join('businesses as b', function ($join) {
                 $join->on('r.reviewable_id', '=', 'b.id')
@@ -87,8 +86,7 @@ class RecentActivityWidget extends BaseWidget
                         'bt.slug as business_type_slug',
                         'sb.created_at',
                         DB::raw("CONCAT('/', bt.slug, '/', b.slug) as url"),
-                        DB::raw("'saved' as source_type"),
-                        'sb.id as source_id'
+                        DB::raw("1 as id")
                     ])
                     ->join('businesses as b', 'sb.business_id', '=', 'b.id')
                     ->leftJoin('business_types as bt', 'b.business_type_id', '=', 'bt.id')
@@ -105,8 +103,7 @@ class RecentActivityWidget extends BaseWidget
                         'bt.slug as business_type_slug',
                         'l.created_at',
                         DB::raw("CONCAT('/', bt.slug, '/', b.slug) as url"),
-                        DB::raw("'lead' as source_type"),
-                        'l.id as source_id'
+                        DB::raw("1 as id")
                     ])
                     ->join('businesses as b', 'l.business_id', '=', 'b.id')
                     ->leftJoin('business_types as bt', 'b.business_type_id', '=', 'bt.id')
@@ -115,9 +112,10 @@ class RecentActivityWidget extends BaseWidget
             ->orderByRaw('created_at DESC')
             ->limit(20);
         
-        // Convert to Eloquent Builder by using a dummy model
-        return \App\Models\Review::query()
-            ->fromSub($query, 'activities')
+        // Use Review model but disable global scopes (like soft deletes)
+        return Review::query()
+            ->withoutGlobalScopes() // This removes soft delete constraint
+            ->fromSub($unionQuery, 'activities')
             ->select('activities.*');
     }
 }
