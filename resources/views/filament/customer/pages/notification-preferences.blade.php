@@ -30,7 +30,7 @@
                 wire:target="updatePreferences"
                 size="md">
                     <span wire:loading.remove wire:target="updatePreferences">Save Preferences</span>
-                    <span wire:loading wire:target="updatePreferences">Saving...</span>
+                    <span wire:loading wire:target="updatePreferences">Save Preferences</span>
                 </x-filament::button>
             </div>
         </form>
