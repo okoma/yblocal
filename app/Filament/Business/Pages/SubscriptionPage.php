@@ -185,7 +185,9 @@ class SubscriptionPage extends Page implements HasForms, HasActions
                                 ->required(fn () => $this->isUpgradeForPlan($plan))
                                 ->dehydrated(false),
                         ])
-                        ->visible(fn () => $this->isUpgradeForPlan($plan) && !$plan->isFree())
+                        ->visible(function () use ($plan) {
+                            return $this->isUpgradeForPlan($plan) && !$plan->isFree();
+                        })
                         ->columnSpanFull(),
                     
                     // Billing Period
