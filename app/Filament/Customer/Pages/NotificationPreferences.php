@@ -190,8 +190,10 @@ class NotificationPreferences extends Page
         return [
             Forms\Components\Actions\Action::make('save')
                 ->label('Save Preferences')
-                ->submit('updatePreferences')
-                ->keyBindings(['mod+s']),
+                ->action('updatePreferences')
+                ->keyBindings(['mod+s'])
+                ->icon('heroicon-o-check-circle')
+                ->color('primary'),
         ];
     }
 }
