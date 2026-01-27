@@ -111,7 +111,11 @@ class Subscription extends Model
             return 0;
         }
         
-        return max(0, now()->diffInDays($this->ends_at, false));
+        // Use diffInDays with absolute=false to get decimal, then ceil to round up to whole days
+        $days = now()->diffInDays($this->ends_at, false);
+        
+        // Round up to nearest whole day (so 363.75 becomes 364)
+        return max(0, (int) ceil($days));
     }
 
     public function cancel($reason = null)
