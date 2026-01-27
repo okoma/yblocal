@@ -17,19 +17,36 @@ class Profile extends Page
     
     protected static ?int $navigationSort = 10;
     
-    public ?array $data = [];
+    public ?array $profileData = [];
+    public ?array $passwordData = [];
 
     public function mount(): void
     {
-        $this->form->fill([
-            'name' => Auth::user()->name,
-            'email' => Auth::user()->email,
-            'phone' => Auth::user()->phone,
-            'bio' => Auth::user()->bio,
-        ]);
+        $this->fillForms();
     }
 
-    public function form(Form $form): Form
+    protected function fillForms(): void
+    {
+        $user = Auth::user();
+        
+        $this->profileData = [
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'bio' => $user->bio,
+            'avatar' => $user->avatar,
+        ];
+    }
+
+    protected function getForms(): array
+    {
+        return [
+            'profileForm',
+            'passwordForm',
+        ];
+    }
+
+    public function profileForm(Form $form): Form
     {
         return $form
             ->schema([
@@ -66,7 +83,15 @@ class Profile extends Page
                             ->columnSpanFull(),
                     ])
                     ->columns(2),
-                
+            ])
+            ->statePath('profileData')
+            ->model(Auth::user());
+    }
+
+    public function passwordForm(Form $form): Form
+    {
+        return $form
+            ->schema([
                 Forms\Components\Section::make('Change Password')
                     ->description('Update your password')
                     ->schema([
@@ -91,39 +116,44 @@ class Profile extends Page
                             ->revealable()
                             ->required(),
                     ])
-                    ->columns(3)
-                    ->collapsible()
-                    ->collapsed(),
+                    ->columns(1),
             ])
-            ->statePath('data');
+            ->statePath('passwordData');
     }
 
     public function updateProfile(): void
     {
-        $data = $this->form->getState();
+        $data = $this->profileForm->getState();
         
         $user = Auth::user();
-        
-        // Update profile fields
-        $user->update([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'phone' => $data['phone'] ?? null,
-            'bio' => $data['bio'] ?? null,
-            'avatar' => $data['avatar'] ?? $user->avatar,
-        ]);
-        
-        // Update password if provided
-        if (!empty($data['password'])) {
-            $user->update([
-                'password' => Hash::make($data['password']),
-            ]);
-        }
+        $user->update($data);
         
         Notification::make()
             ->success()
             ->title('Profile updated')
             ->body('Your profile has been updated successfully.')
+            ->send();
+        
+        // Refresh the form
+        $this->fillForms();
+    }
+
+    public function updatePassword(): void
+    {
+        $data = $this->passwordForm->getState();
+        
+        $user = Auth::user();
+        $user->update([
+            'password' => Hash::make($data['password']),
+        ]);
+        
+        // Reset password form
+        $this->passwordData = [];
+        
+        Notification::make()
+            ->success()
+            ->title('Password updated')
+            ->body('Your password has been changed successfully.')
             ->send();
     }
     

@@ -3,7 +3,7 @@
         {{-- Profile Information Form --}}
         <x-filament::card>
             <form wire:submit="updateProfile">
-                {{ $this->form }}
+                {{ $this->profileForm }}
                 
                 <div class="mt-6 flex justify-end">
                     <x-filament::button 
@@ -11,8 +11,27 @@
                         wire:loading.attr="disabled"
                         wire:target="updateProfile"
                     >
-                        <span wire:loading.remove wire:target="updateProfile">Save Changes</span>
-                        <span wire:loading wire:target="updateProfile">Save Changes</span>
+                        <span wire:loading.remove wire:target="updateProfile">Save Profile</span>
+                        <span wire:loading wire:target="updateProfile">Save Profile</span>
+                    </x-filament::button>
+                </div>
+            </form>
+        </x-filament::card>
+
+        {{-- Password Change Form --}}
+        <x-filament::card>
+            <form wire:submit="updatePassword">
+                {{ $this->passwordForm }}
+                
+                <div class="mt-6 flex justify-end">
+                    <x-filament::button 
+                        type="submit"
+                        color="warning"
+                        wire:loading.attr="disabled"
+                        wire:target="updatePassword"
+                    >
+                        <span wire:loading.remove wire:target="updatePassword">Update Password</span>
+                        <span wire:loading wire:target="updatePassword">Update Password</span>
                     </x-filament::button>
                 </div>
             </form>
