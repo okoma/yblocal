@@ -1,5 +1,5 @@
-@if($this->shouldShow())
-    <x-filament-widgets::widget>
+<x-filament-widgets::widget>
+    @if($this->shouldShow())
         <x-filament::section>
             <x-slot name="heading">
                 <div class="flex items-center gap-2">
@@ -33,5 +33,5 @@
                 </div>
             </div>
         </x-filament::section>
-    </x-filament-widgets::widget>
-@endif
+    @endif
+</x-filament-widgets::widget>
