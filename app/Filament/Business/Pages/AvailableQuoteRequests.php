@@ -124,9 +124,11 @@ class AvailableQuoteRequests extends Page implements HasTable
                             Tables\Columns\TextColumn::make('location')
                                 ->label('Location')
                                 ->formatStateUsing(function ($record) {
+                                    if (!$record) return 'N/A';
+                                    
                                     $location = $record->cityLocation 
                                         ? $record->cityLocation->name . ', ' . $record->stateLocation->name
-                                        : $record->stateLocation->name;
+                                        : ($record->stateLocation ? $record->stateLocation->name : 'N/A');
                                     return $location;
                                 })
                                 ->icon('heroicon-m-map-pin')
@@ -145,6 +147,8 @@ class AvailableQuoteRequests extends Page implements HasTable
                             Tables\Columns\TextColumn::make('budget')
                                 ->label('Budget Range')
                                 ->formatStateUsing(function ($record) {
+                                    if (!$record) return 'Budget not specified';
+                                    
                                     if ($record->budget_min && $record->budget_max) {
                                         return '₦' . number_format($record->budget_min, 0) . ' - ₦' . number_format($record->budget_max, 0);
                                     } elseif ($record->budget_min) {
@@ -156,14 +160,14 @@ class AvailableQuoteRequests extends Page implements HasTable
                                 })
                                 ->icon('heroicon-m-currency-dollar')
                                 ->color('success')
-                                ->visible(fn ($record) => $record->budget_min || $record->budget_max),
+                                ->visible(fn ($record) => $record && ($record->budget_min || $record->budget_max)),
                             
                             Tables\Columns\TextColumn::make('expires_at')
                                 ->label('Expires')
                                 ->dateTime('M d, Y')
                                 ->icon('heroicon-m-clock')
                                 ->color('warning')
-                                ->visible(fn ($record) => $record->expires_at),
+                                ->visible(fn ($record) => $record && $record->expires_at),
                         ]),
                 ])
                 ->space(3),
@@ -213,9 +217,11 @@ class AvailableQuoteRequests extends Page implements HasTable
                                         Forms\Components\Placeholder::make('location')
                                             ->label('Location')
                                             ->content(function ($record) {
+                                                if (!$record) return 'N/A';
+                                                
                                                 return $record->cityLocation 
                                                     ? $record->cityLocation->name . ', ' . $record->stateLocation->name
-                                                    : $record->stateLocation->name;
+                                                    : ($record->stateLocation ? $record->stateLocation->name : 'N/A');
                                             }),
                                     ]),
                                 
@@ -224,6 +230,8 @@ class AvailableQuoteRequests extends Page implements HasTable
                                         Forms\Components\Placeholder::make('budget')
                                             ->label('Budget Range')
                                             ->content(function ($record) {
+                                                if (!$record) return 'Not specified';
+                                                
                                                 if ($record->budget_min && $record->budget_max) {
                                                     return '₦' . number_format($record->budget_min, 2) . ' - ₦' . number_format($record->budget_max, 2);
                                                 } elseif ($record->budget_min) {
@@ -233,12 +241,12 @@ class AvailableQuoteRequests extends Page implements HasTable
                                                 }
                                                 return 'Not specified';
                                             })
-                                            ->visible(fn ($record) => $record->budget_min || $record->budget_max),
+                                            ->visible(fn ($record) => $record && ($record->budget_min || $record->budget_max)),
                                         
                                         Forms\Components\Placeholder::make('expires_at')
                                             ->label('Expires On')
-                                            ->content(fn ($record) => $record->expires_at ? $record->expires_at->format('M d, Y g:i A') : 'No expiration')
-                                            ->visible(fn ($record) => $record->expires_at),
+                                            ->content(fn ($record) => $record && $record->expires_at ? $record->expires_at->format('M d, Y g:i A') : 'No expiration')
+                                            ->visible(fn ($record) => $record && $record->expires_at),
                                     ]),
                             ])
                             ->collapsible()
