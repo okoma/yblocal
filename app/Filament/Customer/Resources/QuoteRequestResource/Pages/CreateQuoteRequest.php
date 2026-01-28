@@ -3,8 +3,11 @@
 namespace App\Filament\Customer\Resources\QuoteRequestResource\Pages;
 
 use App\Filament\Customer\Resources\QuoteRequestResource;
+use App\Models\Notification;
+use App\Services\QuoteDistributionService;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class CreateQuoteRequest extends CreateRecord
 {
@@ -21,6 +24,44 @@ class CreateQuoteRequest extends CreateRecord
         }
         
         return $data;
+    }
+    
+    protected function afterCreate(): void
+    {
+        // Notify eligible businesses about the new quote request
+        try {
+            $quoteRequest = $this->record;
+            $distributionService = app(QuoteDistributionService::class);
+            $eligibleBusinesses = $distributionService->getEligibleBusinesses($quoteRequest);
+            
+            foreach ($eligibleBusinesses as $business) {
+                // Get business owner
+                $owner = $business->user;
+                if ($owner) {
+                    Notification::send(
+                        userId: $owner->id,
+                        type: 'new_quote_request',
+                        title: 'New Quote Request Available',
+                        message: "A new quote request '{$quoteRequest->title}' matches your business category and location.",
+                        actionUrl: \App\Filament\Business\Pages\AvailableQuoteRequests::getUrl(),
+                        extraData: [
+                            'quote_request_id' => $quoteRequest->id,
+                            'business_id' => $business->id,
+                        ]
+                    );
+                }
+            }
+            
+            Log::info('Quote request notifications sent', [
+                'quote_request_id' => $quoteRequest->id,
+                'businesses_notified' => $eligibleBusinesses->count(),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to send quote request notifications', [
+                'quote_request_id' => $this->record->id ?? null,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
     
     protected function getRedirectUrl(): string

@@ -184,6 +184,22 @@ Schedule::call(function () {
     ]);
 })->monthly()->name('cleanup-failed-transactions');
 
+// Check and mark expired quote requests
+Schedule::command('quotes:check-expired')
+    ->daily()
+    ->at('01:00')
+    ->withoutOverlapping()
+    ->onSuccess(function () {
+        Log::info('Quote request expiration check completed successfully', [
+            'scheduled_at' => now()->toDateTimeString(),
+        ]);
+    })
+    ->onFailure(function () {
+        Log::error('Quote request expiration check failed', [
+            'scheduled_at' => now()->toDateTimeString(),
+        ]);
+    });
+
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());

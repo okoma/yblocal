@@ -133,6 +133,11 @@ class Notification extends Model
             'business_reported' => 'heroicon-o-flag',
             'premium_expiring' => 'heroicon-o-clock',
             'campaign_ending' => 'heroicon-o-megaphone',
+            'new_quote_request' => 'heroicon-o-document-text',
+            'new_quote_response' => 'heroicon-o-document-check',
+            'quote_shortlisted' => 'heroicon-o-star',
+            'quote_accepted' => 'heroicon-o-check-circle',
+            'quote_rejected' => 'heroicon-o-x-circle',
             'system' => 'heroicon-o-bell',
             default => 'heroicon-o-bell',
         };
@@ -141,10 +146,10 @@ class Notification extends Model
     public function getColor(): string
     {
         return match($this->type) {
-            'claim_approved', 'verification_approved' => 'success',
-            'claim_rejected', 'verification_rejected' => 'danger',
+            'claim_approved', 'verification_approved', 'quote_accepted' => 'success',
+            'claim_rejected', 'verification_rejected', 'quote_rejected' => 'danger',
             'verification_resubmission_required' => 'warning',
-            'new_review', 'review_reply', 'new_lead' => 'info',
+            'new_review', 'review_reply', 'new_lead', 'new_quote_request', 'new_quote_response', 'quote_shortlisted' => 'info',
             'business_reported' => 'danger',
             'premium_expiring', 'campaign_ending' => 'warning',
             default => 'gray',

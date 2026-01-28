@@ -304,6 +304,139 @@ class WalletPage extends Page implements HasTable, HasActions
                 ->modalSubmitActionLabel('Buy Credits')
                 ->modalFooterActionsAlignment('right'),
 
+            Action::make('buy_quote_credits')
+                ->label('Buy Quote Credits')
+                ->icon('heroicon-o-document-text')
+                ->color('info')
+                ->modalWidth('lg')
+                ->form([
+                    Forms\Components\Select::make('credit_package')
+                        ->label('Select Quote Credit Package')
+                        ->options([
+                            '10' => '10 Quote Credits - ₦1,000',
+                            '25' => '25 Quote Credits - ₦2,500',
+                            '50' => '50 Quote Credits - ₦5,000',
+                            '100' => '100 Quote Credits - ₦10,000',
+                            '250' => '250 Quote Credits - ₦25,000',
+                            '500' => '500 Quote Credits - ₦50,000',
+                            'custom' => 'Custom Amount',
+                        ])
+                        ->native(false)
+                        ->required()
+                        ->live()
+                        ->afterStateUpdated(function (Forms\Set $set, $state) {
+                            if ($state && $state !== 'custom') {
+                                $set('credits', (int) $state);
+                                $set('amount', (int) $state * 100);
+                            } else {
+                                $set('credits', null);
+                                $set('amount', null);
+                            }
+                        })
+                        ->helperText('Choose a package or enter custom amount'),
+
+                    Forms\Components\TextInput::make('credits')
+                        ->label('Custom Quote Credits')
+                        ->numeric()
+                        ->required(fn (Forms\Get $get) => $get('credit_package') === 'custom')
+                        ->minValue(1)
+                        ->maxValue(1000)
+                        ->live(debounce: 500)
+                        ->afterStateUpdated(fn (Forms\Set $set, $state) => 
+                            $set('amount', $state ? ((int) $state * 100) : 0)
+                        )
+                        ->visible(fn (Forms\Get $get) => $get('credit_package') === 'custom')
+                        ->helperText('Minimum: 1 credit, Maximum: 1,000 credits (₦100 per credit)'),
+                    
+                    Forms\Components\Hidden::make('amount'),
+
+                    Forms\Components\Select::make('payment_gateway_id')
+                        ->label('Payment Method')
+                        ->options(function () {
+                            return PaymentGateway::where('is_active', true)
+                                ->where('is_enabled', true)
+                                ->pluck('name', 'id');
+                        })
+                        ->native(false)
+                        ->required()
+                        ->live()
+                        ->helperText('Select your preferred payment method'),
+
+                    Forms\Components\Section::make('Payment Summary')
+                        ->schema([
+                            Forms\Components\Placeholder::make('credits_summary')
+                                ->label('Quote Credits to Purchase')
+                                ->content(fn (Forms\Get $get) => number_format($get('credits') ?? 0) . ' Quote Credits')
+                                ->extraAttributes(['class' => 'text-xl font-bold text-primary-600 dark:text-primary-400']),
+                            
+                            Forms\Components\Placeholder::make('amount_summary')
+                                ->label('Total Amount')
+                                ->content(fn (Forms\Get $get) => '₦' . number_format(($get('credits') ?? 0) * 100, 2))
+                                ->extraAttributes(['class' => 'text-2xl font-bold text-success-600 dark:text-success-400']),
+                        ])
+                        ->columns(2)
+                        ->visible(fn (Forms\Get $get) => $get('credits') > 0 && $get('payment_gateway_id'))
+                        ->columnSpanFull(),
+
+                    Forms\Components\Section::make('Bank Transfer Details')
+                        ->schema([
+                            Forms\Components\Placeholder::make('bank_details')
+                                ->label('')
+                                ->content(function (Forms\Get $get) {
+                                    $gatewayId = $get('payment_gateway_id');
+                                    if (!$gatewayId) return '';
+                                    
+                                    $gateway = PaymentGateway::find($gatewayId);
+                                    if (!$gateway || !$gateway->isBankTransfer()) return '';
+                                    
+                                    $bankDetails = $gateway->bank_account_details ?? [];
+                                    $accountNumber = $bankDetails['account_number'] ?? 'N/A';
+                                    $accountName = $bankDetails['account_name'] ?? 'N/A';
+                                    $bankName = $bankDetails['bank_name'] ?? 'N/A';
+                                    
+                                    return new \Illuminate\Support\HtmlString(
+                                        view('filament.components.bank-transfer-details', [
+                                            'accountNumber' => $accountNumber,
+                                            'accountName' => $accountName,
+                                            'bankName' => $bankName,
+                                        ])->render()
+                                    );
+                                })
+                                ->columnSpanFull(),
+
+                            Forms\Components\Placeholder::make('transfer_instructions')
+                                ->label('')
+                                ->content('After making the transfer, upload your payment proof below. Quote credits will be added within 24-48 hours after verification.')
+                                ->extraAttributes(['class' => 'text-sm text-gray-600 dark:text-gray-400']),
+                        ])
+                        ->visible(fn (Forms\Get $get) => $this->isBankTransferSelected($get('payment_gateway_id')))
+                        ->collapsible()
+                        ->collapsed(false),
+
+                    Forms\Components\Section::make('Payment Proof')
+                        ->schema([
+                            Forms\Components\FileUpload::make('payment_proof')
+                                ->label('Upload Proof of Payment')
+                                ->helperText('Upload receipt or screenshot of your transfer (JPEG, PNG, or PDF)')
+                                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'])
+                                ->maxSize(5120)
+                                ->directory('quote-credit-transfer-proofs')
+                                ->visibility('private')
+                                ->required()
+                                ->downloadable()
+                                ->previewable()
+                                ->columnSpanFull(),
+                        ])
+                        ->visible(fn (Forms\Get $get) => $this->isBankTransferSelected($get('payment_gateway_id')))
+                        ->collapsible()
+                        ->collapsed(false),
+                ])
+                ->action(function (array $data) {
+                    return $this->processQuoteCreditPurchase($data);
+                })
+                ->modalSubmitActionLabel('Buy Quote Credits')
+                ->modalFooterActionsAlignment('right'),
+
             Action::make('withdraw')
                 ->label('Withdraw Funds')
                 ->icon('heroicon-o-arrow-down-tray')
@@ -576,6 +709,143 @@ class WalletPage extends Page implements HasTable, HasActions
             
         } catch (\Exception $e) {
             Log::error('Credit purchase failed', [
+                'user_id' => auth()->id(),
+                'credits' => $data['credits'] ?? null,
+                'error' => $e->getMessage(),
+            ]);
+            
+            Notification::make()
+                ->danger()
+                ->title('Purchase Error')
+                ->body($e->getMessage() ?: 'Unable to process purchase. Please try again.')
+                ->send();
+            
+            return null;
+        }
+    }
+    
+    /**
+     * Process quote credit purchase
+     */
+    protected function processQuoteCreditPurchase(array $data): mixed
+    {
+        try {
+            $user = auth()->user();
+            
+            // Derive credits: 'credits' is only submitted when custom package (field visible).
+            // For pre-defined packages, the credits field is hidden so we use credit_package.
+            $credits = null;
+            if (isset($data['credits']) && $data['credits'] !== '' && $data['credits'] !== null) {
+                $credits = (int) $data['credits'];
+            } elseif (isset($data['credit_package']) && $data['credit_package'] !== 'custom') {
+                $credits = (int) $data['credit_package'];
+            } elseif (isset($data['amount']) && $data['amount'] > 0) {
+                $credits = (int) ($data['amount'] / 100); // Fallback: amount / 100 (₦100 per credit)
+            }
+            
+            if (!$credits || $credits < 1) {
+                throw new \Exception('Please select a quote credit package or enter custom credits (minimum 1).');
+            }
+            
+            $amount = $credits * 100; // 1 quote credit = ₦100
+            $gatewayId = $data['payment_gateway_id'];
+            
+            // Check if using wallet payment
+            $gateway = PaymentGateway::find($gatewayId);
+            if (!$gateway) {
+                throw new \Exception('Invalid payment method selected.');
+            }
+            
+            if ($gateway->isWallet()) {
+                // Direct wallet payment for quote credits
+                $wallet = $this->getWallet();
+                
+                if (!$wallet->hasBalance($amount)) {
+                    Notification::make()
+                        ->danger()
+                        ->title('Insufficient Balance')
+                        ->body(sprintf(
+                            'You need ₦%s more. Current balance: ₦%s',
+                            number_format($amount - $wallet->balance, 2),
+                            number_format($wallet->balance, 2)
+                        ))
+                        ->send();
+                    return null;
+                }
+                
+                DB::beginTransaction();
+                
+                try {
+                    // Deduct from balance and add quote credits
+                    $wallet->withdraw($amount, "Purchased {$credits} quote credits");
+                    $wallet->addQuoteCredits($credits, "Purchased {$credits} quote credits", null, $amount);
+                    
+                    DB::commit();
+                    
+                    Notification::make()
+                        ->success()
+                        ->title('Quote Credits Purchased!')
+                        ->body("{$credits} quote credits added to your account.")
+                        ->send();
+                    
+                    return null;
+                    
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    throw $e;
+                }
+            } else {
+                // Bank transfer, Paystack, or Flutterwave: create pending txn, redirect or show instructions
+                $wallet = $this->getWallet();
+                $metadata = [
+                    'type' => 'quote_credit_purchase',
+                    'quote_credits' => $credits,
+                    'amount' => $amount,
+                ];
+                if ($gateway->isBankTransfer() && !empty($data['payment_proof'])) {
+                    $metadata['payment_proof'] = $data['payment_proof'];
+                    $metadata['payment_proof_uploaded_at'] = now()->toIso8601String();
+                }
+
+                DB::beginTransaction();
+                try {
+                    $result = app(PaymentService::class)->initializePayment(
+                        user: $user,
+                        amount: $amount,
+                        gatewayId: $gatewayId,
+                        payable: $wallet,
+                        metadata: $metadata
+                    );
+                    DB::commit();
+
+                    if ($result->requiresRedirect()) {
+                        return redirect()->away($result->redirectUrl);
+                    }
+                    if ($result->isBankTransfer()) {
+                        Notification::make()
+                            ->success()
+                            ->title('Payment Proof Uploaded')
+                            ->body("Your payment proof has been received. {$credits} quote credits will be added to your account within 24-48 hours after verification.")
+                            ->send();
+                        return null;
+                    }
+                    if ($result->isSuccess()) {
+                        Notification::make()
+                            ->success()
+                            ->title('Quote Credits Purchased!')
+                            ->body("{$credits} quote credits added to your account.")
+                            ->send();
+                        return null;
+                    }
+                    throw new \Exception($result->message ?? 'Unable to process payment.');
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    throw $e;
+                }
+            }
+            
+        } catch (\Exception $e) {
+            Log::error('Quote credit purchase failed', [
                 'user_id' => auth()->id(),
                 'credits' => $data['credits'] ?? null,
                 'error' => $e->getMessage(),

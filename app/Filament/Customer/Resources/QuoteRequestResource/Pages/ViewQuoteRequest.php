@@ -3,11 +3,13 @@
 namespace App\Filament\Customer\Resources\QuoteRequestResource\Pages;
 
 use App\Filament\Customer\Resources\QuoteRequestResource;
+use App\Models\Notification as NotificationModel;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
 use Filament\Actions;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Log;
 
 class ViewQuoteRequest extends ViewRecord
 {
@@ -111,6 +113,130 @@ class ViewQuoteRequest extends ViewRecord
                                         'rejected' => 'danger',
                                         default => 'gray',
                                     }),
+                                
+                                Infolists\Components\Actions::make([
+                                    Infolists\Components\Actions\Action::make('shortlist')
+                                        ->label('Shortlist')
+                                        ->icon('heroicon-o-star')
+                                        ->color('info')
+                                        ->requiresConfirmation()
+                                        ->modalHeading('Shortlist Quote')
+                                        ->modalDescription('Add this quote to your shortlist for comparison.')
+                                        ->action(function ($record) {
+                                            $record->shortlist();
+                                            
+                                            // Notify business
+                                            try {
+                                                $business = $record->business;
+                                                if ($business && $business->user) {
+                                                    NotificationModel::send(
+                                                        userId: $business->user->id,
+                                                        type: 'quote_shortlisted',
+                                                        title: 'Quote Shortlisted',
+                                                        message: "Your quote for '{$this->record->title}' has been shortlisted by the customer.",
+                                                        actionUrl: \App\Filament\Business\Resources\QuoteResponseResource::getUrl('view', ['record' => $record->id], panel: 'business'),
+                                                        extraData: [
+                                                            'quote_request_id' => $this->record->id,
+                                                            'quote_response_id' => $record->id,
+                                                        ]
+                                                    );
+                                                }
+                                            } catch (\Exception $e) {
+                                                Log::error('Failed to send shortlist notification', [
+                                                    'quote_response_id' => $record->id,
+                                                    'error' => $e->getMessage(),
+                                                ]);
+                                            }
+                                            
+                                            Notification::make()
+                                                ->title('Quote shortlisted')
+                                                ->success()
+                                                ->send();
+                                        })
+                                        ->visible(fn ($record) => $record->status === 'submitted' && $this->record->status === 'open'),
+                                    
+                                    Infolists\Components\Actions\Action::make('accept')
+                                        ->label('Accept Quote')
+                                        ->icon('heroicon-o-check-circle')
+                                        ->color('success')
+                                        ->requiresConfirmation()
+                                        ->modalHeading('Accept Quote')
+                                        ->modalDescription('Are you sure you want to accept this quote? This will close the request and reject all other quotes.')
+                                        ->action(function ($record) {
+                                            $record->accept();
+                                            
+                                            // Notify business
+                                            try {
+                                                $business = $record->business;
+                                                if ($business && $business->user) {
+                                                    NotificationModel::send(
+                                                        userId: $business->user->id,
+                                                        type: 'quote_accepted',
+                                                        title: 'Quote Accepted! 🎉',
+                                                        message: "Congratulations! Your quote for '{$this->record->title}' has been accepted by the customer.",
+                                                        actionUrl: \App\Filament\Business\Resources\QuoteResponseResource::getUrl('view', ['record' => $record->id], panel: 'business'),
+                                                        extraData: [
+                                                            'quote_request_id' => $this->record->id,
+                                                            'quote_response_id' => $record->id,
+                                                        ]
+                                                    );
+                                                }
+                                            } catch (\Exception $e) {
+                                                Log::error('Failed to send acceptance notification', [
+                                                    'quote_response_id' => $record->id,
+                                                    'error' => $e->getMessage(),
+                                                ]);
+                                            }
+                                            
+                                            Notification::make()
+                                                ->title('Quote accepted')
+                                                ->body('The quote request has been closed and other quotes have been rejected.')
+                                                ->success()
+                                                ->send();
+                                        })
+                                        ->visible(fn ($record) => in_array($record->status, ['submitted', 'shortlisted']) && $this->record->status === 'open'),
+                                    
+                                    Infolists\Components\Actions\Action::make('reject')
+                                        ->label('Reject')
+                                        ->icon('heroicon-o-x-circle')
+                                        ->color('danger')
+                                        ->requiresConfirmation()
+                                        ->modalHeading('Reject Quote')
+                                        ->modalDescription('Are you sure you want to reject this quote?')
+                                        ->action(function ($record) {
+                                            $record->reject();
+                                            
+                                            // Notify business
+                                            try {
+                                                $business = $record->business;
+                                                if ($business && $business->user) {
+                                                    NotificationModel::send(
+                                                        userId: $business->user->id,
+                                                        type: 'quote_rejected',
+                                                        title: 'Quote Rejected',
+                                                        message: "Your quote for '{$this->record->title}' has been rejected by the customer.",
+                                                        actionUrl: \App\Filament\Business\Resources\QuoteResponseResource::getUrl('view', ['record' => $record->id], panel: 'business'),
+                                                        extraData: [
+                                                            'quote_request_id' => $this->record->id,
+                                                            'quote_response_id' => $record->id,
+                                                        ]
+                                                    );
+                                                }
+                                            } catch (\Exception $e) {
+                                                Log::error('Failed to send rejection notification', [
+                                                    'quote_response_id' => $record->id,
+                                                    'error' => $e->getMessage(),
+                                                ]);
+                                            }
+                                            
+                                            Notification::make()
+                                                ->title('Quote rejected')
+                                                ->success()
+                                                ->send();
+                                        })
+                                        ->visible(fn ($record) => in_array($record->status, ['submitted', 'shortlisted']) && $this->record->status === 'open'),
+                                ])
+                                    ->columnSpanFull(),
                             ])
                             ->columns(3),
                     ])
