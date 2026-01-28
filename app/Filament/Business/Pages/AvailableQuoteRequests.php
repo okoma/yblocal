@@ -30,7 +30,7 @@ class AvailableQuoteRequests extends Page implements HasTable
     
     protected static ?string $navigationIcon = 'heroicon-o-magnifying-glass';
     
-    protected static ?string $navigationGroup = 'Sales & Leads';
+    protected static ?string $navigationGroup = 'Quotes';
     
     protected static ?int $navigationSort = 2;
     
