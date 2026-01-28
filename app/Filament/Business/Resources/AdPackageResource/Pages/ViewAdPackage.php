@@ -8,6 +8,7 @@ namespace App\Filament\Business\Resources\AdPackageResource\Pages;
 use App\Filament\Business\Resources\AdPackageResource;
 use App\Models\Business;
 use App\Models\PaymentGateway;
+use App\Services\ActiveBusiness;
 use App\Services\PaymentService;
 use Filament\Actions;
 use Filament\Forms;
@@ -30,15 +31,17 @@ class ViewAdPackage extends ViewRecord
                 ->size('lg')
                 ->form([
                     Forms\Components\Select::make('business_id')
-                        ->label('Select Business')
+                        ->label('Business')
                         ->options(function () {
-                            return Business::where('user_id', auth()->id())
-                                ->pluck('business_name', 'id');
+                            $active = app(ActiveBusiness::class);
+                            $b = $active->getActiveBusiness();
+                            return $b ? [$b->id => $b->business_name] : [];
                         })
+                        ->default(fn () => app(ActiveBusiness::class)->getActiveBusinessId())
                         ->required()
                         ->searchable()
                         ->preload()
-                        ->helperText('Choose which business to advertise'),
+                        ->helperText('Active business for this campaign'),
 
                     Forms\Components\DatePicker::make('start_date')
                         ->label('Start Date')

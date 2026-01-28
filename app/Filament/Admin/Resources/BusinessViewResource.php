@@ -31,17 +31,10 @@ class BusinessViewResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('branch.business.business_name')
+                Tables\Columns\TextColumn::make('business.business_name')
                     ->label('Business')
                     ->searchable()
-                    ->sortable()
-                    ->description(fn ($record) => $record->branch->branch_title),
-                
-                Tables\Columns\TextColumn::make('branch.branch_title')
-                    ->label('Branch')
-                    ->searchable()
-                    ->sortable()
-                    ->toggleable(),
+                    ->sortable(),
                 
                 Tables\Columns\TextColumn::make('referral_source')
                     ->label('Source')
@@ -105,13 +98,6 @@ class BusinessViewResource extends Resource
             ])
             ->defaultSort('viewed_at', 'desc')
             ->filters([
-                Tables\Filters\SelectFilter::make('branch_id')
-                    ->label('Business Branch')
-                    ->relationship('branch', 'branch_title')
-                    ->searchable()
-                    ->preload()
-                    ->multiple(),
-                
                 Tables\Filters\SelectFilter::make('referral_source')
                     ->label('Traffic Source')
                     ->options([
@@ -211,14 +197,9 @@ class BusinessViewResource extends Resource
             ->schema([
                 Components\Section::make('Business Information')
                     ->schema([
-                        Components\TextEntry::make('branch.business.business_name')
+                        Components\TextEntry::make('business.business_name')
                             ->label('Business')
-                            ->url(fn ($record) => route('filament.admin.resources.businesses.view', $record->branch->business))
-                            ->color('primary'),
-                        
-                        Components\TextEntry::make('branch.branch_title')
-                            ->label('Branch')
-                            ->url(fn ($record) => route('filament.admin.resources.business-branches.view', $record->branch))
+                            ->url(fn ($record) => route('filament.admin.resources.businesses.view', $record->business))
                             ->color('primary'),
                     ])
                     ->columns(2),

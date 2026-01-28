@@ -31,11 +31,10 @@ class BusinessInteractionResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('branch.business.business_name')
+                Tables\Columns\TextColumn::make('business.business_name')
                     ->label('Business')
                     ->searchable()
                     ->sortable()
-                    ->description(fn ($record) => $record->branch->branch_title)
                     ->limit(30),
                 
                 Tables\Columns\TextColumn::make('user.name')
@@ -116,13 +115,6 @@ class BusinessInteractionResource extends Resource
             ])
             ->defaultSort('interacted_at', 'desc')
             ->filters([
-                Tables\Filters\SelectFilter::make('branch_id')
-                    ->label('Business Branch')
-                    ->relationship('branch', 'branch_title')
-                    ->searchable()
-                    ->preload()
-                    ->multiple(),
-                
                 Tables\Filters\SelectFilter::make('interaction_type')
                     ->label('Interaction Type')
                     ->options([
@@ -232,14 +224,9 @@ class BusinessInteractionResource extends Resource
             ->schema([
                 Components\Section::make('Business Information')
                     ->schema([
-                        Components\TextEntry::make('branch.business.business_name')
+                        Components\TextEntry::make('business.business_name')
                             ->label('Business')
-                            ->url(fn ($record) => route('filament.admin.resources.businesses.view', $record->branch->business))
-                            ->color('primary'),
-                        
-                        Components\TextEntry::make('branch.branch_title')
-                            ->label('Branch')
-                            ->url(fn ($record) => route('filament.admin.resources.business-branches.view', $record->branch))
+                            ->url(fn ($record) => route('filament.admin.resources.businesses.view', $record->business))
                             ->color('primary'),
                         
                         Components\TextEntry::make('user.name')

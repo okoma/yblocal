@@ -1,9 +1,6 @@
 <?php
 // ============================================
-// UNIVERSAL ProductsRelationManager
-// Use EXACT SAME FILE for both:
-// - app/Filament/Admin/Resources/BusinessResource/RelationManagers/ProductsRelationManager.php
-// - app/Filament/Admin/Resources/BusinessBranchResource/RelationManagers/ProductsRelationManager.php
+// ProductsRelationManager
 // ============================================
 
 namespace App\Filament\Admin\Resources\BusinessResource\RelationManagers;

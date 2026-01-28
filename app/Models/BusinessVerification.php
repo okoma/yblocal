@@ -171,6 +171,29 @@ class BusinessVerification extends Model
             'verified_by' => $adminId,
             'admin_feedback' => $feedback,
         ]);
+
+        // Send notification to business owner
+        if ($this->business && $this->business->user) {
+            try {
+                $this->business->user->notify(
+                    new \App\Notifications\VerificationResubmissionRequiredNotification(
+                        $this->business,
+                        $feedback
+                    )
+                );
+                
+                \Illuminate\Support\Facades\Log::info('Verification resubmission notification sent', [
+                    'verification_id' => $this->id,
+                    'business_id' => $this->business->id,
+                    'owner_id' => $this->business->user_id,
+                ]);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to send verification resubmission notification', [
+                    'verification_id' => $this->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
     }
 
     public function resubmit()

@@ -68,13 +68,16 @@ class ActivationService
     }
 
     /**
-     * Activate wallet: deposit (funding) or addCredits (credit purchase).
+     * Activate wallet: deposit (funding), addCredits (ad credit purchase), or addQuoteCredits (quote credit purchase).
      */
     protected function activateWallet(Wallet $wallet, Transaction $transaction): void
     {
         $metadata = $transaction->metadata ?? [];
-        $isCreditPurchase = ($metadata['type'] ?? null) === 'credit_purchase';
+        $type = $metadata['type'] ?? null;
+        $isCreditPurchase = $type === 'credit_purchase';
+        $isQuoteCreditPurchase = $type === 'quote_credit_purchase';
         $credits = (int) ($metadata['credits'] ?? 0);
+        $quoteCredits = (int) ($metadata['quote_credits'] ?? 0);
 
         if ($isCreditPurchase && $credits > 0) {
             $wallet->addCredits(
@@ -86,6 +89,18 @@ class ActivationService
             Log::info('ActivationService: Wallet credits added (credit purchase)', [
                 'wallet_id' => $wallet->id,
                 'credits' => $credits,
+                'transaction_id' => $transaction->id,
+            ]);
+        } elseif ($isQuoteCreditPurchase && $quoteCredits > 0) {
+            $wallet->addQuoteCredits(
+                $quoteCredits,
+                "Quote credits purchase - {$quoteCredits} credits",
+                $transaction,
+                (float) $transaction->amount
+            );
+            Log::info('ActivationService: Wallet quote credits added (quote credit purchase)', [
+                'wallet_id' => $wallet->id,
+                'quote_credits' => $quoteCredits,
                 'transaction_id' => $transaction->id,
             ]);
         } else {

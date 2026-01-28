@@ -1,25 +1,36 @@
 <?php
-// app/Models/BusinessViewSummary.php - COMPLETE FIXED VERSION
+// ============================================
+// app/Models/BusinessViewSummary.php
+// Aggregated analytics summaries for businesses
+// ============================================
 
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Enums\ReferralSource;
+use App\Enums\PageType;
+use App\Enums\DeviceType;
 
 class BusinessViewSummary extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'business_id',           // For standalone businesses
-        'business_branch_id',    // For multi-location businesses
+        'business_id',
         'period_type',           // 'hourly', 'daily', 'monthly', 'yearly'
-        'period_key',            // e.g., '2024-01-15', '2024-01', '2024'
+        'period_key',            // e.g., '2024-01-15-14', '2024-01-15', '2024-01', '2024'
         'total_views',
         'views_by_source',       // JSON: {'yellowbooks': 100, 'google': 50, ...}
         'views_by_country',      // JSON: {'NG': 200, 'US': 50, ...}
         'views_by_device',       // JSON: {'mobile': 150, 'desktop': 100, 'tablet': 50}
+        'total_impressions',     // Total impressions (listings visible)
+        'impressions_by_source', // JSON: {'yellowbooks': 500, 'google': 200, ...}
+        'impressions_by_page_type', // JSON: {'archive': 400, 'category': 200, 'search': 100}
+        'total_clicks',          // Total clicks (cookie-based, one per person)
+        'clicks_by_source',      // JSON: {'yellowbooks': 50, 'google': 30, ...}
+        'clicks_by_page_type',   // JSON: {'archive': 40, 'category': 20, 'search': 20}
         'total_calls',
         'total_whatsapp',
         'total_emails',
@@ -31,18 +42,32 @@ class BusinessViewSummary extends Model
         'views_by_source' => 'array',
         'views_by_country' => 'array',
         'views_by_device' => 'array',
+        'impressions_by_source' => 'array',
+        'impressions_by_page_type' => 'array',
+        'clicks_by_source' => 'array',
+        'clicks_by_page_type' => 'array',
     ];
 
     // ============================================
     // RELATIONSHIPS
     // ============================================
 
-    /**
-     * Business (for standalone businesses)
-     */
     public function business(): BelongsTo
     {
         return $this->belongsTo(Business::class);
+    }
+
+    // ============================================
+    // BOOT METHOD
+    // ============================================
+
+    protected static function booted()
+    {
+        static::creating(function ($summary) {
+            if (!$summary->business_id) {
+                throw new \Exception('BusinessViewSummary must belong to a business.');
+            }
+        });
     }
 
     // ============================================
@@ -50,92 +75,79 @@ class BusinessViewSummary extends Model
     // ============================================
 
     /**
-     * Get the parent business
-     */
-    public function parent()
-    {
-        return $this->business;
-    }
-
-    /**
-     * Check if summary is for standalone business
-     */
-    public function isForBusiness(): bool
-    {
-        return !is_null($this->business_id);
-    }
-
-    /**
-     * Check if summary is for branch
-     */
-    public function isForBranch(): bool
-    {
-        return !is_null($this->business_branch_id);
-    }
-
-    /**
-     * Aggregate statistics for a business or branch
+     * Aggregate statistics for a business
      * 
-     * @param int|null $businessId Standalone business ID
-     * @param int|null $branchId Branch ID
+     * @param int $businessId Business ID
      * @param string $periodType 'hourly', 'daily', 'monthly', 'yearly'
-     * @param string $periodKey e.g., '2024-01-15', '2024-01', '2024'
+     * @param string $periodKey e.g., '2024-01-15-14', '2024-01-15', '2024-01', '2024'
      * @return static
      */
-    public static function aggregateFor($businessId = null, $branchId = null, $periodType, $periodKey)
+    public static function aggregateFor(int $businessId, string $periodType, string $periodKey): static
     {
-        if (!$businessId && !$branchId) {
-            throw new \InvalidArgumentException('Must provide either businessId or branchId');
-        }
-        
-        if ($businessId && $branchId) {
-            throw new \InvalidArgumentException('Cannot provide both businessId and branchId');
-        }
-
-        // Build base query for views
-        $viewsQuery = BusinessView::query();
-        if ($businessId) {
-            $viewsQuery->where('business_id', $businessId);
-        } else {
-            $viewsQuery->where('business_branch_id', $branchId);
-        }
-
-        // Apply period filter
+        // Build views query
+        $viewsQuery = BusinessView::where('business_id', $businessId);
         $viewsQuery = static::applyPeriodFilter($viewsQuery, $periodType, $periodKey);
         $views = $viewsQuery->get();
 
-        // Build base query for interactions
-        $interactionsQuery = BusinessInteraction::query();
-        if ($businessId) {
-            $interactionsQuery->where('business_id', $businessId);
-        } else {
-            $interactionsQuery->where('business_branch_id', $branchId);
-        }
-
-        // Apply period filter
-        $interactionsQuery = static::applyPeriodFilter(
-            $interactionsQuery, 
+        // Build impressions query
+        $impressionsQuery = BusinessImpression::where('business_id', $businessId);
+        $impressionsQuery = static::applyPeriodFilter(
+            $impressionsQuery, 
             $periodType, 
             $periodKey, 
-            'interaction_date', 
-            'interaction_hour', 
-            'interaction_month', 
-            'interaction_year'
+            'impression_date', 
+            'impression_hour', 
+            'impression_month', 
+            'impression_year'
         );
-        $interactions = $interactionsQuery->get();
+        $impressions = $impressionsQuery->get();
+
+        // Build clicks query
+        $clicksQuery = BusinessClick::where('business_id', $businessId);
+        $clicksQuery = static::applyPeriodFilter(
+            $clicksQuery, 
+            $periodType, 
+            $periodKey, 
+            'click_date', 
+            'click_hour', 
+            'click_month', 
+            'click_year'
+        );
+        $clicks = $clicksQuery->get();
+
+        // Build interactions query (if you have this model)
+        $interactions = collect(); // Empty collection if no interactions model yet
+        if (class_exists('App\Models\BusinessInteraction')) {
+            $interactionsQuery = \App\Models\BusinessInteraction::where('business_id', $businessId);
+            $interactionsQuery = static::applyPeriodFilter(
+                $interactionsQuery, 
+                $periodType, 
+                $periodKey, 
+                'interaction_date', 
+                'interaction_hour', 
+                'interaction_month', 
+                'interaction_year'
+            );
+            $interactions = $interactionsQuery->get();
+        }
 
         return static::updateOrCreate(
             [
                 'business_id' => $businessId,
-                'business_branch_id' => $branchId,
                 'period_type' => $periodType,
                 'period_key' => $periodKey,
             ],
             [
                 'total_views' => $views->count(),
-                'views_by_source' => $views->groupBy('referral_source')->map->count()->toArray(),
+                'views_by_source' => static::groupByEnum($views, 'referral_source'),
                 'views_by_country' => $views->groupBy('country')->map->count()->toArray(),
-                'views_by_device' => $views->groupBy('device_type')->map->count()->toArray(),
+                'views_by_device' => static::groupByEnum($views, 'device_type'),
+                'total_impressions' => $impressions->count(),
+                'impressions_by_source' => static::groupByEnum($impressions, 'referral_source'),
+                'impressions_by_page_type' => static::groupByEnum($impressions, 'page_type'),
+                'total_clicks' => $clicks->count(),
+                'clicks_by_source' => static::groupByEnum($clicks, 'referral_source'),
+                'clicks_by_page_type' => static::groupByEnum($clicks, 'source_page_type'),
                 'total_calls' => $interactions->where('interaction_type', 'call')->count(),
                 'total_whatsapp' => $interactions->where('interaction_type', 'whatsapp')->count(),
                 'total_emails' => $interactions->where('interaction_type', 'email')->count(),
@@ -146,35 +158,59 @@ class BusinessViewSummary extends Model
     }
 
     /**
+     * Helper to group by enum values
+     */
+    private static function groupByEnum($collection, string $field): array
+    {
+        return $collection->groupBy(function($item) use ($field) {
+            $value = $item->$field;
+            // If it's an enum, get its value, otherwise use as-is
+            return $value instanceof \BackedEnum ? $value->value : $value;
+        })->map->count()->toArray();
+    }
+
+    /**
      * Apply period filter to query
      */
     private static function applyPeriodFilter(
         $query, 
-        $periodType, 
-        $periodKey, 
-        $dateField = 'view_date', 
-        $hourField = 'view_hour', 
-        $monthField = 'view_month', 
-        $yearField = 'view_year'
+        string $periodType, 
+        string $periodKey, 
+        string $dateField = 'view_date', 
+        string $hourField = 'view_hour', 
+        string $monthField = 'view_month', 
+        string $yearField = 'view_year'
     ) {
-        return $query->when($periodType === 'hourly', function($q) use ($periodKey, $dateField, $hourField) {
-                $q->where($dateField, substr($periodKey, 0, 10))
-                  ->where($hourField, substr($periodKey, -2));
-            })
-            ->when($periodType === 'daily', function($q) use ($periodKey, $dateField) {
-                $q->where($dateField, $periodKey);
-            })
-            ->when($periodType === 'monthly', function($q) use ($periodKey, $monthField) {
-                $q->where($monthField, $periodKey);
-            })
-            ->when($periodType === 'yearly', function($q) use ($periodKey, $yearField) {
-                $q->where($yearField, $periodKey);
-            });
+        return match($periodType) {
+            'hourly' => $query->where($dateField, substr($periodKey, 0, 10))
+                             ->where($hourField, substr($periodKey, -2)),
+            'daily' => $query->where($dateField, $periodKey),
+            'monthly' => $query->where($monthField, $periodKey),
+            'yearly' => $query->where($yearField, $periodKey),
+            default => throw new \InvalidArgumentException("Invalid period type: {$periodType}")
+        };
     }
 
     /**
-     * Get total interactions
+     * Generate period key for current time
      */
+    public static function generatePeriodKey(string $periodType, ?\Carbon\Carbon $time = null): string
+    {
+        $time = $time ?? now();
+        
+        return match($periodType) {
+            'hourly' => $time->format('Y-m-d-H'),
+            'daily' => $time->format('Y-m-d'),
+            'monthly' => $time->format('Y-m'),
+            'yearly' => $time->format('Y'),
+            default => throw new \InvalidArgumentException("Invalid period type: {$periodType}")
+        };
+    }
+
+    // ============================================
+    // CALCULATED METRICS
+    // ============================================
+
     public function getTotalInteractions(): int
     {
         return $this->total_calls 
@@ -184,9 +220,6 @@ class BusinessViewSummary extends Model
             + $this->total_map_clicks;
     }
 
-    /**
-     * Get conversion rate (interactions / views)
-     */
     public function getConversionRate(): float
     {
         if ($this->total_views === 0) {
@@ -196,28 +229,25 @@ class BusinessViewSummary extends Model
         return round(($this->getTotalInteractions() / $this->total_views) * 100, 2);
     }
 
-    /**
-     * Get top referral source
-     */
+    public function getClickThroughRate(): float
+    {
+        if ($this->total_impressions === 0) {
+            return 0;
+        }
+        
+        return round(($this->total_clicks / $this->total_impressions) * 100, 2);
+    }
+
     public function getTopReferralSource(): ?string
     {
         if (empty($this->views_by_source)) {
             return null;
         }
         
-        return array_key_first(
-            array_slice(
-                arsort($this->views_by_source) ? $this->views_by_source : [], 
-                0, 
-                1, 
-                true
-            )
-        );
+        arsort($this->views_by_source);
+        return array_key_first($this->views_by_source);
     }
 
-    /**
-     * Get top device type
-     */
     public function getTopDevice(): ?string
     {
         if (empty($this->views_by_device)) {
@@ -229,115 +259,58 @@ class BusinessViewSummary extends Model
         return array_key_first($sorted);
     }
 
+    public function getTopPageType(): ?string
+    {
+        if (empty($this->impressions_by_page_type)) {
+            return null;
+        }
+        
+        $sorted = $this->impressions_by_page_type;
+        arsort($sorted);
+        return array_key_first($sorted);
+    }
+
     // ============================================
     // SCOPES
     // ============================================
 
-    /**
-     * Scope for summaries of standalone businesses only
-     */
-    public function scopeForBusinesses($query)
-    {
-        return $query->whereNotNull('business_id')->whereNull('business_branch_id');
-    }
-
-    /**
-     * Scope for summaries of branches only
-     */
-    public function scopeForBranches($query)
-    {
-        return $query->whereNotNull('business_branch_id')->whereNull('business_id');
-    }
-
-    /**
-     * Scope for summaries of a specific business
-     */
     public function scopeForBusiness($query, int $businessId)
     {
         return $query->where('business_id', $businessId);
     }
 
-    /**
-     * Scope for summaries of a specific branch
-     */
-    public function scopeForBranch($query, int $branchId)
-    {
-        return $query->where('business_branch_id', $branchId);
-    }
-
-    /**
-     * Scope by period type
-     */
     public function scopeByPeriodType($query, string $periodType)
     {
         return $query->where('period_type', $periodType);
     }
 
-    /**
-     * Scope for hourly summaries
-     */
     public function scopeHourly($query)
     {
         return $query->where('period_type', 'hourly');
     }
 
-    /**
-     * Scope for daily summaries
-     */
     public function scopeDaily($query)
     {
         return $query->where('period_type', 'daily');
     }
 
-    /**
-     * Scope for monthly summaries
-     */
     public function scopeMonthly($query)
     {
         return $query->where('period_type', 'monthly');
     }
 
-    /**
-     * Scope for yearly summaries
-     */
     public function scopeYearly($query)
     {
         return $query->where('period_type', 'yearly');
     }
 
-    /**
-     * Scope for specific period key
-     */
     public function scopeForPeriod($query, string $periodKey)
     {
         return $query->where('period_key', $periodKey);
     }
 
-    /**
-     * Scope for period range
-     */
     public function scopePeriodRange($query, string $startKey, string $endKey)
     {
         return $query->whereBetween('period_key', [$startKey, $endKey]);
-    }
-
-    // ============================================
-    // VALIDATION
-    // ============================================
-
-    /**
-     * Boot method to ensure summary belongs to either business OR branch
-     */
-    protected static function booted()
-    {
-        static::creating(function ($summary) {
-            if ($summary->business_id && $summary->business_branch_id) {
-                throw new \Exception('BusinessViewSummary cannot belong to both business and branch. Choose one.');
-            }
-
-            if (!$summary->business_id && !$summary->business_branch_id) {
-                throw new \Exception('BusinessViewSummary must belong to either a business or a branch.');
-            }
-        });
     }
 }

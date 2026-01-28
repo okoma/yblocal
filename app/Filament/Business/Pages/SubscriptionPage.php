@@ -10,6 +10,7 @@ use App\Models\PaymentGateway;
 use App\Models\Coupon;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
+use App\Services\ActiveBusiness;
 use App\Services\PaymentService;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -44,12 +45,10 @@ class SubscriptionPage extends Page implements HasForms, HasActions
     
     public function getCurrentSubscription()
     {
-        $business = Auth::user()->businesses()->first();
-        
+        $business = app(ActiveBusiness::class)->getActiveBusiness();
         if (!$business) {
             return null;
         }
-        
         return $business->subscriptions()
             ->with('plan')
             ->where('status', 'active')
@@ -60,12 +59,64 @@ class SubscriptionPage extends Page implements HasForms, HasActions
     public function getAllPlans()
     {
         return SubscriptionPlan::where('is_active', true)
+            ->where('slug', '!=', 'free')
             ->orderBy('order')
             ->get();
+    }
+
+    /**
+     * Button state per plan: label + disabled.
+     * - No active sub: Subscribe Now.
+     * - Current plan: Current Plan, disabled.
+     * - Upgrade: always allowed; modal shows no-refund warning + agree.
+     * - Downgrade: disabled unless ≤7 days to expiry; then allowed.
+     * - ≤7 days: all (upgrade + downgrade) allowed.
+     */
+    public function getPlanButtonState(SubscriptionPlan $plan): array
+    {
+        $current = $this->getCurrentSubscription();
+        if (!$current) {
+            return ['label' => 'Subscribe Now', 'disabled' => false];
+        }
+
+        $currentPlan = $current->plan;
+        if ($currentPlan->id === $plan->id) {
+            return ['label' => 'Current Plan', 'disabled' => true];
+        }
+
+        $isUpgrade = $plan->isHigherTierThan($currentPlan);
+        $withinSevenDays = $current->daysRemaining() <= 7;
+
+        if ($isUpgrade) {
+            return ['label' => 'Upgrade', 'disabled' => false];
+        }
+
+        // Downgrade: disabled unless ≤7 days to expiry
+        return [
+            'label' => 'Downgrade',
+            'disabled' => !$withinSevenDays,
+        ];
+    }
+
+    public function isUpgradeForPlan(SubscriptionPlan $plan): bool
+    {
+        $current = $this->getCurrentSubscription();
+        if (!$current) {
+            return false;
+        }
+        return $plan->isHigherTierThan($current->plan);
     }
     
     public function openSubscriptionModal(int $planId): void
     {
+        $plan = SubscriptionPlan::find($planId);
+        if (!$plan) {
+            return;
+        }
+        $state = $this->getPlanButtonState($plan);
+        if ($state['disabled']) {
+            return;
+        }
         $this->mountAction('subscribe', ['planId' => $planId]);
     }
     
@@ -75,16 +126,21 @@ class SubscriptionPage extends Page implements HasForms, HasActions
             ->label('Subscribe Now')
             ->icon('heroicon-o-credit-card')
             ->modalWidth('3xl')
-            ->modalSubmitActionLabel('Subscribe')
-            ->modalFooterActionsAlignment('right')
+            ->modalSubmitAction(fn ($action) => $action
+                ->label('Subscribe Now')
+                ->icon('heroicon-o-credit-card')
+            )
+            ->modalCancelAction(fn ($action) => $action->label('Cancel'))
+            ->modalFooterActionsAlignment('end')
             ->fillForm(function (array $arguments): array {
                 return [
                     'plan_id' => $arguments['planId'] ?? null,
                     'billing_interval' => 'monthly',
+                    'business_id' => app(ActiveBusiness::class)->getActiveBusinessId(),
                 ];
             })
             ->modalHeading(fn () => 'Subscribe to Plan')
-            ->modalDescription('Choose your business and billing period')
+            ->modalDescription('Billing period and payment method for your active business.')
             ->modalIcon('heroicon-o-sparkles')
             ->form(function (array $arguments) {
                 $planId = $arguments['planId'] ?? null;
@@ -121,6 +177,35 @@ class SubscriptionPage extends Page implements HasForms, HasActions
                     
                     Forms\Components\Hidden::make('plan_id')
                         ->default($plan->id),
+                    Forms\Components\Hidden::make('business_id')
+                        ->default(fn () => app(ActiveBusiness::class)->getActiveBusinessId()),
+                    
+                    // Upgrade: no-refund warning + agree (only when upgrading from paid plan to paid plan)
+                    Forms\Components\Section::make('Upgrade notice')
+                        ->description('You will not receive a refund if you upgrade before your current plan expires.')
+                        ->schema([
+                            Forms\Components\Checkbox::make('upgrade_no_refund_ack')
+                                ->label('I understand I will not receive a refund if I upgrade before my current plan\'s expiry date.')
+                                ->required(function () use ($plan) {
+                                    $current = $this->getCurrentSubscription();
+                                    return $current 
+                                        && !$current->plan->isFree() 
+                                        && $this->isUpgradeForPlan($plan);
+                                })
+                                ->dehydrated(false),
+                        ])
+                        ->visible(function () use ($plan) {
+                            $current = $this->getCurrentSubscription();
+                            
+                            // Only show notice if:
+                            // 1. User has an active subscription
+                            // 2. Current plan is NOT free
+                            // 3. New plan is an upgrade
+                            return $current 
+                                && !$current->plan->isFree() 
+                                && $this->isUpgradeForPlan($plan);
+                        })
+                        ->columnSpanFull(),
                     
                     // Billing Period
                     Forms\Components\Section::make('Billing Period')
@@ -216,36 +301,6 @@ class SubscriptionPage extends Page implements HasForms, HasActions
                         ])
                         ->columnSpanFull(),
                     
-                    // Business Selection
-                    Forms\Components\Section::make('Select Business')
-                        ->description('Choose which business this subscription is for')
-                        ->icon('heroicon-o-building-office')
-                        ->schema([
-                            Forms\Components\Select::make('business_id')
-                                ->label('Business')
-                                ->options($user->businesses()->pluck('business_name', 'id'))
-                                ->required()
-                                ->searchable()
-                                ->native(false)
-                                ->placeholder('Select your business')
-                                ->helperText('Subscriptions are assigned to individual businesses')
-                                ->live()
-                                ->afterStateUpdated(function ($state) {
-                                    if ($state) {
-                                        $business = \App\Models\Business::find($state);
-                                        if ($business && $business->activeSubscription()) {
-                                            \Filament\Notifications\Notification::make()
-                                                ->warning()
-                                                ->title('Existing Subscription')
-                                                ->body('This business already has an active subscription.')
-                                                ->send();
-                                        }
-                                    }
-                                }),
-                        ])
-                        ->columnSpanFull()
-                        ->collapsed(false),
-                    
                     ...$this->getPaymentFormSchema($plan),
                 ];
             })
@@ -270,32 +325,6 @@ class SubscriptionPage extends Page implements HasForms, HasActions
                     return;
                 }
                 
-                return $this->processPayment($plan, $data);
-            })
-            ->requiresConfirmation(false);
-    }
-    
-    // Old method - keeping for reference but not used anymore
-    public function getSubscribeAction(int $planId): Action
-    {
-        $plan = SubscriptionPlan::where('id', $planId)
-            ->where('is_active', true)
-            ->firstOrFail();
-        
-        return Action::make('subscribe_' . $planId)
-            ->label('Subscribe Now')
-            ->icon('heroicon-o-credit-card')
-            ->color($plan->is_popular ? 'primary' : 'gray')
-            ->size('lg')
-            ->extraAttributes(['class' => 'w-full mt-6'])
-            ->modalWidth('3xl')
-            ->modalHeading(function () use ($plan) {
-                return view('filament.business.pages.subscription-modal-heading', ['plan' => $plan]);
-            })
-            ->form(function () use ($plan) {
-                return $this->getPaymentFormSchema($plan);
-            })
-            ->action(function (array $data) use ($plan) {
                 return $this->processPayment($plan, $data);
             })
             ->requiresConfirmation(false);
@@ -415,16 +444,24 @@ class SubscriptionPage extends Page implements HasForms, HasActions
                 return null;
             }
             
-            // Check for existing active subscription for this business
+            // One subscription per business: enforce upgrade/downgrade rules
             $existingSubscription = $business->activeSubscription();
-            
             if ($existingSubscription) {
-                Notification::make()
-                    ->warning()
-                    ->title('Existing Subscription')
-                    ->body('This business already has an active subscription. Please cancel it first before subscribing to a new plan.')
-                    ->send();
-                return null;
+                $existingPlan = $existingSubscription->plan;
+                if ($existingPlan->id === $plan->id) {
+                    return null; // Same plan – disabled in UI
+                }
+                $isUpgrade = $plan->isHigherTierThan($existingPlan);
+                $withinSevenDays = $existingSubscription->daysRemaining() <= 7;
+                if ($isUpgrade) {
+                    // Upgrade: always allowed (modal shows no-refund warning + agree)
+                } else {
+                    // Downgrade: only when ≤7 days to expiry
+                    if (!$withinSevenDays) {
+                        return null;
+                    }
+                }
+                $existingSubscription->cancel('Plan change');
             }
             
             // Calculate prices

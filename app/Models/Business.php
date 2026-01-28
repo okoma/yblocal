@@ -1,5 +1,5 @@
 <?php
-// app/Models/Business.php - COMPLETE FIXED VERSION
+// app/Models/Business.php - COMPLETE FIXED VERSION WITH ENUM SUPPORT
 
 namespace App\Models;
 
@@ -8,10 +8,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Spatie\Sluggable\HasSlug;
 use Spatie\Sluggable\SlugOptions;
+use App\Enums\ReferralSource;
+use App\Enums\PageType;
+use App\Enums\InteractionType;
 
 class Business extends Model
 {
@@ -130,9 +134,18 @@ class Business extends Model
      */
     public function activeSubscription()
     {
+        // Return active subscriptions OR cancelled subscriptions that haven't expired yet
+        // (cancelled subscriptions remain valid until ends_at)
         return $this->subscriptions()
-            ->where('status', 'active')
+            ->where(function ($query) {
+                $query->where('status', 'active')
+                    ->orWhere(function ($q) {
+                        $q->where('status', 'cancelled')
+                          ->where('ends_at', '>', now());
+                    });
+            })
             ->where('ends_at', '>', now())
+            ->orderBy('ends_at', 'desc')
             ->first();
     }
 
@@ -151,6 +164,30 @@ class Business extends Model
     {
         $subscription = $this->activeSubscription();
         return $subscription && $subscription->isExpired();
+    }
+
+    /**
+     * Business Wallet
+     */
+    public function wallet(): HasOne
+    {
+        return $this->hasOne(Wallet::class);
+    }
+
+    /**
+     * Business Transactions (wallet transactions)
+     */
+    public function walletTransactions(): HasMany
+    {
+        return $this->hasMany(WalletTransaction::class);
+    }
+
+    /**
+     * Business Payment Transactions
+     */
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(Transaction::class);
     }
 
     /**
@@ -217,6 +254,14 @@ class Business extends Model
         return $this->belongsTo(Location::class, 'city_location_id');
     }
 
+    /**
+     * Location (alias for state location, for compatibility)
+     */
+    public function location(): BelongsTo
+    {
+        return $this->belongsTo(Location::class, 'state_location_id');
+    }
+
     // ============================================
     // DIRECT RELATIONSHIPS (For Standalone Businesses)
     // ============================================
@@ -235,6 +280,14 @@ class Business extends Model
     public function leads(): HasMany
     {
         return $this->hasMany(Lead::class);
+    }
+
+    /**
+     * Quote Responses
+     */
+    public function quoteResponses(): HasMany
+    {
+        return $this->hasMany(QuoteResponse::class);
     }
 
     /**
@@ -271,6 +324,22 @@ class Business extends Model
     public function interactions(): HasMany
     {
         return $this->hasMany(BusinessInteraction::class);
+    }
+
+    /**
+     * Business Impressions (when listings are visible on archive/category/search pages)
+     */
+    public function impressions(): HasMany
+    {
+        return $this->hasMany(BusinessImpression::class);
+    }
+
+    /**
+     * Business Clicks (cookie-based, one per person)
+     */
+    public function clicks(): HasMany
+    {
+        return $this->hasMany(BusinessClick::class);
     }
 
     /**
@@ -393,210 +462,230 @@ class Business extends Model
     // ============================================
 
 
-// ============================================
-// SEO & CONTENT QUALITY METHODS
-// ============================================
+    // ============================================
+    // SEO & CONTENT QUALITY METHODS
+    // ============================================
 
-/**
- * Get the canonical URL for this business
- */
-public function getCanonicalUrl()
-{
-    // If custom canonical URL is set, use it
-    if ($this->canonical_url) {
-        return $this->canonical_url;
+    /**
+     * Get the URL for this business
+     * Format: /{business-type}/{business-slug}
+     */
+    public function getUrl()
+    {
+        if (!$this->businessType) {
+            return route('businesses.show', [
+                'businessType' => 'business',
+                'slug' => $this->slug
+            ]);
+        }
+        
+        return route('businesses.show', [
+            'businessType' => $this->businessType->slug,
+            'slug' => $this->slug
+        ]);
     }
 
-    // Default: self-referencing
-    return route('business.show', $this->slug);
-}
+    /**
+     * Get the canonical URL for this business
+     */
+    public function getCanonicalUrl()
+    {
+        // If custom canonical URL is set, use it
+        if ($this->canonical_url) {
+            return $this->canonical_url;
+        }
 
-/**
- * Get meta title (auto-generate if not set)
- */
-public function getMetaTitleAttribute($value)
-{
-    if ($value) {
-        return $value;
+        // Default: self-referencing with business type
+        return $this->getUrl();
     }
 
-    // Auto-generate: "Business Name | City, State"
-    return "{$this->business_name} | {$this->city}, {$this->state}";
-}
+    /**
+     * Get meta title (auto-generate if not set)
+     */
+    public function getMetaTitleAttribute($value)
+    {
+        if ($value) {
+            return $value;
+        }
 
-/**
- * Get meta description (auto-generate if not set)
- */
-public function getMetaDescriptionAttribute($value)
-{
-    if ($value) {
-        return $value;
+        // Auto-generate: "Business Name | City, State"
+        return "{$this->business_name} | {$this->city}, {$this->state}";
     }
 
-    // Auto-generate from business description
-    return \Illuminate\Support\Str::limit($this->description, 155);
-}
+    /**
+     * Get meta description (auto-generate if not set)
+     */
+    public function getMetaDescriptionAttribute($value)
+    {
+        if ($value) {
+            return $value;
+        }
 
-/**
- * Check if business has sufficient unique content
- */
-public function hasUniqueContent()
-{
-    return $this->has_unique_content;
-}
-
-/**
- * Generate Schema.org JSON-LD markup for business
- */
-public function getSchemaMarkup()
-{
-    $schema = [
-        '@context' => 'https://schema.org',
-        '@type' => $this->businessType->schema_type ?? 'LocalBusiness',
-        'name' => $this->business_name,
-        'description' => $this->description,
-        'url' => route('business.show', $this->slug),
-        'address' => [
-            '@type' => 'PostalAddress',
-            'streetAddress' => $this->address,
-            'addressLocality' => $this->city,
-            'addressRegion' => $this->state,
-            'addressCountry' => 'NG',
-        ],
-    ];
-
-    // Add contact info
-    if ($this->phone) {
-        $schema['telephone'] = $this->phone;
+        // Auto-generate from business description
+        return \Illuminate\Support\Str::limit($this->description, 155);
     }
 
-    if ($this->email) {
-        $schema['email'] = $this->email;
+    /**
+     * Check if business has sufficient unique content
+     */
+    public function hasUniqueContent()
+    {
+        return $this->has_unique_content;
     }
 
-    if ($this->website) {
-        $schema['url'] = $this->website;
-    }
-
-    // Add geo coordinates
-    if ($this->latitude && $this->longitude) {
-        $schema['geo'] = [
-            '@type' => 'GeoCoordinates',
-            'latitude' => $this->latitude,
-            'longitude' => $this->longitude,
+    /**
+     * Generate Schema.org JSON-LD markup for business
+     */
+    public function getSchemaMarkup()
+    {
+        $schema = [
+            '@context' => 'https://schema.org',
+            '@type' => $this->businessType->schema_type ?? 'LocalBusiness',
+            'name' => $this->business_name,
+            'description' => $this->description,
+            'url' => route('business.show', $this->slug),
+            'address' => [
+                '@type' => 'PostalAddress',
+                'streetAddress' => $this->address,
+                'addressLocality' => $this->city,
+                'addressRegion' => $this->state,
+                'addressCountry' => 'NG',
+            ],
         ];
-    }
 
-    // Add rating
-    if ($this->avg_rating && $this->total_reviews > 0) {
-        $schema['aggregateRating'] = [
-            '@type' => 'AggregateRating',
-            'ratingValue' => $this->avg_rating,
-            'reviewCount' => $this->total_reviews,
-        ];
-    }
+        // Add contact info
+        if ($this->phone) {
+            $schema['telephone'] = $this->phone;
+        }
 
-    // Add opening hours
-    if ($this->business_hours) {
-        $openingHours = [];
-        foreach ($this->business_hours as $day => $hours) {
-            if (!($hours['closed'] ?? false) && isset($hours['open'], $hours['close'])) {
-                $dayAbbr = ucfirst(substr($day, 0, 2));
-                $openingHours[] = "{$dayAbbr} {$hours['open']}-{$hours['close']}";
+        if ($this->email) {
+            $schema['email'] = $this->email;
+        }
+
+        if ($this->website) {
+            $schema['url'] = $this->website;
+        }
+
+        // Add geo coordinates
+        if ($this->latitude && $this->longitude) {
+            $schema['geo'] = [
+                '@type' => 'GeoCoordinates',
+                'latitude' => $this->latitude,
+                'longitude' => $this->longitude,
+            ];
+        }
+
+        // Add rating
+        if ($this->avg_rating && $this->total_reviews > 0) {
+            $schema['aggregateRating'] = [
+                '@type' => 'AggregateRating',
+                'ratingValue' => $this->avg_rating,
+                'reviewCount' => $this->total_reviews,
+            ];
+        }
+
+        // Add opening hours
+        if ($this->business_hours) {
+            $openingHours = [];
+            foreach ($this->business_hours as $day => $hours) {
+                if (!($hours['closed'] ?? false) && isset($hours['open'], $hours['close'])) {
+                    $dayAbbr = ucfirst(substr($day, 0, 2));
+                    $openingHours[] = "{$dayAbbr} {$hours['open']}-{$hours['close']}";
+                }
+            }
+            if (!empty($openingHours)) {
+                $schema['openingHours'] = $openingHours;
             }
         }
-        if (!empty($openingHours)) {
-            $schema['openingHours'] = $openingHours;
+
+        // Add logo
+        if ($this->logo) {
+            $schema['logo'] = asset('storage/' . $this->logo);
         }
+
+        // Add image gallery
+        if ($this->gallery && count($this->gallery) > 0) {
+            $schema['image'] = array_map(fn($img) => asset('storage/' . $img), $this->gallery);
+        }
+
+        return $schema;
     }
 
-    // Add logo
-    if ($this->logo) {
-        $schema['logo'] = asset('storage/' . $this->logo);
+    /**
+     * Get content quality score (0-100)
+     */
+    public function getContentQualityScore()
+    {
+        $score = 0;
+
+        // Has description (20 points)
+        if ($this->description && strlen($this->description) >= 100) {
+            $score += 20;
+        } elseif ($this->description) {
+            $score += 10;
+        }
+
+        // Has unique content flag (30 points)
+        if ($this->has_unique_content) {
+            $score += 30;
+        }
+
+        // Has photos (10 points)
+        if ($this->gallery && count($this->gallery) >= 3) {
+            $score += 10;
+        } elseif ($this->gallery && count($this->gallery) > 0) {
+            $score += 5;
+        }
+
+        // Has reviews (20 points)
+        if ($this->total_reviews >= 5) {
+            $score += 20;
+        } elseif ($this->total_reviews > 0) {
+            $score += 10;
+        }
+
+        // Has unique features (10 points)
+        if ($this->unique_features && count($this->unique_features) >= 3) {
+            $score += 10;
+        } elseif ($this->unique_features && count($this->unique_features) > 0) {
+            $score += 5;
+        }
+
+        // Has nearby landmarks (10 points)
+        if ($this->nearby_landmarks && strlen($this->nearby_landmarks) >= 50) {
+            $score += 10;
+        } elseif ($this->nearby_landmarks) {
+            $score += 5;
+        }
+
+        return $score;
     }
 
-    // Add image gallery
-    if ($this->gallery && count($this->gallery) > 0) {
-        $schema['image'] = array_map(fn($img) => asset('storage/' . $img), $this->gallery);
+    /**
+     * Check if business is open now
+     */
+    public function isOpen()
+    {
+        if (!$this->business_hours) {
+            return null;
+        }
+
+        $day = strtolower(now()->format('l'));
+        $currentTime = now()->format('H:i');
+
+        if (!isset($this->business_hours[$day])) {
+            return false;
+        }
+
+        $hours = $this->business_hours[$day];
+        
+        if ($hours['closed'] ?? false) {
+            return false;
+        }
+
+        return $currentTime >= $hours['open'] && $currentTime <= $hours['close'];
     }
-
-    return $schema;
-}
-
-/**
- * Get content quality score (0-100)
- */
-public function getContentQualityScore()
-{
-    $score = 0;
-
-    // Has description (20 points)
-    if ($this->description && strlen($this->description) >= 100) {
-        $score += 20;
-    } elseif ($this->description) {
-        $score += 10;
-    }
-
-    // Has unique content flag (30 points)
-    if ($this->has_unique_content) {
-        $score += 30;
-    }
-
-    // Has photos (10 points)
-    if ($this->gallery && count($this->gallery) >= 3) {
-        $score += 10;
-    } elseif ($this->gallery && count($this->gallery) > 0) {
-        $score += 5;
-    }
-
-    // Has reviews (20 points)
-    if ($this->total_reviews >= 5) {
-        $score += 20;
-    } elseif ($this->total_reviews > 0) {
-        $score += 10;
-    }
-
-    // Has unique features (10 points)
-    if ($this->unique_features && count($this->unique_features) >= 3) {
-        $score += 10;
-    } elseif ($this->unique_features && count($this->unique_features) > 0) {
-        $score += 5;
-    }
-
-    // Has nearby landmarks (10 points)
-    if ($this->nearby_landmarks && strlen($this->nearby_landmarks) >= 50) {
-        $score += 10;
-    } elseif ($this->nearby_landmarks) {
-        $score += 5;
-    }
-
-    return $score;
-}
-
-/**
- * Check if business is open now
- */
-public function isOpen()
-{
-    if (!$this->business_hours) {
-        return null;
-    }
-
-    $day = strtolower(now()->format('l'));
-    $currentTime = now()->format('H:i');
-
-    if (!isset($this->business_hours[$day])) {
-        return false;
-    }
-
-    $hours = $this->business_hours[$day];
     
-    if ($hours['closed'] ?? false) {
-        return false;
-    }
-
-    return $currentTime >= $hours['open'] && $currentTime <= $hours['close'];
-}
     // ============================================
     // ANALYTICS HELPER METHODS
     // ============================================
@@ -660,8 +749,11 @@ public function isOpen()
 
     /**
      * Record a page view for business
+     * 
+     * @param ReferralSource|string|null $referralSource Source of traffic
+     * @return BusinessView
      */
-    public function recordView(string $referralSource = 'direct')
+    public function recordView(ReferralSource|string|null $referralSource = null)
     {
         return BusinessView::recordView(
             businessId: $this->id,
@@ -671,14 +763,59 @@ public function isOpen()
 
     /**
      * Record an interaction for business
+     * 
+     * @param InteractionType|string $type Type of interaction (call, whatsapp, email, etc.)
+     * @param ReferralSource|string|null $referralSource Source of traffic
+     * @param int|null $userId User ID if logged in
+     * @return BusinessInteraction
      */
-    public function recordInteraction(string $type, string $referralSource = 'direct', ?int $userId = null)
-    {
+    public function recordInteraction(
+        InteractionType|string $type, 
+        ReferralSource|string|null $referralSource = null, 
+        ?int $userId = null
+    ) {
         return BusinessInteraction::recordInteraction(
             businessId: $this->id,
             type: $type,
             referralSource: $referralSource,
             userId: $userId
+        );
+    }
+
+    /**
+     * Record an impression when business listing is visible
+     * 
+     * @param PageType|string $pageType Where listing is visible
+     * @param ReferralSource|string|null $referralSource Source of traffic
+     * @return BusinessImpression
+     */
+    public function recordImpression(
+        PageType|string $pageType, 
+        ReferralSource|string|null $referralSource = null
+    ) {
+        return BusinessImpression::recordImpression(
+            businessId: $this->id,
+            pageType: $pageType,
+            referralSource: $referralSource
+        );
+    }
+
+    /**
+     * Record a click when someone visits business detail page
+     * Cookie-based: only records once per person (until cookie expires)
+     * 
+     * @param ReferralSource|string|null $referralSource Source of traffic
+     * @param PageType|string|null $sourcePageType Where click came from
+     * @return BusinessClick|null Returns null if click already recorded (duplicate)
+     */
+    public function recordClick(
+        ReferralSource|string|null $referralSource = null, 
+        PageType|string|null $sourcePageType = null
+    ): ?BusinessClick {
+        return BusinessClick::recordClick(
+            businessId: $this->id,
+            referralSource: $referralSource,
+            sourcePageType: $sourcePageType
         );
     }
 

@@ -3,15 +3,19 @@
 namespace App\Filament\Business\Resources;
 
 use App\Filament\Business\Resources\TransactionResource\Pages;
+use App\Models\AdCampaign;
+use App\Models\Subscription;
 use App\Models\Transaction;
+use App\Services\ActiveBusiness;
+use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
-use Filament\Facades\Filament;
 
 class TransactionResource extends Resource
 {
@@ -27,10 +31,15 @@ class TransactionResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
-            ->with(['gateway', 'transactionable']) // Eager load relationships to prevent N+1 queries
-            ->where('user_id', Filament::auth()->id())
+        $id = app(ActiveBusiness::class)->getActiveBusinessId();
+        $query = parent::getEloquentQuery()
+            ->with(['gateway', 'transactionable'])
             ->latest();
+        if ($id === null) {
+            return $query->whereRaw('1 = 0');
+        }
+        // Filter by business_id directly (now that transactions are business-scoped)
+        return $query->where('business_id', $id);
     }
 
     public static function form(Form $form): Form
@@ -212,15 +221,45 @@ class TransactionResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        $pending = static::getModel()::where('user_id', Filament::auth()->id())
+        $id = app(ActiveBusiness::class)->getActiveBusinessId();
+        if ($id === null) {
+            return null;
+        }
+        $pending = static::getModel()::where('business_id', $id)
             ->where('status', 'pending')
             ->count();
-        
         return $pending > 0 ? (string) $pending : null;
     }
 
     public static function getNavigationBadgeColor(): ?string
     {
         return 'warning';
+    }
+
+    protected static ?string $recordTitleAttribute = 'transaction_ref';
+
+    public static function getGlobalSearchEloquentQuery(): Builder
+    {
+        return static::getEloquentQuery();
+    }
+
+    public static function getGlobalSearchResultTitle(Model $record): string
+    {
+        return $record->transaction_ref;
+    }
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['transaction_ref', 'description'];
+    }
+
+    public static function getGlobalSearchResultDetails(Model $record): array
+    {
+        return [
+            'Reference' => $record->transaction_ref,
+            'Amount' => '₦' . number_format($record->amount, 2),
+            'Status' => ucfirst($record->status),
+            'Method' => ucfirst(str_replace('_', ' ', $record->payment_method)),
+        ];
     }
 }

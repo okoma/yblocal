@@ -9,6 +9,7 @@ namespace App\Console\Commands;
 use App\Models\Subscription;
 use App\Models\PaymentGateway;
 use App\Services\PaymentService;
+use App\Services\EnsureBusinessSubscription;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -98,8 +99,8 @@ class CheckExpiredSubscriptions extends Command
     {
         $this->info('Processing expired subscriptions...');
 
-        // Find all active subscriptions that have already expired
-        $expiredSubscriptions = Subscription::where('status', 'active')
+        // Find all active OR cancelled subscriptions that have already expired
+        $expiredSubscriptions = Subscription::whereIn('status', ['active', 'cancelled'])
             ->where('ends_at', '<=', now())
             ->with(['user', 'business', 'plan'])
             ->get();
@@ -107,6 +108,7 @@ class CheckExpiredSubscriptions extends Command
         $this->info("Found {$expiredSubscriptions->count()} expired subscriptions");
 
         $expiredCount = 0;
+        $ensureService = app(EnsureBusinessSubscription::class);
 
         foreach ($expiredSubscriptions as $subscription) {
             // Mark subscription as expired
@@ -126,6 +128,12 @@ class CheckExpiredSubscriptions extends Command
                     'business_id' => $subscription->business->id,
                     'expired_at' => $subscription->ends_at,
                 ]);
+
+                // Ensure business has an active subscription (assign free plan if needed)
+                $newSubscription = $ensureService->ensure($subscription->business);
+                if ($newSubscription) {
+                    $this->info("  → Assigned free plan subscription #{$newSubscription->id} to business #{$subscription->business->id}");
+                }
 
                 // Notify user about expiration
                 $this->notifyUserOfExpiration($subscription);
@@ -172,13 +180,17 @@ class CheckExpiredSubscriptions extends Command
                 return ['success' => false, 'reason' => 'Wallet payment gateway not available'];
             }
 
+            // Get wallet from subscription's business (wallets are now business-scoped)
+            $wallet = \App\Models\Wallet::where('business_id', $subscription->business_id)->first();
+            
             // Check if user has sufficient wallet balance
-            if (!$user->wallet || $user->wallet->balance < $amount) {
-                $balance = $user->wallet ? $user->wallet->balance : 0;
+            if (!$wallet || $wallet->balance < $amount) {
+                $balance = $wallet ? $wallet->balance : 0;
                 $shortfall = $amount - $balance;
 
                 Log::info('Insufficient wallet balance for auto-renewal', [
                     'subscription_id' => $subscription->id,
+                    'business_id' => $subscription->business_id,
                     'user_id' => $user->id,
                     'required' => $amount,
                     'available' => $balance,

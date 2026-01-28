@@ -45,6 +45,11 @@ class ViewTransaction extends ViewRecord
                             ->label('User Email')
                             ->copyable(),
 
+                        Components\TextEntry::make('business.business_name')
+                            ->label('Business')
+                            ->url(fn ($record) => $record->business ? route('filament.admin.resources.businesses.view', $record->business) : null)
+                            ->icon('heroicon-o-building-office'),
+
                         Components\TextEntry::make('transactionable_type')
                             ->label('Transaction Type')
                             ->formatStateUsing(fn (string $state): string => match($state) {

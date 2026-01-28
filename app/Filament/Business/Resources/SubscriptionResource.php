@@ -9,6 +9,7 @@ namespace App\Filament\Business\Resources;
 use App\Filament\Business\Resources\SubscriptionResource\Pages;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
+use App\Services\ActiveBusiness;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -24,17 +25,45 @@ class SubscriptionResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-credit-card';
 
-    protected static ?string $navigationLabel = 'My Subscriptions';
+    protected static ?string $navigationLabel = 'My Subscription';
 
     protected static ?string $navigationGroup = 'Billing & Marketing';
 
     protected static ?int $navigationSort = 3;
 
+    public static function getNavigationUrl(): string
+    {
+        $active = app(ActiveBusiness::class);
+        $businessId = $active->getActiveBusinessId();
+        
+        if ($businessId === null) {
+            return static::getUrl('index');
+        }
+        
+        // Get active subscription for current business
+        $subscription = static::getModel()::where('user_id', auth()->id())
+            ->where('business_id', $businessId)
+            ->where('status', 'active')
+            ->where('ends_at', '>', now())
+            ->first();
+        
+        // If active subscription exists, go to view page
+        if ($subscription) {
+            return static::getUrl('view', ['record' => $subscription->id]);
+        }
+        
+        // Otherwise, go to subscription plans page to subscribe
+        return route('filament.business.pages.subscription-page');
+    }
+
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
-            ->where('user_id', auth()->id())
-            ->with(['plan', 'business']);
+        $id = app(ActiveBusiness::class)->getActiveBusinessId();
+        $query = parent::getEloquentQuery()->where('user_id', auth()->id())->with(['plan', 'business']);
+        if ($id === null) {
+            return $query->whereIn('business_id', []);
+        }
+        return $query->where('business_id', $id);
     }
 
     public static function form(Form $form): Form
@@ -225,11 +254,15 @@ class SubscriptionResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
+        $id = app(ActiveBusiness::class)->getActiveBusinessId();
+        if ($id === null) {
+            return null;
+        }
         $expiring = static::getModel()::where('user_id', auth()->id())
+            ->where('business_id', $id)
             ->where('status', 'active')
             ->where('ends_at', '<=', now()->addDays(7))
             ->count();
-
         return $expiring > 0 ? (string) $expiring : null;
     }
 

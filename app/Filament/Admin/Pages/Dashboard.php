@@ -20,6 +20,7 @@ class Dashboard extends BaseDashboard
             \App\Filament\Admin\Widgets\StatsOverviewWidget::class,
             \App\Filament\Admin\Widgets\RevenueChartWidget::class,
             \App\Filament\Admin\Widgets\SystemHealthWidget::class,
+            \App\Filament\Admin\Widgets\QuoteStatsWidget::class,
             \App\Filament\Admin\Widgets\RecentActivityWidget::class,
             \App\Filament\Admin\Widgets\TopPerformersWidget::class,
         ];

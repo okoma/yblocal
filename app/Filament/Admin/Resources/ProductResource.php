@@ -4,7 +4,7 @@
 // Location: app/Filament/Admin/Resources/ProductResource.php
 // Panel: Admin Panel (/admin)
 // Access: Admins, Moderators
-// Purpose: Manage products/services/menu items (standalone businesses + branches)
+// Purpose: Manage products/services/menu items
 // ============================================
 
 namespace App\Filament\Admin\Resources;
@@ -211,25 +211,6 @@ class ProductResource extends Resource
                     ->label('Business')
                     ->searchable()
                     ->sortable()
-                    ->description(fn ($record) => 
-                        $record->branch 
-                            ? $record->branch->branch_title 
-                            : 'All Locations'
-                    )
-                    ->getStateUsing(fn ($record) => 
-                        $record->business_id 
-                            ? $record->business->business_name
-                            : $record->branch->business->business_name
-                    )
-                    ->toggleable(),
-                
-                Tables\Columns\TextColumn::make('location_type')
-                    ->label('Type')
-                    ->badge()
-                    ->color(fn ($state) => $state === 'Business Level' ? 'success' : 'warning')
-                    ->getStateUsing(fn ($record) => 
-                        $record->isStandalone() ? 'Business Level' : 'Branch Specific'
-                    )
                     ->toggleable(),
                 
                 Tables\Columns\TextColumn::make('price')
@@ -272,13 +253,6 @@ class ProductResource extends Resource
                 Tables\Filters\SelectFilter::make('business_id')
                     ->label('Business')
                     ->relationship('business', 'business_name')
-                    ->searchable()
-                    ->preload()
-                    ->multiple(),
-                
-                Tables\Filters\SelectFilter::make('business_branch_id')
-                    ->label('Branch')
-                    ->relationship('branch', 'branch_title')
                     ->searchable()
                     ->preload()
                     ->multiple(),
@@ -551,12 +525,10 @@ class ProductResource extends Resource
                     ->schema([
                         Components\TextEntry::make('business.business_name')
                             ->label('Business')
-                            ->visible(fn ($record) => $record->isStandalone())
                             ->url(fn ($record) => 
                                 route('filament.admin.resources.businesses.view', $record->business)
                             )
                             ->color('primary'),
-                        
                     ])
                     ->columns(3),
                 

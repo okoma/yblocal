@@ -74,10 +74,30 @@ class SubscriptionPlan extends Model
         return $query->where('is_popular', true);
     }
 
-    // Helper methods
-    public function isFree()
+    /** Plan tier for upgrade/downgrade: free < basic < premium < executive */
+    public const TIER_SLUGS = ['free' => 0, 'basic' => 1, 'premium' => 2, 'executive' => 3];
+
+    public function tierOrder(): int
     {
-        return $this->price == 0;
+        $slug = strtolower($this->slug ?? '');
+        return self::TIER_SLUGS[$slug] ?? ($this->order ?? 99);
+    }
+
+    public function isFreeOrBasic(): bool
+    {
+        $slug = strtolower($this->slug ?? '');
+        return in_array($slug, ['free', 'basic'], true);
+    }
+
+    public function isHigherTierThan(SubscriptionPlan $other): bool
+    {
+        return $this->tierOrder() > $other->tierOrder();
+    }
+
+    // Helper methods
+    public function isFree(): bool
+    {
+        return $this->slug === 'free';
     }
 
     public function hasFeature($feature)

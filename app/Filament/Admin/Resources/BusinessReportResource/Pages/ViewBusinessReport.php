@@ -115,14 +115,6 @@ class ViewBusinessReport extends ViewRecord
                 ->url(fn () => route('filament.admin.resources.businesses.view', $this->record->business))
                 ->openUrlInNewTab(),
             
-            Actions\Action::make('view_branch')
-                ->label('View Branch')
-                ->icon('heroicon-o-map-pin')
-                ->color('info')
-                ->url(fn () => route('filament.admin.resources.business-branches.view', $this->record->branch))
-                ->openUrlInNewTab()
-                ->visible(fn () => $this->record->branch),
-            
             Actions\Action::make('contact_reporter')
                 ->label('Contact Reporter')
                 ->icon('heroicon-o-envelope')
@@ -236,15 +228,6 @@ class ViewBusinessReport extends ViewRecord
                                     ->color('primary')
                                     ->size('lg'),
                                 
-                                Components\TextEntry::make('branch.branch_title')
-                                    ->label('Specific Branch')
-                                    ->icon('heroicon-o-map-pin')
-                                    ->url(fn ($record) => $record->branch 
-                                        ? route('filament.admin.resources.business-branches.view', $record->branch) 
-                                        : null)
-                                    ->color('primary')
-                                    ->placeholder('General report (all locations)')
-                                    ->visible(fn ($record) => $record->branch),
                             ]),
                         
                         Components\TextEntry::make('business.status')

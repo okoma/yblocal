@@ -13,8 +13,10 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use App\Services\ActiveBusiness;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 
 class LeadResource extends Resource
@@ -175,12 +177,6 @@ class LeadResource extends Resource
                     ->label('Received'),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('business_id')
-                    ->label('Business')
-                    ->relationship('business', 'business_name')
-                    ->searchable()
-                    ->preload(),
-                
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
                         'new' => 'New',
@@ -259,8 +255,11 @@ class LeadResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        $businesses = Auth::user()->businesses()->pluck('id');
-        $count = static::getModel()::whereIn('business_id', $businesses)
+        $id = app(ActiveBusiness::class)->getActiveBusinessId();
+        if ($id === null) {
+            return null;
+        }
+        $count = static::getModel()::where('business_id', $id)
             ->where('status', 'new')->count();
         return $count > 0 ? (string) $count : null;
     }
@@ -272,16 +271,14 @@ class LeadResource extends Resource
     
     public static function getEloquentQuery(): Builder
     {
-        $user = Auth::user();
-        $businesses = $user->businesses()->pluck('id');
-        
-        // Show ALL leads - viewing limit is enforced on individual view, not list
+        $id = app(ActiveBusiness::class)->getActiveBusinessId();
         $query = parent::getEloquentQuery()
-            ->with('business') // Eager load business to prevent N+1 queries
-            ->whereIn('business_id', $businesses)
-            ->orderBy('created_at', 'desc'); // Most recent first
-        
-        return $query;
+            ->with('business')
+            ->orderBy('created_at', 'desc');
+        if ($id === null) {
+            return $query->whereIn('business_id', []);
+        }
+        return $query->where('business_id', $id);
     }
 
     public static function canCreate(): bool
@@ -294,5 +291,32 @@ class LeadResource extends Resource
     {
         // Business owners can only view leads, not edit them
         return false;
+    }
+
+    protected static ?string $recordTitleAttribute = 'client_name';
+
+    public static function getGlobalSearchEloquentQuery(): Builder
+    {
+        return static::getEloquentQuery();
+    }
+
+    public static function getGlobalSearchResultTitle(Model $record): string
+    {
+        return $record->client_name;
+    }
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['client_name', 'email', 'phone'];
+    }
+
+    public static function getGlobalSearchResultDetails(Model $record): array
+    {
+        return [
+            'Client' => $record->client_name,
+            'Email' => $record->email,
+            'Phone' => $record->phone,
+            'Status' => ucfirst($record->status),
+        ];
     }
 }

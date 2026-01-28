@@ -4,7 +4,7 @@ namespace App\Filament\Business\Resources;
 
 use App\Filament\Business\Resources\BusinessManagerResource\Pages;
 use App\Models\BusinessManager;
-use App\Models\Business;
+use App\Services\ActiveBusiness;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -22,7 +22,7 @@ class BusinessManagerResource extends Resource
     
     protected static ?string $navigationLabel = 'My Managers';
     
-    protected static ?string $navigationGroup = null;
+    protected static ?string $navigationGroup = 'Account';
     
     protected static ?int $navigationSort = 11;
 
@@ -34,14 +34,13 @@ class BusinessManagerResource extends Resource
                     ->schema([
                         Forms\Components\Select::make('business_id')
                             ->label('Business')
-                            ->relationship(
-                                'business',
-                                'business_name',
-                                fn($query) => $query->where('user_id', Auth::id())
-                            )
+                            ->options(function () {
+                                $active = app(ActiveBusiness::class);
+                                $b = $active->getActiveBusiness();
+                                return $b ? [$b->id => $b->business_name] : [];
+                            })
+                            ->default(fn () => app(ActiveBusiness::class)->getActiveBusinessId())
                             ->required()
-                            ->searchable()
-                            ->preload()
                             ->disabled(fn($context) => $context === 'edit'),
                         
                         Forms\Components\Select::make('user_id')
@@ -129,13 +128,14 @@ class BusinessManagerResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table
-            ->query(
-                BusinessManager::query()
-                    ->whereHas('business', function ($query) {
-                        $query->where('user_id', Auth::id());
-                    })
-            )
+        $id = app(ActiveBusiness::class)->getActiveBusinessId();
+        $query = BusinessManager::query();
+        if ($id === null) {
+            $query->whereIn('business_id', []);
+        } else {
+            $query->where('business_id', $id);
+        }
+        return $table->query($query)
             ->columns([
                 Tables\Columns\TextColumn::make('business.business_name')
                     ->label('Business')
@@ -229,12 +229,6 @@ class BusinessManagerResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('business_id')
-                    ->label('Business')
-                    ->relationship('business', 'business_name', fn($query) => $query->where('user_id', Auth::id()))
-                    ->searchable()
-                    ->preload(),
-                
                 Tables\Filters\TernaryFilter::make('is_active')
                     ->label('Active Only'),
                 

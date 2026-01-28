@@ -25,6 +25,76 @@
         </div>
     @endif
     
+    @php
+        $currentSubscription = $this->getCurrentSubscription();
+        $activeBusiness = app(\App\Services\ActiveBusiness::class)->getActiveBusiness();
+    @endphp
+    
+    {{-- Current Subscription Banner --}}
+    @if($currentSubscription && $activeBusiness)
+        <x-filament::section class="mb-6">
+            <div class="flex items-center justify-between">
+                <div class="flex-1">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                        Current Subscription for {{ $activeBusiness->business_name }}
+                    </h3>
+                    <div class="mt-2 flex items-center gap-4">
+                        <div>
+                            <span class="text-sm text-gray-500 dark:text-gray-400">Plan:</span>
+                            <span class="ml-1 font-medium text-gray-900 dark:text-white">{{ $currentSubscription->plan->name }}</span>
+                        </div>
+                        <div>
+                            <span class="text-sm text-gray-500 dark:text-gray-400">Status:</span>
+                            <x-filament::badge color="success" class="ml-1">
+                                {{ ucfirst($currentSubscription->status) }}
+                            </x-filament::badge>
+                        </div>
+                        <div>
+                            <span class="text-sm text-gray-500 dark:text-gray-400">Expires:</span>
+                            <span class="ml-1 font-medium {{ $currentSubscription->daysRemaining() <= 7 ? 'text-danger-600' : 'text-gray-900 dark:text-white' }}">
+                                {{ $currentSubscription->ends_at->format('M j, Y') }} ({{ $currentSubscription->daysRemaining() }} days left)
+                            </span>
+                        </div>
+                    </div>
+                    
+                    {{-- Plan Limits --}}
+                    <div class="mt-4 grid grid-cols-2 md:grid-cols-5 gap-4">
+                        <div class="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <div class="text-2xl font-bold text-primary-600">{{ $currentSubscription->plan->max_faqs ?? '∞' }}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">FAQs</div>
+                        </div>
+                        <div class="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <div class="text-2xl font-bold text-primary-600">{{ $currentSubscription->plan->max_leads_view ?? '∞' }}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">View Leads</div>
+                        </div>
+                        <div class="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <div class="text-2xl font-bold text-primary-600">{{ $currentSubscription->plan->max_products ?? '∞' }}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">Products</div>
+                        </div>
+                        <div class="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <div class="text-2xl font-bold text-primary-600">{{ $currentSubscription->plan->max_photos ?? '∞' }}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">Photos</div>
+                        </div>
+                        <div class="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <div class="text-2xl font-bold text-warning-600">{{ $currentSubscription->plan->monthly_ad_credits ?? '0' }}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">Ad Credits/mo</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="ml-6">
+                    <x-filament::button 
+                        href="{{ route('filament.business.resources.subscriptions.view', ['record' => $currentSubscription->id]) }}"
+                        color="gray"
+                        outlined
+                    >
+                        View Details
+                    </x-filament::button>
+                </div>
+            </div>
+        </x-filament::section>
+    @endif
+    
     <div class="space-y-6">
         @php
             $plans = $this->getAllPlans();
@@ -89,19 +159,33 @@
                             </li>
                         </ul>
                         
-                        <x-filament::button 
-                            wire:click="openSubscriptionModal({{ $plan->id }})"
-                            class="w-full mt-6"
-                            color="{{ $plan->is_popular ? 'primary' : 'gray' }}"
-                            size="lg"
-                        >
-                            <x-slot name="icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
-                                </svg>
-                            </x-slot>
-                            Subscribe Now
-                        </x-filament::button>
+                        @php
+                            $btnState = $this->getPlanButtonState($plan);
+                        @endphp
+                        @if($btnState['disabled'])
+                            <x-filament::button 
+                                class="w-full mt-6"
+                                color="gray"
+                                size="lg"
+                                disabled
+                            >
+                                {{ $btnState['label'] }}
+                            </x-filament::button>
+                        @else
+                            <x-filament::button 
+                                wire:click="openSubscriptionModal({{ $plan->id }})"
+                                class="w-full mt-6"
+                                color="{{ $plan->is_popular ? 'primary' : 'gray' }}"
+                                size="lg"
+                            >
+                                <x-slot name="icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+                                    </svg>
+                                </x-slot>
+                                {{ $btnState['label'] }}
+                            </x-filament::button>
+                        @endif
                     </div>
                 @endforeach
             </div>

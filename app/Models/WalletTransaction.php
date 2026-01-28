@@ -16,6 +16,7 @@ class WalletTransaction extends Model
 
     protected $fillable = [
         'wallet_id',
+        'business_id',
         'user_id',
         'type',
         'amount',
@@ -24,6 +25,9 @@ class WalletTransaction extends Model
         'balance_after',
         'credits_before',
         'credits_after',
+        'quote_credits',
+        'quote_credits_before',
+        'quote_credits_after',
         'description',
         'reference_type',
         'reference_id',
@@ -39,6 +43,11 @@ class WalletTransaction extends Model
     public function wallet()
     {
         return $this->belongsTo(Wallet::class);
+    }
+
+    public function business()
+    {
+        return $this->belongsTo(Business::class);
     }
 
     public function user()
@@ -70,5 +79,10 @@ class WalletTransaction extends Model
     public function scopeCreditTransactions($query)
     {
         return $query->whereIn('type', ['credit_purchase', 'credit_usage']);
+    }
+
+    public function scopeQuoteTransactions($query)
+    {
+        return $query->whereIn('type', ['quote_purchase', 'quote_submission']);
     }
 }

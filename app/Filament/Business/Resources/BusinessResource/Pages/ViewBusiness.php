@@ -21,6 +21,11 @@ class ViewBusiness extends ViewRecord
 {
     protected static string $resource = BusinessResource::class;
 
+    public function getBreadcrumbs(): array
+    {
+        return [];
+    }
+
     protected function getHeaderActions(): array
     {
         $business = $this->record;

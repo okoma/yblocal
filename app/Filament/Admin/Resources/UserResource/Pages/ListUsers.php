@@ -37,10 +37,6 @@ class ListUsers extends ListRecords
                 ->badge(fn () => $this->getModel()::where('role', UserRole::BUSINESS_OWNER)->count())
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('role', UserRole::BUSINESS_OWNER)),
             
-            'managers' => Tab::make('Branch Managers')
-                ->badge(fn () => $this->getModel()::where('is_branch_manager', true)->count())
-                ->modifyQueryUsing(fn (Builder $query) => $query->where('is_branch_manager', true)),
-            
             'customers' => Tab::make()
                 ->badge(fn () => $this->getModel()::where('role', UserRole::CUSTOMER)->count())
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('role', UserRole::CUSTOMER)),

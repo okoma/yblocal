@@ -13,8 +13,10 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use App\Services\ActiveBusiness;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 
 class ReviewResource extends Resource
@@ -282,9 +284,12 @@ class ReviewResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        $businesses = Auth::user()->businesses()->pluck('id');
+        $id = app(ActiveBusiness::class)->getActiveBusinessId();
+        if ($id === null) {
+            return null;
+        }
         $count = static::getModel()::where('reviewable_type', 'App\Models\Business')
-            ->whereIn('reviewable_id', $businesses)
+            ->where('reviewable_id', $id)
             ->whereNull('reply')
             ->count();
         return $count > 0 ? (string) $count : null;
@@ -297,14 +302,43 @@ class ReviewResource extends Resource
     
     public static function getEloquentQuery(): Builder
     {
-        $businesses = Auth::user()->businesses()->pluck('id');
-        return parent::getEloquentQuery()
-            ->where('reviewable_type', 'App\Models\Business')
-            ->whereIn('reviewable_id', $businesses);
+        $id = app(ActiveBusiness::class)->getActiveBusinessId();
+        $query = parent::getEloquentQuery()->where('reviewable_type', 'App\Models\Business');
+        if ($id === null) {
+            return $query->whereIn('reviewable_id', []);
+        }
+        return $query->where('reviewable_id', $id);
     }
     
     public static function canCreate(): bool
     {
         return false; // Reviews are created by customers, not business owners
+    }
+
+    protected static ?string $recordTitleAttribute = 'user.name';
+
+    public static function getGlobalSearchEloquentQuery(): Builder
+    {
+        return static::getEloquentQuery();
+    }
+
+    public static function getGlobalSearchResultTitle(Model $record): string
+    {
+        return ($record->user->name ?? 'Customer') . ' - ' . str_repeat('⭐', $record->rating);
+    }
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['user.name', 'user.email', 'comment'];
+    }
+
+    public static function getGlobalSearchResultDetails(Model $record): array
+    {
+        return [
+            'Customer' => $record->user->name ?? 'N/A',
+            'Rating' => str_repeat('⭐', $record->rating),
+            'Comment' => \Illuminate\Support\Str::limit($record->comment, 50),
+            'Replied' => $record->reply ? 'Yes' : 'No',
+        ];
     }
 }

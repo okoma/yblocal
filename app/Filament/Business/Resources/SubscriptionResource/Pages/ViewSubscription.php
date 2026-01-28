@@ -24,6 +24,11 @@ class ViewSubscription extends ViewRecord
 {
     protected static string $resource = SubscriptionResource::class;
 
+    public function getBreadcrumbs(): array
+    {
+        return [];
+    }
+
     protected function getHeaderActions(): array
     {
         return [

@@ -9,7 +9,6 @@ use Filament\Resources\Pages\ListRecords;
 class ListBusinessManagers extends ListRecords
 {
     protected static string $resource = BusinessManagerResource::class;
-
     protected function getHeaderActions(): array
     {
         return [

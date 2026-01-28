@@ -11,6 +11,7 @@ use App\Models\AdPackage;
 use App\Models\Business;
 use App\Models\Category;
 use App\Models\Location;
+use App\Services\ActiveBusiness;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -180,15 +181,17 @@ class AdPackageResource extends Resource
                     ->modalWidth('3xl')
                     ->form([
                         Forms\Components\Select::make('business_id')
-                            ->label('Select Business')
+                            ->label('Business')
                             ->options(function () {
-                                return Business::where('user_id', auth()->id())
-                                    ->pluck('business_name', 'id');
+                                $active = app(ActiveBusiness::class);
+                                $b = $active->getActiveBusiness();
+                                return $b ? [$b->id => $b->business_name] : [];
                             })
+                            ->default(fn () => app(ActiveBusiness::class)->getActiveBusinessId())
                             ->required()
                             ->searchable()
                             ->preload()
-                            ->helperText('Choose which business to advertise')
+                            ->helperText('Active business for this campaign')
                             ->live(),
 
                         Forms\Components\DatePicker::make('start_date')

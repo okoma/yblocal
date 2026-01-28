@@ -7,6 +7,8 @@
 namespace App\Filament\Business\Resources\BusinessResource\Pages;
 
 use App\Filament\Business\Resources\BusinessResource;
+use App\Services\ActiveBusiness;
+use App\Services\NewBusinessPlanLimits;
 use App\Models\BusinessType;
 use App\Models\Category;
 use App\Models\PaymentMethod;
@@ -15,12 +17,17 @@ use App\Models\Location;
 use App\Models\FAQ;
 use App\Models\SocialAccount;
 use App\Models\Official;
+use App\Models\Subscription;
+use App\Models\SubscriptionPlan;
 use Filament\Forms;
 use Filament\Forms\Components\Wizard;
 use Filament\Forms\Form;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Resources\Pages\CreateRecord\Concerns\HasWizard;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Contracts\View\View;
+
+
 
 class CreateBusiness extends CreateRecord
 {
@@ -204,9 +211,11 @@ class CreateBusiness extends CreateRecord
                             Forms\Components\TextInput::make('address')
                                 ->required()
                                 ->maxLength(255)
-                                ->placeholder('e.g., 123 Main Street, Suite 100')
+                                ->placeholder('Start typing an address...')
                                 ->columnSpanFull()
-                                ->helperText('Street address or building name'),
+                                ->helperText('Start typing to see address suggestions from Google Maps')
+                                ->id('address-autocomplete')
+                                ->extraAttributes(['data-google-autocomplete' => 'true']),
                             
                             Forms\Components\TextInput::make('area')
                                 ->label('Area/Neighborhood')
@@ -223,7 +232,8 @@ class CreateBusiness extends CreateRecord
                                         ->minValue(-90)
                                         ->maxValue(90)
                                         ->placeholder('e.g., 6.5244')
-                                        ->helperText('Latitude must be between -90 and 90'),
+                                        ->helperText('Auto-filled from address or enter manually')
+                                        ->id('latitude-field'),
                                     
                                     Forms\Components\TextInput::make('longitude')
                                         ->label('Longitude (GPS)')
@@ -232,7 +242,8 @@ class CreateBusiness extends CreateRecord
                                         ->minValue(-180)
                                         ->maxValue(180)
                                         ->placeholder('e.g., 3.3792')
-                                        ->helperText('Longitude must be between -180 and 180'),
+                                        ->helperText('Auto-filled from address or enter manually')
+                                        ->id('longitude-field'),
                                 ]),
                         ])
                         ->columns(2),
@@ -497,14 +508,10 @@ Wizard\Step::make('Business Hours')
                 ->schema([
                     Forms\Components\Section::make('Frequently Asked Questions')
                         ->description(function () {
-                            $user = Auth::user();
-                            $subscription = $user->subscription;
-                            $maxFaqs = $subscription?->plan?->max_faqs;
-                            
+                            $maxFaqs = app(NewBusinessPlanLimits::class)->maxFaqs();
                             if ($maxFaqs === null) {
                                 return 'Help customers by answering common questions about your business (Unlimited)';
                             }
-                            
                             return "Help customers by answering common questions about your business (Limit: {$maxFaqs} FAQs)";
                         })
                         ->schema([
@@ -544,30 +551,17 @@ Wizard\Step::make('Business Hours')
                                 ->itemLabel(fn (array $state): ?string => $state['question'] ?? 'New FAQ')
                                 ->addActionLabel('Add FAQ')
                                 ->maxItems(function () {
-                                    $user = Auth::user();
-                                    $subscription = $user->subscription;
-                                    $maxFaqs = $subscription?->plan?->max_faqs;
-                                    
-                                    if ($maxFaqs === null) {
-                                        return null; // Unlimited
-                                    }
-                                    
-                                    return $maxFaqs;
+                                    $maxFaqs = app(NewBusinessPlanLimits::class)->maxFaqs();
+                                    return $maxFaqs ?? null; // null = unlimited
                                 })
-                        ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
-                            // Validate FAQ limit
-                            $user = Auth::user();
-                            $subscription = $user->subscription;
-                            $maxFaqs = $subscription?->plan?->max_faqs;
-                            
+                        ->afterStateUpdated(function ($state, Forms\Set $set) {
+                            $maxFaqs = app(NewBusinessPlanLimits::class)->maxFaqs();
                             if ($maxFaqs !== null && count($state ?? []) > $maxFaqs) {
                                 \Filament\Notifications\Notification::make()
                                     ->warning()
                                     ->title('FAQ Limit Reached')
                                     ->body("Your plan allows a maximum of {$maxFaqs} FAQs. Please remove some FAQs or upgrade your plan.")
                                     ->send();
-                                
-                                // Trim to max
                                 $set('faqs_temp', array_slice($state, 0, $maxFaqs));
                             }
                         })
@@ -628,14 +622,10 @@ Wizard\Step::make('Business Hours')
                 ->schema([
                     Forms\Components\Section::make('Team Members & Staff')
                         ->description(function () {
-                            $user = Auth::user();
-                            $subscription = $user->subscription;
-                            $maxTeamMembers = $subscription?->plan?->max_team_members;
-                            
+                            $maxTeamMembers = app(NewBusinessPlanLimits::class)->maxTeamMembers();
                             if ($maxTeamMembers === null) {
                                 return 'Showcase your team members and staff (Unlimited)';
                             }
-                            
                             return "Showcase your team members and staff (Limit: {$maxTeamMembers} members)";
                         })
                         ->schema([
@@ -715,15 +705,8 @@ Wizard\Step::make('Business Hours')
                                 ->itemLabel(fn (array $state): ?string => $state['name'] ?? 'New Team Member')
                                 ->addActionLabel('Add Team Member')
                                 ->maxItems(function () {
-                                    $user = Auth::user();
-                                    $subscription = $user->subscription;
-                                    $maxTeamMembers = $subscription?->plan?->max_team_members;
-                                    
-                                    if ($maxTeamMembers === null) {
-                                        return null; // Unlimited
-                                    }
-                                    
-                                    return $maxTeamMembers;
+                                    $maxTeamMembers = app(NewBusinessPlanLimits::class)->maxTeamMembers();
+                                    return $maxTeamMembers ?? null;
                                 })
                                 ->columnSpanFull(),
                         ]),
@@ -757,14 +740,10 @@ Wizard\Step::make('Business Hours')
                     
                     Forms\Components\Section::make('Photo Gallery')
                         ->description(function () {
-                            $user = Auth::user();
-                            $subscription = $user->subscription;
-                            $maxPhotos = $subscription?->plan?->max_photos;
-                            
+                            $maxPhotos = app(NewBusinessPlanLimits::class)->maxPhotos();
                             if ($maxPhotos === null) {
                                 return 'Showcase your business with photos (Unlimited)';
                             }
-                            
                             return "Showcase your business with photos (Limit: {$maxPhotos} photos)";
                         })
                         ->schema([
@@ -774,15 +753,8 @@ Wizard\Step::make('Business Hours')
                                 ->directory('business-gallery')
                                 ->multiple()
                                 ->maxFiles(function () {
-                                    $user = Auth::user();
-                                    $subscription = $user->subscription;
-                                    $maxPhotos = $subscription?->plan?->max_photos;
-                                    
-                                    if ($maxPhotos === null) {
-                                        return 50; // Default max if unlimited
-                                    }
-                                    
-                                    return $maxPhotos;
+                                    $maxPhotos = app(NewBusinessPlanLimits::class)->maxPhotos();
+                                    return $maxPhotos ?? 50; // default if unlimited
                                 })
                                 ->maxSize(3072)
                                 ->imageEditor()
@@ -790,14 +762,10 @@ Wizard\Step::make('Business Hours')
                                 ->appendFiles()
                                 ->panelLayout('grid')
                                 ->helperText(function () {
-                                    $user = Auth::user();
-                                    $subscription = $user->subscription;
-                                    $maxPhotos = $subscription?->plan?->max_photos;
-                                    
+                                    $maxPhotos = app(NewBusinessPlanLimits::class)->maxPhotos();
                                     if ($maxPhotos === null) {
                                         return 'Upload photos of your business, products, or services';
                                     }
-                                    
                                     return "Upload up to {$maxPhotos} photos of your business, products, or services";
                                 })
                                 ->columnSpanFull(),
@@ -860,8 +828,8 @@ Wizard\Step::make('Business Hours')
         // Set ownership
         $data['user_id'] = Auth::id();
         $data['status'] = 'pending_review';
-        $data['is_claimed'] = true;
-        $data['claimed_by'] = Auth::id();
+        $data['is_claimed'] = false;
+        $data['claimed_by'] = null;
         
         // ✅ FIXED: Transform business_hours from individual fields to keyed array
         $businessHours = [];
@@ -920,39 +888,50 @@ Wizard\Step::make('Business Hours')
     protected function afterCreate(): void
     {
         $business = $this->record;
-        
+        $user = Auth::user();
+
+        // Assign free plan to new business (immediately after create)
+        $freePlan = app(NewBusinessPlanLimits::class)->plan();
+        $subscription = null;
+        if ($freePlan) {
+            $subscription = Subscription::create([
+                'business_id' => $business->id,
+                'user_id' => $user->id,
+                'subscription_plan_id' => $freePlan->id,
+                'billing_interval' => 'yearly',
+                'status' => 'active',
+                'starts_at' => now(),
+                'ends_at' => now()->addYear(),
+                'auto_renew' => true,
+            ]);
+        }
+
         // Sync categories
         if (!empty($this->categoriesData)) {
             $business->categories()->sync($this->categoriesData);
         }
-        
+
         // Sync payment methods
         if (!empty($this->paymentMethodsData)) {
             $business->paymentMethods()->sync($this->paymentMethodsData);
         }
-        
+
         // Sync amenities
         if (!empty($this->amenitiesData)) {
             $business->amenities()->sync($this->amenitiesData);
         }
-        
-        // Create FAQs (with limit check)
+
+        // Create FAQs (shadow limits: free plan)
         if (!empty($this->faqsData)) {
-            $user = Auth::user();
-            $subscription = $user->subscription;
-            $maxFaqs = $subscription?->plan?->max_faqs;
-            
-            // Enforce limit
+            $maxFaqs = app(NewBusinessPlanLimits::class)->maxFaqs();
             if ($maxFaqs !== null && count($this->faqsData) > $maxFaqs) {
                 \Filament\Notifications\Notification::make()
                     ->warning()
                     ->title('FAQ Limit Exceeded')
                     ->body("Your plan allows a maximum of {$maxFaqs} FAQs. Only the first {$maxFaqs} FAQs were saved.")
                     ->send();
-                
                 $this->faqsData = array_slice($this->faqsData, 0, $maxFaqs);
             }
-            
             foreach ($this->faqsData as $faqData) {
                 FAQ::create([
                     'business_id' => $business->id,
@@ -962,14 +941,15 @@ Wizard\Step::make('Business Hours')
                     'is_active' => $faqData['is_active'] ?? true,
                 ]);
             }
-            
-            // Update subscription usage
             if ($subscription) {
-                $totalFaqs = $user->businesses()->withCount('faqs')->get()->sum('faqs_count');
-                $subscription->update(['faqs_used' => $totalFaqs]);
+                $subscription->update(['faqs_used' => count($this->faqsData)]);
             }
         }
-        
+
+        if ($subscription && $business->gallery) {
+            $subscription->update(['photos_used' => count($business->gallery)]);
+        }
+
         // Create Social Accounts
         if (!empty($this->socialAccountsData)) {
             foreach ($this->socialAccountsData as $socialData) {
@@ -985,7 +965,7 @@ Wizard\Step::make('Business Hours')
         // Create Officials/Team Members
         if (!empty($this->officialsData)) {
             foreach ($this->officialsData as $officialData) {
-                $official = Official::create([
+                Official::create([
                     'business_id' => $business->id,
                     'name' => $officialData['name'],
                     'position' => $officialData['position'],
@@ -995,14 +975,19 @@ Wizard\Step::make('Business Hours')
                     'social_accounts' => $officialData['social_accounts'] ?? [],
                 ]);
             }
+            if ($subscription) {
+                $subscription->update(['team_members_used' => count($this->officialsData)]);
+            }
         }
+
+        app(ActiveBusiness::class)->setActiveBusinessId($business->id);
     }
     
     protected function getCreatedNotificationTitle(): ?string
     {
         return 'Business created successfully! It will be reviewed by our team.';
     }
-    
+
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('view', ['record' => $this->getRecord()]);
@@ -1015,4 +1000,18 @@ Wizard\Step::make('Business Hours')
     protected array $faqsData = [];
     protected array $socialAccountsData = [];
     protected array $officialsData = [];
+    
+    /**
+     * Add Google Places Autocomplete JavaScript to the page
+     */
+    protected function getHeaderActions(): array
+    {
+        // This will render our custom view with the Google Places script
+        return [];
+    }
+    
+    public function getFooter(): ?View
+    {
+        return view('filament.widgets.google-places-autocomplete');
+    }
 }

@@ -3,50 +3,61 @@
 namespace App\Filament\Business\Resources\TransactionResource\Pages;
 
 use App\Filament\Business\Resources\TransactionResource;
-use Filament\Resources\Pages\ListRecords;
-use Filament\Resources\Components\Tab;
-use Illuminate\Database\Eloquent\Builder;
+use App\Models\AdCampaign;
+use App\Models\Subscription;
+use App\Models\Transaction;
+use App\Models\Wallet;
+use App\Services\ActiveBusiness;
 use Filament\Facades\Filament;
+use Filament\Resources\Components\Tab;
+use Filament\Resources\Pages\ListRecords;
+use Illuminate\Database\Eloquent\Builder;
 
 class ListTransactions extends ListRecords
 {
     protected static string $resource = TransactionResource::class;
-
     protected function getHeaderActions(): array
     {
-        return [
-            // No create action - transactions are created automatically
-        ];
+        return [];
+    }
+
+    protected function baseQuery(): Builder
+    {
+        $id = app(ActiveBusiness::class)->getActiveBusinessId();
+        $q = Transaction::query();
+        if ($id === null) {
+            return $q->whereRaw('1 = 0');
+        }
+        // Use business_id directly (now that transactions are business-scoped)
+        return $q->where('business_id', $id);
     }
 
     public function getTabs(): array
     {
-        $userId = Filament::auth()->id();
-
         return [
-            'all' => Tab::make('All'),
-            
+            'all' => Tab::make('All')
+                ->badge(fn () => $this->baseQuery()->count()),
             'pending' => Tab::make('Pending')
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'pending'))
-                ->badge(fn () => \App\Models\Transaction::where('user_id', $userId)->where('status', 'pending')->count())
+                ->badge(fn () => $this->baseQuery()->where('status', 'pending')->count())
                 ->badgeColor('warning'),
-            
             'completed' => Tab::make('Completed')
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'completed'))
-                ->badge(fn () => \App\Models\Transaction::where('user_id', $userId)->where('status', 'completed')->count())
+                ->badge(fn () => $this->baseQuery()->where('status', 'completed')->count())
                 ->badgeColor('success'),
-            
             'subscriptions' => Tab::make('Subscriptions')
-                ->modifyQueryUsing(fn (Builder $query) => $query->where('transactionable_type', 'App\Models\Subscription'))
-                ->icon('heroicon-o-star'),
-            
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('transactionable_type', Subscription::class))
+                ->icon('heroicon-o-star')
+                ->badge(fn () => $this->baseQuery()->where('transactionable_type', Subscription::class)->count()),
             'campaigns' => Tab::make('Ad Campaigns')
-                ->modifyQueryUsing(fn (Builder $query) => $query->where('transactionable_type', 'App\Models\AdCampaign'))
-                ->icon('heroicon-o-megaphone'),
-            
-            'wallet' => Tab::make('Wallet')
-                ->modifyQueryUsing(fn (Builder $query) => $query->where('transactionable_type', 'App\Models\Wallet'))
-                ->icon('heroicon-o-wallet'),
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('transactionable_type', AdCampaign::class))
+                ->icon('heroicon-o-megaphone')
+                ->badge(fn () => $this->baseQuery()->where('transactionable_type', AdCampaign::class)->count()),
+            'wallet_funding' => Tab::make('Wallet Funding')
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('transactionable_type', Wallet::class))
+                ->icon('heroicon-o-wallet')
+                ->badge(fn () => $this->baseQuery()->where('transactionable_type', Wallet::class)->count())
+                ->badgeColor('warning'),
         ];
     }
 }

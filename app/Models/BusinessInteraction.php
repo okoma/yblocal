@@ -1,8 +1,10 @@
 <?php
-// app/Models/BusinessInteraction.php - COMPLETE FIXED VERSION
+// app/Models/BusinessInteraction.php - UPDATED WITH ENUMS
 
 namespace App\Models;
 
+use App\Enums\DeviceType;
+use App\Enums\ReferralSource;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -33,6 +35,8 @@ class BusinessInteraction extends Model
     protected $casts = [
         'interacted_at' => 'datetime',
         'interaction_date' => 'date',
+        'referral_source' => ReferralSource::class,
+        'device_type' => DeviceType::class,
     ];
 
     // ============================================
@@ -46,7 +50,6 @@ class BusinessInteraction extends Model
     {
         return $this->belongsTo(Business::class);
     }
-
 
     /**
      * User who performed the interaction (optional - can be guest)
@@ -81,14 +84,14 @@ class BusinessInteraction extends Model
      * 
      * @param int $businessId Business ID
      * @param string $type Interaction type ('call', 'whatsapp', 'email', 'website', 'map', 'directions')
-     * @param string $referralSource Source of traffic
+     * @param ReferralSource|string $referralSource Source of traffic
      * @param int|null $userId User ID if logged in
      * @return static
      */
     public static function recordInteraction(
         $businessId, 
         $type, 
-        $referralSource = 'direct', 
+        ReferralSource|string $referralSource = ReferralSource::DIRECT, 
         $userId = null
     ) {
         if (!$businessId) {
@@ -101,7 +104,13 @@ class BusinessInteraction extends Model
             throw new \InvalidArgumentException("Invalid interaction type: {$type}");
         }
 
+        // Convert string to enum if needed
+        if (is_string($referralSource)) {
+            $referralSource = ReferralSource::tryFrom($referralSource) ?? ReferralSource::DIRECT;
+        }
+
         $now = now();
+        $deviceType = DeviceType::detect(request()->userAgent());
 
         return static::create([
             'business_id' => $businessId,
@@ -114,7 +123,7 @@ class BusinessInteraction extends Model
             'city' => 'Unknown',
             'ip_address' => request()->ip(),
             'user_agent' => request()->userAgent(),
-            'device_type' => static::detectDevice(),
+            'device_type' => $deviceType,
             'interacted_at' => $now,
             'interaction_date' => $now->toDateString(),
             'interaction_hour' => $now->format('H'),
@@ -125,20 +134,11 @@ class BusinessInteraction extends Model
 
     /**
      * Detect device type from user agent
+     * @deprecated Use DeviceType::detect() instead
      */
     private static function detectDevice(): string
     {
-        $userAgent = request()->userAgent();
-        
-        if (preg_match('/mobile|android|iphone/i', $userAgent)) {
-            return 'mobile';
-        }
-        
-        if (preg_match('/tablet|ipad/i', $userAgent)) {
-            return 'tablet';
-        }
-        
-        return 'desktop';
+        return DeviceType::detect(request()->userAgent())->value;
     }
 
     // ============================================
@@ -220,17 +220,43 @@ class BusinessInteraction extends Model
     /**
      * Scope for interactions by referral source
      */
-    public function scopeBySource($query, string $source)
+    public function scopeBySource($query, ReferralSource|string $source)
     {
-        return $query->where('referral_source', $source);
+        $sourceValue = $source instanceof ReferralSource ? $source->value : $source;
+        return $query->where('referral_source', $sourceValue);
+    }
+
+    /**
+     * Scope for social media sources
+     */
+    public function scopeFromSocialMedia($query)
+    {
+        $socialSources = array_map(
+            fn($case) => $case->value,
+            array_filter(ReferralSource::cases(), fn($case) => $case->isSocialMedia())
+        );
+        return $query->whereIn('referral_source', $socialSources);
+    }
+
+    /**
+     * Scope for search engine sources
+     */
+    public function scopeFromSearchEngines($query)
+    {
+        $searchSources = array_map(
+            fn($case) => $case->value,
+            array_filter(ReferralSource::cases(), fn($case) => $case->isSearchEngine())
+        );
+        return $query->whereIn('referral_source', $searchSources);
     }
 
     /**
      * Scope for interactions by device type
      */
-    public function scopeByDevice($query, string $device)
+    public function scopeByDevice($query, DeviceType|string $device)
     {
-        return $query->where('device_type', $device);
+        $deviceValue = $device instanceof DeviceType ? $device->value : $device;
+        return $query->where('device_type', $deviceValue);
     }
 
     /**
@@ -238,7 +264,7 @@ class BusinessInteraction extends Model
      */
     public function scopeMobile($query)
     {
-        return $query->where('device_type', 'mobile');
+        return $query->where('device_type', DeviceType::MOBILE->value);
     }
 
     /**
@@ -246,7 +272,15 @@ class BusinessInteraction extends Model
      */
     public function scopeDesktop($query)
     {
-        return $query->where('device_type', 'desktop');
+        return $query->where('device_type', DeviceType::DESKTOP->value);
+    }
+
+    /**
+     * Scope for tablet interactions
+     */
+    public function scopeTablet($query)
+    {
+        return $query->where('device_type', DeviceType::TABLET->value);
     }
 
     /**

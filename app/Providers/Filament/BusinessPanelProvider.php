@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Http\Middleware\EnsureActiveBusiness;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
@@ -29,7 +30,11 @@ class BusinessPanelProvider extends PanelProvider
         return $panel
             ->id('business')
             ->path('dashboard')
-            ->login()
+            ->domain('biz.yellowbooks.ng')
+            ->login(\App\Filament\Business\Pages\Auth\Login::class)
+            ->registration(\App\Filament\Business\Pages\Auth\Register::class)
+            ->passwordReset(\App\Filament\Business\Pages\Auth\RequestPasswordReset::class)
+            ->emailVerification(\App\Filament\Business\Pages\Auth\EmailVerificationPrompt::class)
             ->brandName('YellowBooks')
             ->brandLogo(asset('images/logo.png'))
             ->brandLogoHeight('2rem')
@@ -38,7 +43,7 @@ class BusinessPanelProvider extends PanelProvider
                 'primary' => Color::Blue,
             ])
             ->collapsibleNavigationGroups(false)
-            ->sidebarCollapsibleOnDesktop()
+            //->sidebarCollapsibleOnDesktop()
             ->font('Inter', url: asset('fonts/filament/filament/inter/index.css'))
             ->discoverResources(in: app_path('Filament/Business/Resources'), for: 'App\\Filament\\Business\\Resources')
             ->discoverPages(in: app_path('Filament/Business/Pages'), for: 'App\\Filament\\Business\\Pages')
@@ -49,6 +54,7 @@ class BusinessPanelProvider extends PanelProvider
             ->widgets([
                 //Widgets\AccountWidget::class,
             ])
+            ->renderHook(PanelsRenderHook::SIDEBAR_NAV_START, fn () => view('filament.components.business-switcher-sidebar'))
             ->renderHook(PanelsRenderHook::CONTENT_END, fn () => view('filament.components.global-footer'))
             ->middleware([
                 EncryptCookies::class,
@@ -60,21 +66,25 @@ class BusinessPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
+                EnsureActiveBusiness::class,
             ])
             ->authMiddleware([
                 Authenticate::class,
             ])
             ->databaseNotifications()
-            ->databaseNotificationsPolling('30s')
+            ->databaseNotificationsPolling('30s') // Temporarily disabled to test SPA
             ->spa();
     }
 
+    /** Bump this (e.g. v1 → v2) with each push to bust cache for business panel CSS/JS. */
+    private const BUSINESS_ASSET_VERSION = 'v16';
+
     public function boot(): void
     {
+        $v = '?v=' . self::BUSINESS_ASSET_VERSION;
         FilamentAsset::register([
-            Css::make('business-panel-styles', asset('css/filament-panels/business.css?v=' . time())),
-            // Add JS if needed
-            Js::make('business-panel-js', asset('js/filament-panels/business.js?v=' . time())),
+            Css::make('business-panel-styles', asset('css/filament-panels/business.css') . $v),
+            Js::make('business-panel-js', asset('js/filament-panels/business.js') . $v),
         ], 'business');
     }
 }

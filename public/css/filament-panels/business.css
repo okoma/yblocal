@@ -28,8 +28,9 @@
 
 /* Dark mode - Dark background */
 .dark .fi-sidebar {
-    background-color: #1f2937 !important;
-    border-right: 1px solid #374151;
+    background-color: #18181b !important;
+    border: 1px solid #37373a;
+    
 }
 
 /* Sidebar header */
@@ -38,7 +39,7 @@
 }
 
 .dark .fi-sidebar-header {
-    background-color: #1f2937;
+    background-color: #18181b;
 }
 
 /* Navigation items text color */
@@ -68,3 +69,193 @@
 footer {
   margin-top: auto;
 }
+
+/* Business switcher: ensure visible, not clipped by sidebar/topbar */
+.business-switcher-wrapper {
+  overflow: visible !important;
+  position: relative;
+  z-index: 20;
+  min-height: 3.5rem;
+}
+
+.fi-sidebar-group-items.mt-1.space-y-1.ps-2.overflow-visible {
+    background: #fff;
+    border: 0px 1px 1px 1px solid #f5f5f5;
+    border-top: 0px;
+    border-radius: 0 0 8px 8px !important;
+    padding: 8px;
+    margin-top: 2px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.business-switcher-wrapper.fi-sidebar-item {
+    border: 1px solid #f5f5f5 !important;
+    padding-top: 0px;
+    background: #ffffff;
+    border-radius: 8px;
+    margin-bottom: 0;
+    box-shadow: 0 2px 1px rgba(0, 0, 0, 0.08);
+}
+.dark .business-switcher-wrapper.fi-sidebar-item {
+    border: 1px solid #37373a !important;
+    padding-top: 0px;
+    background: #18181b;
+    border-radius: 8px;
+    margin-bottom: 0;
+    box-shadow: 0 2px 1px rgba(0, 0, 0, 0.08);
+}
+/* Dark mode dropdown styling */
+.dark .fi-sidebar-group-items.mt-1.space-y-1.ps-2.overflow-visible {
+    background: #232325;
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0px 4px 12px -1px rgba(0, 0, 0, 0.3), 0px 2px 4px -1px rgba(0, 0, 0, 0.2);
+}
+
+/* Business item hover effect */
+.business-item {
+    position: relative;
+    overflow: hidden;
+}
+
+.business-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 3px;
+    background: transparent;
+    transition: background 0.2s ease;
+}
+
+.business-item.active::before {
+    background: #6b7280;
+}
+
+.business-item:hover::before {
+    background: #9ca3af;
+}
+
+/* Smooth transitions */
+.business-item {
+    transition: all 0.2s ease;
+}
+
+/* Divider styling */
+.business-divider {
+    margin: 8px 0 !important;
+    padding-top: 8px !important;
+    border-top: 1px solid #e5e7eb;
+}
+
+.dark .business-divider {
+    border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Create button special styling */
+.create-business-btn {
+    background: linear-gradient(135deg, #e2feff 0%, #e8f9ff 100%);
+    border: 1px dashed #ffffff;
+}
+
+.dark .create-business-btn {
+    background: linear-gradient(135deg, #e2feff 0%, #e8f9ff 100%);
+    border: 1px dashed #ffffff;
+}
+
+.create-business-btn:hover {
+    border-style: solid;
+    transform: translateY(-1px);
+}
+
+/* Dropdown animation improvements */
+.dropdown-content {
+    transform-origin: top;
+}
+/* Active */
+.status-active {
+    background-color: #dcfce7;
+    color: #15803d;
+}
+
+.dark .status-active {
+    background-color: rgba(20, 83, 45, 0.3);
+    color: #4ade80;
+}
+
+/* Pending Review */
+.status-pending-review {
+    background-color: #fef9c3;
+    color: #a16207;
+}
+
+.dark .status-pending-review {
+    background-color: rgba(113, 63, 18, 0.3);
+    color: #facc15;
+}
+
+/* Suspended */
+.status-suspended {
+    background-color: #ffedd5;
+    color: #c2410c;
+}
+
+.dark .status-suspended {
+    background-color: rgba(124, 45, 18, 0.3);
+    color: #fb923c;
+}
+
+/* Closed */
+.status-closed {
+    background-color: #fee2e2;
+    color: #b91c1c;
+}
+
+.dark .status-closed {
+    background-color: rgba(127, 29, 29, 0.3);
+    color: #f87171;
+}
+
+/* Draft */
+.status-draft {
+    background-color: #f3f4f6;
+    color: #374151;
+}
+
+.dark .status-draft {
+    background-color: #1f2937;
+    color: #d1d5db;
+}
+
+/* Default */
+.status-default {
+    background-color: #e5e7eb;
+    color: #374151;
+}
+
+.dark .status-default {
+    background-color: #374151;
+    color: #d1d5db;
+}
+
+/* Fix topbar full width */
+.fi-topbar {
+    max-width: 100% !important;
+    width: 100% !important;
+}
+
+.fi-topbar-container {
+    max-width: 100% !important;
+    width: 100% !important;
+}
+
+/* Ensure main content area is full width */
+.fi-main-ctn {
+    max-width: 100% !important;
+}
+
+.fi-body {
+    max-width: 100% !important;
+}
+
+

@@ -31,6 +31,11 @@ class ViewTransaction extends ViewRecord
                             ->copyable()
                             ->visible(fn ($record) => $record->payment_gateway_ref),
 
+                        Components\TextEntry::make('business.business_name')
+                            ->label('Business')
+                            ->icon('heroicon-o-building-office')
+                            ->visible(fn ($record) => $record->business),
+
                         Components\TextEntry::make('transactionable_type')
                             ->label('Transaction Type')
                             ->formatStateUsing(fn (string $state): string => match($state) {

@@ -23,8 +23,7 @@ class BusinessViewSummaryResource extends Resource
     public static function table(Table $table): Table
     {
         return $table->columns([
-            Tables\Columns\TextColumn::make('branch.business.business_name')->label('Business')->searchable()->limit(30),
-            Tables\Columns\TextColumn::make('branch.branch_title')->label('Branch')->searchable(),
+            Tables\Columns\TextColumn::make('business.business_name')->label('Business')->searchable()->limit(30),
             Tables\Columns\TextColumn::make('period_type')->badge()->formatStateUsing(fn ($s) => ucfirst($s)),
             Tables\Columns\TextColumn::make('period_key')->label('Period')->sortable(),
             Tables\Columns\TextColumn::make('total_views')->formatStateUsing(fn ($s) => number_format($s))->sortable(),
