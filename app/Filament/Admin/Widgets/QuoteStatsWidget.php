@@ -43,14 +43,14 @@ class QuoteStatsWidget extends BaseWidget
                 ->descriptionIcon('heroicon-m-document-text')
                 ->color('info')
                 ->icon('heroicon-o-document-text')
-                ->url(route('filament.admin.resources.quote-requests.index')),
+                ->url(\App\Filament\Admin\Resources\QuoteRequestResource::getUrl('index')),
             
             Stat::make('Total Quote Responses', number_format($totalResponses))
                 ->description("{$responsesThisMonth} this month")
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
                 ->color('success')
                 ->icon('heroicon-o-document-check')
-                ->url(route('filament.admin.resources.quote-responses.index')),
+                ->url(\App\Filament\Admin\Resources\QuoteResponseResource::getUrl('index')),
             
             Stat::make('Accepted Quotes', number_format($acceptedQuotes))
                 ->description("{$acceptanceRate}% acceptance rate")
