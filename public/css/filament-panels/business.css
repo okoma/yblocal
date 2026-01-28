@@ -29,6 +29,7 @@
 /* Dark mode - Dark background */
 .dark .fi-sidebar {
     background-color: #18181b !important;
+    border: 1px solid #37373a;
     
 }
 
@@ -96,7 +97,7 @@ footer {
     box-shadow: 0 2px 1px rgba(0, 0, 0, 0.08);
 }
 .dark .business-switcher-wrapper.fi-sidebar-item {
-    border: 1px solid #374151 !important;
+    border: 1px solid #37373a !important;
     padding-top: 0px;
     background: #18181b;
     border-radius: 8px;
