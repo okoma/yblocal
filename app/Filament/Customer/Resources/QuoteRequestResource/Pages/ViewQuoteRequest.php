@@ -4,6 +4,9 @@ namespace App\Filament\Customer\Resources\QuoteRequestResource\Pages;
 
 use App\Filament\Customer\Resources\QuoteRequestResource;
 use App\Models\Notification as NotificationModel;
+use App\Notifications\QuoteShortlistedNotification;
+use App\Notifications\QuoteAcceptedNotification;
+use App\Notifications\QuoteRejectedNotification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
@@ -195,17 +198,8 @@ class ViewQuoteRequest extends ViewRecord
                                             try {
                                                 $business = $record->business;
                                                 if ($business && $business->user) {
-                                                    NotificationModel::send(
-                                                        userId: $business->user->id,
-                                                        type: 'quote_accepted',
-                                                        title: 'Quote Accepted! 🎉',
-                                                        message: "Congratulations! Your quote for '{$this->record->title}' has been accepted by the customer.",
-                                                        actionUrl: \App\Filament\Business\Resources\QuoteResponseResource::getUrl('view', ['record' => $record->id], panel: 'business'),
-                                                        extraData: [
-                                                            'quote_request_id' => $this->record->id,
-                                                            'quote_response_id' => $record->id,
-                                                        ]
-                                                    );
+                                                    // Use Laravel notification for email support
+                                                    $business->user->notify(new QuoteAcceptedNotification($record));
                                                 }
                                                 
                                                 // Send Telegram notification to customer if enabled (optional - they performed the action)
@@ -262,17 +256,8 @@ class ViewQuoteRequest extends ViewRecord
                                             try {
                                                 $business = $record->business;
                                                 if ($business && $business->user) {
-                                                    NotificationModel::send(
-                                                        userId: $business->user->id,
-                                                        type: 'quote_rejected',
-                                                        title: 'Quote Rejected',
-                                                        message: "Your quote for '{$this->record->title}' has been rejected by the customer.",
-                                                        actionUrl: \App\Filament\Business\Resources\QuoteResponseResource::getUrl('view', ['record' => $record->id], panel: 'business'),
-                                                        extraData: [
-                                                            'quote_request_id' => $this->record->id,
-                                                            'quote_response_id' => $record->id,
-                                                        ]
-                                                    );
+                                                    // Use Laravel notification for email support
+                                                    $business->user->notify(new QuoteRejectedNotification($record));
                                                 }
                                                 
                                                 // Send Telegram notification to customer if enabled (optional - they performed the action)

@@ -255,18 +255,8 @@ class AvailableQuoteRequests extends Page implements HasTable
                                     
                                     // Send email/in-app notification if enabled
                                     if ($preferences && $preferences->notify_quote_responses) {
-                                        \App\Models\Notification::send(
-                                            userId: $customer->id,
-                                            type: 'new_quote_response',
-                                            title: 'New Quote Received',
-                                            message: "{$business->business_name} has submitted a quote for your request '{$record->title}'.",
-                                            actionUrl: \App\Filament\Customer\Resources\QuoteRequestResource::getUrl('view', ['record' => $record->id], panel: 'customer'),
-                                            extraData: [
-                                                'quote_request_id' => $record->id,
-                                                'quote_response_id' => $quoteResponse->id,
-                                                'business_id' => $businessId,
-                                            ]
-                                        );
+                                        // Use Laravel notification for email support
+                                        $customer->notify(new \App\Notifications\NewQuoteResponseNotification($quoteResponse));
                                     }
                                     
                                     // Send Telegram notification if enabled
