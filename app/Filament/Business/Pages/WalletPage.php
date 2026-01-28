@@ -119,7 +119,7 @@ class WalletPage extends Page implements HasTable, HasActions
             ->label('Add Fund')
             ->icon('heroicon-o-plus-circle')
             ->color('success')
-            ->modalWidth('lg')
+            ->modalWidth('2xl')
             ->requiresConfirmation(false)
             ->form([
                 Forms\Components\TextInput::make('amount')
@@ -208,7 +208,7 @@ class WalletPage extends Page implements HasTable, HasActions
             ->label('Buy Ad Credits')
             ->icon('heroicon-o-sparkles')
             ->color('primary')
-            ->modalWidth('lg')
+            ->modalWidth('2xl')
             ->requiresConfirmation(false)
             ->form([
                 Forms\Components\Select::make('credit_package')
@@ -319,7 +319,7 @@ class WalletPage extends Page implements HasTable, HasActions
             ->label('Buy Quote Credits')
             ->icon('heroicon-o-document-text')
             ->color('info')
-            ->modalWidth('lg')
+            ->modalWidth('2xl')
             ->requiresConfirmation(false)
             ->form([
                 Forms\Components\Select::make('credit_package')
@@ -431,7 +431,7 @@ class WalletPage extends Page implements HasTable, HasActions
             ->icon('heroicon-o-arrow-down-tray')
             ->color('danger')
             ->visible(fn () => $this->getWallet()->balance >= 1000)
-            ->modalWidth('md')
+            ->modalWidth('2xl')
             ->requiresConfirmation(false)
             ->form([
                 Forms\Components\Placeholder::make('current_balance')
