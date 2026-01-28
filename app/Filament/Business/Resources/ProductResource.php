@@ -294,4 +294,19 @@ class ProductResource extends Resource
     {
         return static::canEdit($record);
     }
+
+    public static function getGlobalSearchEloquentQuery(): Builder
+    {
+        return static::getEloquentQuery();
+    }
+
+    public static function getGlobalSearchResultDetails(Model $record): array
+    {
+        return [
+            'Category' => $record->header_title,
+            'Price' => '₦' . number_format($record->price, 2),
+            'Final Price' => '₦' . number_format($record->final_price, 2),
+            'Available' => $record->is_available ? 'Yes' : 'No',
+        ];
+    }
 }

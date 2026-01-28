@@ -16,6 +16,7 @@ use Filament\Tables\Table;
 use App\Services\ActiveBusiness;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 
 class ReviewResource extends Resource
@@ -312,5 +313,20 @@ class ReviewResource extends Resource
     public static function canCreate(): bool
     {
         return false; // Reviews are created by customers, not business owners
+    }
+
+    public static function getGlobalSearchEloquentQuery(): Builder
+    {
+        return static::getEloquentQuery();
+    }
+
+    public static function getGlobalSearchResultDetails(Model $record): array
+    {
+        return [
+            'Customer' => $record->user->name ?? 'N/A',
+            'Rating' => str_repeat('⭐', $record->rating),
+            'Comment' => \Illuminate\Support\Str::limit($record->comment, 50),
+            'Replied' => $record->reply ? 'Yes' : 'No',
+        ];
     }
 }

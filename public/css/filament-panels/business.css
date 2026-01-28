@@ -229,3 +229,17 @@ footer {
     background-color: #374151;
     color: #d1d5db;
 }
+
+/* Hide global search from sidebar */
+.fi-sidebar .fi-global-search {
+    display: none !important;
+}
+
+/* Style topbar global search */
+.fi-topbar-global-search {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    max-width: 32rem;
+    margin: 0 1rem;
+}

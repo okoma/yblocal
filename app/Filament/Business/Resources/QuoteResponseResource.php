@@ -12,6 +12,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 class QuoteResponseResource extends Resource
 {
@@ -179,6 +180,21 @@ class QuoteResponseResource extends Resource
         return [
             'index' => Pages\ListQuoteResponses::route('/'),
             'view' => Pages\ViewQuoteResponse::route('/{record}'),
+        ];
+    }
+
+    public static function getGlobalSearchEloquentQuery(): Builder
+    {
+        return static::getEloquentQuery();
+    }
+
+    public static function getGlobalSearchResultDetails(Model $record): array
+    {
+        return [
+            'Request' => $record->quoteRequest->title ?? 'N/A',
+            'Category' => $record->quoteRequest->category->name ?? 'N/A',
+            'Price' => '₦' . number_format($record->price, 2),
+            'Status' => ucfirst($record->status),
         ];
     }
 }

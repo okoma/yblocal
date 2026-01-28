@@ -51,6 +51,7 @@ class BusinessPanelProvider extends PanelProvider
                 //Widgets\AccountWidget::class,
             ])
             ->renderHook(PanelsRenderHook::SIDEBAR_NAV_START, fn () => view('filament.components.business-switcher-sidebar'))
+            ->renderHook(PanelsRenderHook::TOOLBAR_START, fn () => view('filament.components.global-search-topbar'))
             ->renderHook(PanelsRenderHook::CONTENT_END, fn () => view('filament.components.global-footer'))
             ->middleware([
                 EncryptCookies::class,
@@ -73,7 +74,7 @@ class BusinessPanelProvider extends PanelProvider
     }
 
     /** Bump this (e.g. v1 → v2) with each push to bust cache for business panel CSS/JS. */
-    private const BUSINESS_ASSET_VERSION = 'v7';
+    private const BUSINESS_ASSET_VERSION = 'v8';
 
     public function boot(): void
     {

@@ -14,6 +14,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
 class TransactionResource extends Resource
@@ -233,5 +234,20 @@ class TransactionResource extends Resource
     public static function getNavigationBadgeColor(): ?string
     {
         return 'warning';
+    }
+
+    public static function getGlobalSearchEloquentQuery(): Builder
+    {
+        return static::getEloquentQuery();
+    }
+
+    public static function getGlobalSearchResultDetails(Model $record): array
+    {
+        return [
+            'Reference' => $record->transaction_ref,
+            'Amount' => '₦' . number_format($record->amount, 2),
+            'Status' => ucfirst($record->status),
+            'Method' => ucfirst(str_replace('_', ' ', $record->payment_method)),
+        ];
     }
 }

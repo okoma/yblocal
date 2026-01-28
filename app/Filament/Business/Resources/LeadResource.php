@@ -16,6 +16,7 @@ use Filament\Tables\Table;
 use App\Services\ActiveBusiness;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 
 class LeadResource extends Resource
@@ -290,5 +291,20 @@ class LeadResource extends Resource
     {
         // Business owners can only view leads, not edit them
         return false;
+    }
+
+    public static function getGlobalSearchEloquentQuery(): Builder
+    {
+        return static::getEloquentQuery();
+    }
+
+    public static function getGlobalSearchResultDetails(Model $record): array
+    {
+        return [
+            'Client' => $record->client_name,
+            'Email' => $record->email,
+            'Phone' => $record->phone,
+            'Status' => ucfirst($record->status),
+        ];
     }
 }
