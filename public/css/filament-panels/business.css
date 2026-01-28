@@ -265,20 +265,4 @@ footer {
     max-width: 100% !important;
 }
 
-/* Adjust global search to not cause overflow */
-.fi-topbar .fi-global-search {
-    display: flex !important;
-    flex: 1;
-    max-width: 32rem;
-    margin: 0 1rem;
-    align-items: center;
-    min-width: 56rem; /* Allow shrinking if needed */
-}
 
-
-.fi-topbar .fi-global-search {
-    flex-shrink: 1; /* Allow search to shrink */
-}
-.fi-global-search-field {
-    width: 400px;
-}
