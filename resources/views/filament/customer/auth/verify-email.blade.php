@@ -14,7 +14,7 @@
 
         <x-filament::button
             type="button"
-            wire:click="sendNotification"
+            wire:click="sendVerificationNotification"
             class="w-full"
         >
             Resend verification email
