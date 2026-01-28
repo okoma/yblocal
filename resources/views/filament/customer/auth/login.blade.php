@@ -7,17 +7,7 @@
         Sign in to Customer Portal
     </x-slot>
 
-    <form method="POST" action="">
-        @csrf
-        {{ $this->form }}
-
-        <x-filament::button
-            type="submit"
-            class="w-full mt-4"
-        >
-            Log in
-        </x-filament::button>
-    </form>
+    {{ $this->form }}
 
     <div class="mt-6 flex items-center gap-3">
         <div class="h-px flex-1 bg-gray-200"></div>
