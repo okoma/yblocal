@@ -60,6 +60,7 @@ class AccountPreferences extends Page
             'whatsapp_number' => $preferences->whatsapp_number,
             'notify_new_leads_whatsapp' => $preferences->notify_new_leads_whatsapp,
             'notify_new_reviews_whatsapp' => $preferences->notify_new_reviews_whatsapp,
+            'notify_new_quote_requests_whatsapp' => $preferences->notify_new_quote_requests_whatsapp,
             'whatsapp_verified' => $preferences->whatsapp_verified,
             'notify_new_leads' => $preferences->notify_new_leads,
             'notify_new_reviews' => $preferences->notify_new_reviews,
@@ -284,7 +285,7 @@ class AccountPreferences extends Page
                                     ]),
                                 
                                 Forms\Components\Section::make('WhatsApp Notifications')
-                                    ->description('Receive notifications via WhatsApp (leads and reviews only).')
+                                    ->description('Receive notifications via WhatsApp (leads, reviews, and quote requests).')
                                     ->schema([
                                         Forms\Components\Toggle::make('whatsapp_notifications')
                                             ->label('Enable WhatsApp Notifications')
@@ -365,12 +366,20 @@ class AccountPreferences extends Page
                                                     ->disabled(fn (Forms\Get $get) => !$get('whatsapp_verified'))
                                                     ->onIcon('heroicon-o-bell')
                                                     ->offIcon('heroicon-o-bell-slash'),
+
+                                                Forms\Components\Toggle::make('notify_new_quote_requests_whatsapp')
+                                                    ->label('New Quote Requests')
+                                                    ->helperText('When new quote requests match your business')
+                                                    ->default(false)
+                                                    ->disabled(fn (Forms\Get $get) => !$get('whatsapp_verified'))
+                                                    ->onIcon('heroicon-o-bell')
+                                                    ->offIcon('heroicon-o-bell-slash'),
                                             ])
                                             ->visible(fn (Forms\Get $get) => $get('whatsapp_notifications')),
                                         
                                         Forms\Components\Placeholder::make('whatsapp_info')
                                             ->label('')
-                                            ->content('Note: WhatsApp notifications are only sent for new leads and reviews.')
+                                            ->content('Note: WhatsApp notifications are sent for new leads, reviews, and quote requests.')
                                             ->visible(fn (Forms\Get $get) => $get('whatsapp_notifications')),
                                     ]),
                             ]),

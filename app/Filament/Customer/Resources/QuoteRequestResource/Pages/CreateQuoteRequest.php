@@ -40,7 +40,7 @@ class CreateQuoteRequest extends CreateRecord
                 if ($owner) {
                     $preferences = $owner->preferences;
                     
-                    // Check if user wants to receive quote request notifications
+                    // Send email/in-app notification if enabled
                     if ($preferences && $preferences->notify_new_quote_requests) {
                         Notification::send(
                             userId: $owner->id,
@@ -53,6 +53,54 @@ class CreateQuoteRequest extends CreateRecord
                                 'business_id' => $business->id,
                             ]
                         );
+                    }
+                    
+                    // Send WhatsApp notification if enabled and verified
+                    if ($preferences && 
+                        $preferences->notify_new_quote_requests_whatsapp && 
+                        $preferences->whatsapp_verified && 
+                        !empty($preferences->whatsapp_number)) {
+                        
+                        try {
+                            // TODO: Implement WhatsApp API integration
+                            // Recommended services:
+                            // 1. Twilio WhatsApp API: https://www.twilio.com/whatsapp
+                            // 2. WhatsApp Business API: https://business.whatsapp.com/
+                            // 3. Africa's Talking (for African markets): https://africastalking.com/
+                            //
+                            // Example implementation (using Twilio):
+                            // $twilioSid = config('services.twilio.sid');
+                            // $twilioToken = config('services.twilio.token');
+                            // $twilioWhatsappNumber = config('services.twilio.whatsapp_number');
+                            // 
+                            // $client = new Twilio\Rest\Client($twilioSid, $twilioToken);
+                            // $client->messages->create(
+                            //     "whatsapp:" . $preferences->whatsapp_number,
+                            //     [
+                            //         'from' => "whatsapp:" . $twilioWhatsappNumber,
+                            //         'body' => "🎯 New Quote Request Available!\n\n" .
+                            //                  "A new quote request '{$quoteRequest->title}' matches your business.\n\n" .
+                            //                  "Category: {$quoteRequest->category->name}\n" .
+                            //                  "Location: " . ($quoteRequest->cityLocation?->name ?? $quoteRequest->stateLocation?->name) . "\n\n" .
+                            //                  "View and submit your quote: " . url(\App\Filament\Business\Pages\AvailableQuoteRequests::getUrl())
+                            //     ]
+                            // );
+                            
+                            // For now, log the WhatsApp notification
+                            Log::info('WhatsApp quote request notification (pending API integration)', [
+                                'user_id' => $owner->id,
+                                'whatsapp_number' => $preferences->whatsapp_number,
+                                'quote_request_id' => $quoteRequest->id,
+                                'business_id' => $business->id,
+                                'message' => "New quote request '{$quoteRequest->title}' matches your business",
+                            ]);
+                        } catch (\Exception $e) {
+                            Log::error('Failed to send WhatsApp quote request notification', [
+                                'user_id' => $owner->id,
+                                'quote_request_id' => $quoteRequest->id,
+                                'error' => $e->getMessage(),
+                            ]);
+                        }
                     }
                 }
             }

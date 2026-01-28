@@ -58,6 +58,11 @@ return new class extends Migration
                 ->after('notify_new_quote_requests_telegram')
                 ->comment('Telegram when business is reported');
             
+            // Business: Quote request notifications (WhatsApp)
+            $table->boolean('notify_new_quote_requests_whatsapp')->default(false)
+                ->after('notify_new_reviews_whatsapp')
+                ->comment('WhatsApp when new quote requests match business');
+            
             // Customer: Quote response notifications (email)
             $table->boolean('notify_quote_responses')->default(true)
                 ->after('notify_promotions_app')
@@ -99,6 +104,7 @@ return new class extends Migration
                 'notify_claim_rejected_telegram',
                 'notify_new_quote_requests_telegram',
                 'notify_business_reported_telegram',
+                'notify_new_quote_requests_whatsapp',
                 // Customer
                 'notify_quote_responses',
                 'notify_quote_updates',
