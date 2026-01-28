@@ -291,7 +291,7 @@ class AvailableQuoteRequests extends Page implements HasTable
                             ->schema([
                                 Forms\Components\Placeholder::make('quote_cost')
                                     ->label('Quote Submission Cost')
-                                    ->content(new HtmlString('<strong class="text-lg">1 Quote Credit</strong>'))
+                                    ->content('1 Quote Credit')
                                     ->helperText(function () use ($wallet) {
                                         $remaining = $wallet ? $wallet->quote_credits - 1 : -1;
                                         return $remaining > 0 
