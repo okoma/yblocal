@@ -25,7 +25,7 @@ class QuoteResponseResource extends Resource
     
     protected static ?string $navigationGroup = 'Quotes';
     
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 0;
 
     public static function getEloquentQuery(): Builder
     {
