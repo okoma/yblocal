@@ -17,6 +17,7 @@ class Dashboard extends BaseDashboard
     public function getWidgets(): array
     {
         return [
+            \App\Filament\Business\Widgets\EmailVerificationNoticeWidget::class,
             \App\Filament\Business\Widgets\StatsOverviewWidget::class,
             \App\Filament\Business\Widgets\RecentLeadsWidget::class,
             \App\Filament\Business\Widgets\BusinessPerformanceChart::class,

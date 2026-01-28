@@ -55,16 +55,15 @@ class Register extends BaseRegister
             'role' => UserRole::BUSINESS_OWNER,
         ]);
 
-        // Set session flag to allow unverified users to create business
-        session()->put('allow_unverified_business_creation', true);
-        session()->put('new_business_owner_registration', true);
+        // Send email verification notification automatically
+        $user->sendEmailVerificationNotification();
 
         return $user;
     }
 
     /**
      * Redirect to create business page after registration
-     * Allow unverified users to create their first business
+     * Email verification notice will show on dashboard after business is created
      */
     protected function getRedirectUrl(): string
     {

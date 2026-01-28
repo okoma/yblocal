@@ -2,7 +2,6 @@
 
 namespace App\Providers\Filament;
 
-use App\Http\Middleware\AllowUnverifiedBusinessCreation;
 use App\Http\Middleware\EnsureActiveBusiness;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -35,7 +34,7 @@ class BusinessPanelProvider extends PanelProvider
             ->login(\App\Filament\Business\Pages\Auth\Login::class)
             ->registration(\App\Filament\Business\Pages\Auth\Register::class)
             ->passwordReset(\App\Filament\Business\Pages\Auth\RequestPasswordReset::class)
-            ->emailVerification(\App\Filament\Business\Pages\Auth\EmailVerificationPrompt::class)
+            // Email verification redirect removed - showing notice on dashboard instead
             ->brandName('YellowBooks')
             ->brandLogo(asset('images/logo.png'))
             ->brandLogoHeight('2rem')
@@ -67,7 +66,6 @@ class BusinessPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
-                AllowUnverifiedBusinessCreation::class, // Allow unverified users to create business
                 EnsureActiveBusiness::class,
             ])
             ->authMiddleware([
