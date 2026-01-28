@@ -21,7 +21,7 @@ class QuoteResponseResource extends Resource
     
     protected static ?string $navigationLabel = 'My Quotes';
     
-    protected static ?string $modelLabel = 'My Quotes';
+    protected static ?string $modelLabel = 'My Submissions';
     
     protected static ?string $navigationGroup = 'Sales & Leads';
     
