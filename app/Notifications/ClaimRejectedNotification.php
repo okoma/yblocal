@@ -18,7 +18,14 @@ class ClaimRejectedNotification extends Notification implements ShouldQueue
 
     public function via($notifiable): array
     {
-        return ['mail', 'database'];
+        $channels = ['database'];
+        
+        $preferences = $notifiable->preferences;
+        if ($preferences && $preferences->notify_claim_rejected) {
+            $channels[] = 'mail';
+        }
+        
+        return $channels;
     }
 
     public function toMail($notifiable): MailMessage

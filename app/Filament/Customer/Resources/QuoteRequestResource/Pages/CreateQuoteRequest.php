@@ -38,17 +38,22 @@ class CreateQuoteRequest extends CreateRecord
                 // Get business owner
                 $owner = $business->user;
                 if ($owner) {
-                    Notification::send(
-                        userId: $owner->id,
-                        type: 'new_quote_request',
-                        title: 'New Quote Request Available',
-                        message: "A new quote request '{$quoteRequest->title}' matches your business category and location.",
-                        actionUrl: \App\Filament\Business\Pages\AvailableQuoteRequests::getUrl(),
-                        extraData: [
-                            'quote_request_id' => $quoteRequest->id,
-                            'business_id' => $business->id,
-                        ]
-                    );
+                    $preferences = $owner->preferences;
+                    
+                    // Check if user wants to receive quote request notifications
+                    if ($preferences && $preferences->notify_new_quote_requests) {
+                        Notification::send(
+                            userId: $owner->id,
+                            type: 'new_quote_request',
+                            title: 'New Quote Request Available',
+                            message: "A new quote request '{$quoteRequest->title}' matches your business category and location.",
+                            actionUrl: \App\Filament\Business\Pages\AvailableQuoteRequests::getUrl(),
+                            extraData: [
+                                'quote_request_id' => $quoteRequest->id,
+                                'business_id' => $business->id,
+                            ]
+                        );
+                    }
                 }
             }
             

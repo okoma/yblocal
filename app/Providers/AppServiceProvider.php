@@ -12,7 +12,10 @@ use App\Observers\BusinessObserver;
 use App\Observers\LeadObserver;
 use App\Observers\ReviewObserver;
 use App\Observers\UserObserver;
+use App\Listeners\SyncLaravelNotificationToCustomTable;
+use Illuminate\Notifications\Events\NotificationSent;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Event;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -41,5 +44,11 @@ class AppServiceProvider extends ServiceProvider
         
         // User lifecycle
         User::observe(UserObserver::class);
+
+        // Register listener to sync Laravel notifications to custom notifications table
+        Event::listen(
+            NotificationSent::class,
+            SyncLaravelNotificationToCustomTable::class
+        );
     }
 }

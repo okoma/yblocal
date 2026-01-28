@@ -69,7 +69,7 @@ class InquiryResponseNotification extends Notification implements ShouldQueue
         $business = $this->lead->business;
         
         return [
-            'type' => 'inquiry_response',
+            'type' => 'new_lead', // Using existing type for inquiry responses
             'lead_id' => $this->lead->id,
             'business_id' => $business->id,
             'business_name' => $business->business_name,

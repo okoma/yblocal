@@ -41,6 +41,10 @@ class NotificationPreferences extends Page
             'notify_inquiry_response_app' => $preferences->notify_inquiry_response_app ?? true,
             'notify_saved_business_updates_app' => $preferences->notify_saved_business_updates_app ?? true,
             'notify_promotions_app' => $preferences->notify_promotions_app ?? false,
+            'notify_quote_responses' => $preferences->notify_quote_responses ?? true,
+            'notify_quote_updates' => $preferences->notify_quote_updates ?? true,
+            'notify_quote_responses_app' => $preferences->notify_quote_responses_app ?? true,
+            'notify_quote_updates_app' => $preferences->notify_quote_updates_app ?? true,
         ]);
     }
 
@@ -121,6 +125,20 @@ class NotificationPreferences extends Page
                             ->inline(false)
                             ->onIcon('heroicon-o-bell')
                             ->offIcon('heroicon-o-bell-slash'),
+                        
+                        Forms\Components\Toggle::make('notify_quote_responses_app')
+                            ->label('Quote Responses')
+                            ->helperText('Show in-app notification when businesses submit quotes')
+                            ->inline(false)
+                            ->onIcon('heroicon-o-bell')
+                            ->offIcon('heroicon-o-bell-slash'),
+                        
+                        Forms\Components\Toggle::make('notify_quote_updates_app')
+                            ->label('Quote Updates')
+                            ->helperText('Show in-app notification for quote status changes')
+                            ->inline(false)
+                            ->onIcon('heroicon-o-bell')
+                            ->offIcon('heroicon-o-bell-slash'),
                     ])
                     ->columns(1)
                     ->collapsible(),
@@ -139,6 +157,8 @@ class NotificationPreferences extends Page
                                         'notify_saved_business_updates' => true,
                                         'notify_promotions_customer' => true,
                                         'notify_newsletter_customer' => true,
+                                        'notify_quote_responses' => true,
+                                        'notify_quote_updates' => true,
                                     ]);
                                 }),
                             
@@ -185,6 +205,14 @@ class NotificationPreferences extends Page
                         Forms\Components\Placeholder::make('newsletter_info')
                             ->label('Newsletter')
                             ->content('Platform updates, tips, and featured businesses'),
+                        
+                        Forms\Components\Placeholder::make('quote_responses_info')
+                            ->label('Quote Responses')
+                            ->content('When businesses submit quotes for your quote requests'),
+                        
+                        Forms\Components\Placeholder::make('quote_updates_info')
+                            ->label('Quote Updates')
+                            ->content('When your quotes are shortlisted, accepted, or rejected by customers'),
                     ])
                     ->columns(1)
                     ->collapsible()

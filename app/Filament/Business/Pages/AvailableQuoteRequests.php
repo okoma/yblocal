@@ -251,18 +251,23 @@ class AvailableQuoteRequests extends Page implements HasTable
                                 $customer = $record->user;
                                 $business = \App\Models\Business::find($businessId);
                                 if ($customer && $business) {
-                                    \App\Models\Notification::send(
-                                        userId: $customer->id,
-                                        type: 'new_quote_response',
-                                        title: 'New Quote Received',
-                                        message: "{$business->business_name} has submitted a quote for your request '{$record->title}'.",
-                                        actionUrl: \App\Filament\Customer\Resources\QuoteRequestResource::getUrl('view', ['record' => $record->id], panel: 'customer'),
-                                        extraData: [
-                                            'quote_request_id' => $record->id,
-                                            'quote_response_id' => $quoteResponse->id,
-                                            'business_id' => $businessId,
-                                        ]
-                                    );
+                                    $preferences = $customer->preferences;
+                                    
+                                    // Check if customer wants to receive quote response notifications
+                                    if ($preferences && $preferences->notify_quote_responses) {
+                                        \App\Models\Notification::send(
+                                            userId: $customer->id,
+                                            type: 'new_quote_response',
+                                            title: 'New Quote Received',
+                                            message: "{$business->business_name} has submitted a quote for your request '{$record->title}'.",
+                                            actionUrl: \App\Filament\Customer\Resources\QuoteRequestResource::getUrl('view', ['record' => $record->id], panel: 'customer'),
+                                            extraData: [
+                                                'quote_request_id' => $record->id,
+                                                'quote_response_id' => $quoteResponse->id,
+                                                'business_id' => $businessId,
+                                            ]
+                                        );
+                                    }
                                 }
                             } catch (\Exception $e) {
                                 \Illuminate\Support\Facades\Log::error('Failed to send quote response notification', [

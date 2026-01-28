@@ -51,6 +51,11 @@ class AccountPreferences extends Page
             'notify_verifications_telegram' => $preferences->notify_verifications_telegram,
             'notify_premium_expiring_telegram' => $preferences->notify_premium_expiring_telegram,
             'notify_campaign_updates_telegram' => $preferences->notify_campaign_updates_telegram,
+            'notify_claim_submitted_telegram' => $preferences->notify_claim_submitted_telegram,
+            'notify_claim_approved_telegram' => $preferences->notify_claim_approved_telegram,
+            'notify_claim_rejected_telegram' => $preferences->notify_claim_rejected_telegram,
+            'notify_new_quote_requests_telegram' => $preferences->notify_new_quote_requests_telegram,
+            'notify_business_reported_telegram' => $preferences->notify_business_reported_telegram,
             'whatsapp_notifications' => $preferences->whatsapp_notifications,
             'whatsapp_number' => $preferences->whatsapp_number,
             'notify_new_leads_whatsapp' => $preferences->notify_new_leads_whatsapp,
@@ -62,6 +67,11 @@ class AccountPreferences extends Page
             'notify_verifications' => $preferences->notify_verifications,
             'notify_premium_expiring' => $preferences->notify_premium_expiring,
             'notify_campaign_updates' => $preferences->notify_campaign_updates,
+            'notify_claim_submitted' => $preferences->notify_claim_submitted,
+            'notify_claim_approved' => $preferences->notify_claim_approved,
+            'notify_claim_rejected' => $preferences->notify_claim_rejected,
+            'notify_new_quote_requests' => $preferences->notify_new_quote_requests,
+            'notify_business_reported' => $preferences->notify_business_reported,
             
             // Display Preferences
             'theme' => $preferences->theme,
@@ -133,6 +143,36 @@ class AccountPreferences extends Page
                                                     ->helperText('Updates about your ad campaigns')
                                                     ->onIcon('heroicon-o-bell')
                                                     ->offIcon('heroicon-o-bell-slash'),
+
+                                                Forms\Components\Toggle::make('notify_claim_submitted')
+                                                    ->label('Claim Submitted')
+                                                    ->helperText('When you submit a business claim')
+                                                    ->onIcon('heroicon-o-bell')
+                                                    ->offIcon('heroicon-o-bell-slash'),
+
+                                                Forms\Components\Toggle::make('notify_claim_approved')
+                                                    ->label('Claim Approved')
+                                                    ->helperText('When your business claim is approved')
+                                                    ->onIcon('heroicon-o-bell')
+                                                    ->offIcon('heroicon-o-bell-slash'),
+
+                                                Forms\Components\Toggle::make('notify_claim_rejected')
+                                                    ->label('Claim Rejected')
+                                                    ->helperText('When your business claim is rejected')
+                                                    ->onIcon('heroicon-o-bell')
+                                                    ->offIcon('heroicon-o-bell-slash'),
+
+                                                Forms\Components\Toggle::make('notify_new_quote_requests')
+                                                    ->label('New Quote Requests')
+                                                    ->helperText('When new quote requests match your business')
+                                                    ->onIcon('heroicon-o-bell')
+                                                    ->offIcon('heroicon-o-bell-slash'),
+
+                                                Forms\Components\Toggle::make('notify_business_reported')
+                                                    ->label('Business Reported')
+                                                    ->helperText('When your business is reported by a user')
+                                                    ->onIcon('heroicon-o-bell')
+                                                    ->offIcon('heroicon-o-bell-slash'),
                                             ])
                                             ->visible(fn (Forms\Get $get) => $get('email_notifications')),
                                     ]),
@@ -201,6 +241,41 @@ class AccountPreferences extends Page
                                                 Forms\Components\Toggle::make('notify_campaign_updates_telegram')
                                                     ->label('Campaign Updates')
                                                     ->helperText('Updates about your ad campaigns')
+                                                    ->default(false)
+                                                    ->onIcon('heroicon-o-bell')
+                                                    ->offIcon('heroicon-o-bell-slash'),
+
+                                                Forms\Components\Toggle::make('notify_claim_submitted_telegram')
+                                                    ->label('Claim Submitted')
+                                                    ->helperText('When you submit a business claim')
+                                                    ->default(false)
+                                                    ->onIcon('heroicon-o-bell')
+                                                    ->offIcon('heroicon-o-bell-slash'),
+
+                                                Forms\Components\Toggle::make('notify_claim_approved_telegram')
+                                                    ->label('Claim Approved')
+                                                    ->helperText('When your business claim is approved')
+                                                    ->default(false)
+                                                    ->onIcon('heroicon-o-bell')
+                                                    ->offIcon('heroicon-o-bell-slash'),
+
+                                                Forms\Components\Toggle::make('notify_claim_rejected_telegram')
+                                                    ->label('Claim Rejected')
+                                                    ->helperText('When your business claim is rejected')
+                                                    ->default(false)
+                                                    ->onIcon('heroicon-o-bell')
+                                                    ->offIcon('heroicon-o-bell-slash'),
+
+                                                Forms\Components\Toggle::make('notify_new_quote_requests_telegram')
+                                                    ->label('New Quote Requests')
+                                                    ->helperText('When new quote requests match your business')
+                                                    ->default(false)
+                                                    ->onIcon('heroicon-o-bell')
+                                                    ->offIcon('heroicon-o-bell-slash'),
+
+                                                Forms\Components\Toggle::make('notify_business_reported_telegram')
+                                                    ->label('Business Reported')
+                                                    ->helperText('When your business is reported by a user')
                                                     ->default(false)
                                                     ->onIcon('heroicon-o-bell')
                                                     ->offIcon('heroicon-o-bell-slash'),

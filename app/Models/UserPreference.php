@@ -39,6 +39,22 @@ class UserPreference extends Model
         'notify_verifications',
         'notify_premium_expiring',
         'notify_campaign_updates',
+        // Business: Claim notifications
+        'notify_claim_submitted',
+        'notify_claim_approved',
+        'notify_claim_rejected',
+        // Business: Quote notifications
+        'notify_new_quote_requests',
+        // Business: Business reported
+        'notify_business_reported',
+        // Business: Claim notifications (telegram)
+        'notify_claim_submitted_telegram',
+        'notify_claim_approved_telegram',
+        'notify_claim_rejected_telegram',
+        // Business: Quote notifications (telegram)
+        'notify_new_quote_requests_telegram',
+        // Business: Business reported (telegram)
+        'notify_business_reported_telegram',
         // Customer Notification Preferences (when businesses interact with them)
         'notify_review_reply_received',
         'notify_inquiry_response_received',
@@ -49,6 +65,11 @@ class UserPreference extends Model
         'notify_inquiry_response_app',
         'notify_saved_business_updates_app',
         'notify_promotions_app',
+        // Customer: Quote notifications
+        'notify_quote_responses',
+        'notify_quote_updates',
+        'notify_quote_responses_app',
+        'notify_quote_updates_app',
         // Display Preferences
         'theme',
         'language',
@@ -81,6 +102,18 @@ class UserPreference extends Model
         'notify_verifications' => 'boolean',
         'notify_premium_expiring' => 'boolean',
         'notify_campaign_updates' => 'boolean',
+        // Business: Claim notifications
+        'notify_claim_submitted' => 'boolean',
+        'notify_claim_approved' => 'boolean',
+        'notify_claim_rejected' => 'boolean',
+        'notify_new_quote_requests' => 'boolean',
+        'notify_business_reported' => 'boolean',
+        // Business: Claim notifications (telegram)
+        'notify_claim_submitted_telegram' => 'boolean',
+        'notify_claim_approved_telegram' => 'boolean',
+        'notify_claim_rejected_telegram' => 'boolean',
+        'notify_new_quote_requests_telegram' => 'boolean',
+        'notify_business_reported_telegram' => 'boolean',
         // Customer notification casts
         'notify_review_reply_received' => 'boolean',
         'notify_inquiry_response_received' => 'boolean',
@@ -91,6 +124,11 @@ class UserPreference extends Model
         'notify_inquiry_response_app' => 'boolean',
         'notify_saved_business_updates_app' => 'boolean',
         'notify_promotions_app' => 'boolean',
+        // Customer: Quote notifications
+        'notify_quote_responses' => 'boolean',
+        'notify_quote_updates' => 'boolean',
+        'notify_quote_responses_app' => 'boolean',
+        'notify_quote_updates_app' => 'boolean',
         // Other
         'show_email' => 'boolean',
         'show_phone' => 'boolean',
@@ -147,6 +185,11 @@ class UserPreference extends Model
                 'notify_inquiry_response_app' => true,
                 'notify_saved_business_updates_app' => true,
                 'notify_promotions_app' => false, // Off by default
+                // Customer: Quote notifications (defaults)
+                'notify_quote_responses' => true,
+                'notify_quote_updates' => true,
+                'notify_quote_responses_app' => true,
+                'notify_quote_updates_app' => true,
                 // Display & Privacy
                 'theme' => 'system',
                 'language' => 'en',
