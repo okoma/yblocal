@@ -28,8 +28,8 @@
 
 /* Dark mode - Dark background */
 .dark .fi-sidebar {
-    background-color: #1f2937 !important;
-    border-right: 1px solid #374151;
+    background-color: #18181b !important;
+    
 }
 
 /* Sidebar header */
@@ -38,7 +38,7 @@
 }
 
 .dark .fi-sidebar-header {
-    background-color: #1f2937;
+    background-color: #18181b;
 }
 
 /* Navigation items text color */
@@ -95,7 +95,14 @@ footer {
     margin-bottom: 0;
     box-shadow: 0 2px 1px rgba(0, 0, 0, 0.08);
 }
-
+.dark .business-switcher-wrapper.fi-sidebar-item {
+    border: 1px solid #374151 !important;
+    padding-top: 0px;
+    background: #18181b;
+    border-radius: 8px;
+    margin-bottom: 0;
+    box-shadow: 0 2px 1px rgba(0, 0, 0, 0.08);
+}
 /* Dark mode dropdown styling */
 .dark .fi-sidebar-group-items.mt-1.space-y-1.ps-2.overflow-visible {
     background: rgb(31, 41, 55);
