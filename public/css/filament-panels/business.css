@@ -106,18 +106,11 @@ footer {
 }
 /* Dark mode dropdown styling */
 .dark .fi-sidebar-group-items.mt-1.space-y-1.ps-2.overflow-visible {
-    background: rgb(31, 41, 55);
-    border-color: rgba(255, 255, 255, 0.1);
-    box-shadow: 0px 4px 6px -1px rgba(0, 0, 0, 0.3), 0px 2px 4px -1px rgba(0, 0, 0, 0.2);
-}
-.dark .fi-sidebar-group-items.mt-1.space-y-1.ps-2.overflow-visible {
     background: #232325;
     border-color: rgba(255, 255, 255, 0.1);
-    box-shadow: 0px 8px 12px -1px rgba(0, 0, 0, 0.3), 0px 2px 4px -1px rgba(0, 0, 0, 0.2);
+    box-shadow: 0px 4px 12px -1px rgba(0, 0, 0, 0.3), 0px 2px 4px -1px rgba(0, 0, 0, 0.2);
 }
-.overflow-visible .dark\:text-gray-300 {
-    color: #d8d7d7 !important;
-}
+
 /* Business item hover effect */
 .business-item {
     position: relative;
