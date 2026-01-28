@@ -56,6 +56,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Application Logo URL
+    |--------------------------------------------------------------------------
+    |
+    | This URL is used for the logo displayed in email notifications.
+    | Set this to your logo image URL (should be publicly accessible).
+    |
+    */
+
+    'logo_url' => env('APP_LOGO_URL', null),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |
