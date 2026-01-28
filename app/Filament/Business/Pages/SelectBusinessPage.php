@@ -20,21 +20,19 @@ class SelectBusinessPage extends Page
 
     public function getTitle(): string | Htmlable
     {
-        $businesses = $this->getBusinessesProperty();
-        return $businesses->isEmpty() ? 'Get Started' : 'Select Business';
+        return 'Select Business';
     }
 
     public function getHeading(): string | Htmlable
     {
-        $businesses = $this->getBusinessesProperty();
-        return $businesses->isEmpty() ? 'Get Started' : 'Select Business';
+        return 'Select Business';
     }
 
     public function getSubheading(): ?string
     {
         $businesses = $this->getBusinessesProperty();
         if ($businesses->isEmpty()) {
-            return 'Create your first business to start managing your listings, leads, and analytics.';
+            return null; // Heading/subheading handled in Blade view for better styling
         }
         return 'Choose the business you want to manage. All data, analytics, and settings will be scoped to this business.';
     }

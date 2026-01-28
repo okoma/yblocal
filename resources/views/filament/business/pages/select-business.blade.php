@@ -81,28 +81,34 @@
                 </div>
             </div>
         @empty
-            <div class="col-span-full flex flex-col items-center justify-center py-12 px-4 text-center">
-                <div class="mb-6">
-                    <x-filament::icon
-                        icon="heroicon-o-building-storefront"
-                        class="h-24 w-24 text-gray-400 dark:text-gray-600 mx-auto"
-                    />
+            <div class="col-span-full">
+                {{-- Custom styled empty state --}}
+                <div class="flex flex-col items-center justify-center py-16 px-4 text-center bg-gradient-to-br from-primary-50 to-primary-100 dark:from-gray-800 dark:to-gray-900 rounded-2xl border-2 border-dashed border-primary-200 dark:border-gray-700">
+                    <div class="mb-6">
+                        <div class="w-24 h-24 rounded-full bg-primary-500 dark:bg-primary-600 flex items-center justify-center shadow-lg">
+                            <x-filament::icon
+                                icon="heroicon-o-building-storefront"
+                                class="h-12 w-12 text-white"
+                            />
+                        </div>
+                    </div>
+                    <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+                        Get Started
+                    </h2>
+                    <p class="text-lg text-gray-600 dark:text-gray-300 mb-8 max-w-lg leading-relaxed">
+                        Create your first business to start managing your listings, leads, reviews, and analytics all in one place.
+                    </p>
+                    <x-filament::button
+                        tag="a"
+                        href="{{ \App\Filament\Business\Resources\BusinessResource::getUrl('create') }}"
+                        color="primary"
+                        size="xl"
+                        icon="heroicon-o-plus"
+                        class="shadow-lg hover:shadow-xl transition-shadow"
+                    >
+                        Create Your First Business
+                    </x-filament::button>
                 </div>
-                <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                    Get Started
-                </h2>
-                <p class="text-gray-600 dark:text-gray-400 mb-8 max-w-md">
-                    Create your first business to start managing your listings, leads, reviews, and analytics all in one place.
-                </p>
-                <x-filament::button
-                    tag="a"
-                    href="{{ \App\Filament\Business\Resources\BusinessResource::getUrl('create') }}"
-                    color="primary"
-                    size="xl"
-                    icon="heroicon-o-plus"
-                >
-                    Create Your First Business
-                </x-filament::button>
             </div>
         @endforelse
     </div>
