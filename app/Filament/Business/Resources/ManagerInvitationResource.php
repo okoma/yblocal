@@ -23,7 +23,7 @@ class ManagerInvitationResource extends Resource
     
     protected static ?string $navigationLabel = 'Invite Managers';
     
-    protected static ?string $navigationGroup = null;
+    protected static ?string $navigationGroup = 'Account';
     
     protected static ?int $navigationSort = 10;
 

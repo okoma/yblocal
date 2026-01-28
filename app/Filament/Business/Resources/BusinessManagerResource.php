@@ -22,7 +22,7 @@ class BusinessManagerResource extends Resource
     
     protected static ?string $navigationLabel = 'My Managers';
     
-    protected static ?string $navigationGroup = null;
+    protected static ?string $navigationGroup = 'Account';
     
     protected static ?int $navigationSort = 11;
 
