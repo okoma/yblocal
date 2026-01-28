@@ -254,6 +254,14 @@ class Business extends Model
         return $this->belongsTo(Location::class, 'city_location_id');
     }
 
+    /**
+     * Location (alias for state location, for compatibility)
+     */
+    public function location(): BelongsTo
+    {
+        return $this->belongsTo(Location::class, 'state_location_id');
+    }
+
     // ============================================
     // DIRECT RELATIONSHIPS (For Standalone Businesses)
     // ============================================
@@ -272,6 +280,14 @@ class Business extends Model
     public function leads(): HasMany
     {
         return $this->hasMany(Lead::class);
+    }
+
+    /**
+     * Quote Responses
+     */
+    public function quoteResponses(): HasMany
+    {
+        return $this->hasMany(QuoteResponse::class);
     }
 
     /**

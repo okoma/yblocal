@@ -6,7 +6,7 @@
     @endphp
 
     {{-- Wallet Balance Cards --}}
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {{-- Cash Balance --}}
         <x-filament::card>
             <div class="flex items-center justify-between">
@@ -47,6 +47,26 @@
             </div>
         </x-filament::card>
 
+        {{-- Quote Credits --}}
+        <x-filament::card>
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                        Quote Credits
+                    </p>
+                    <p class="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+                        {{ number_format($wallet->quote_credits ?? 0) }}
+                    </p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Credits Available
+                    </p>
+                </div>
+                <div class="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
+                    <x-heroicon-o-document-text class="w-6 h-6 text-orange-600 dark:text-orange-400" />
+                </div>
+            </div>
+        </x-filament::card>
+
         {{-- Total Value --}}
         <x-filament::card>
             <div class="flex items-center justify-between">
@@ -58,7 +78,7 @@
                         ₦{{ number_format($wallet->balance + ($wallet->ad_credits * 10), 2) }}
                     </p>
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Cash + Credits (₦10/credit)
+                        Cash + Ad Credits (₦10/credit)
                     </p>
                 </div>
                 <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center">
@@ -81,6 +101,7 @@
                 <div class="mt-2 text-sm text-gray-600 dark:text-gray-400 space-y-1">
                     <p>• <strong>Cash Balance:</strong> Use for subscriptions, ad campaigns, and premium features</p>
                     <p>• <strong>Ad Credits:</strong> Pre-purchased credits for advertising (1 credit = ₦10)</p>
+                    <p>• <strong>Quote Credits:</strong> Used to submit quotes for customer requests (1 credit per quote)</p>
                     <p>• Minimum withdrawal: ₦1,000 | Processing time: 24-48 hours</p>
                     <p>• All transactions are secure and encrypted</p>
                 </div>

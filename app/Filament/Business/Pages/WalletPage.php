@@ -55,6 +55,7 @@ class WalletPage extends Page implements HasTable, HasActions
                 'balance' => 0,
                 'currency' => 'NGN',
                 'ad_credits' => 0,
+                'quote_credits' => 0,
             ]
         );
     }
@@ -724,12 +725,20 @@ class WalletPage extends Page implements HasTable, HasActions
                     ->prefix(fn ($record) => in_array($record->type, ['deposit', 'refund', 'bonus']) || ($record->type === 'credit_purchase' && $record->amount > 0) ? '+' : '-'),
 
                 Tables\Columns\TextColumn::make('credits')
-                    ->label('Credits')
+                    ->label('Ad Credits')
                     ->badge()
                     ->color('primary')
                     ->default(0)
                     ->formatStateUsing(fn ($state, $record) => $state > 0 ? $state : null)
                     ->prefix(fn ($record) => $record && (in_array($record->type, ['credit_purchase', 'bonus']) || ($record->type === 'purchase' && ($record->credits ?? 0) > 0)) ? '+' : '-'),
+                
+                Tables\Columns\TextColumn::make('quote_credits')
+                    ->label('Quote Credits')
+                    ->badge()
+                    ->color('warning')
+                    ->default(0)
+                    ->formatStateUsing(fn ($state, $record) => $state > 0 ? $state : null)
+                    ->prefix(fn ($record) => $record && in_array($record->type, ['quote_purchase', 'quote_submission']) ? ($record->type === 'quote_purchase' ? '+' : '-') : null),
 
                 Tables\Columns\TextColumn::make('balance_after')
                     ->label('Balance')
@@ -750,6 +759,8 @@ class WalletPage extends Page implements HasTable, HasActions
                         'refund' => 'Refunds',
                         'credit_purchase' => 'Credit Purchases',
                         'credit_usage' => 'Credit Usage',
+                        'quote_purchase' => 'Quote Credit Purchases',
+                        'quote_submission' => 'Quote Submissions',
                     ])
                     ->multiple(),
 

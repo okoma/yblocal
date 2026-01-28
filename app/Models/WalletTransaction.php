@@ -25,6 +25,9 @@ class WalletTransaction extends Model
         'balance_after',
         'credits_before',
         'credits_after',
+        'quote_credits',
+        'quote_credits_before',
+        'quote_credits_after',
         'description',
         'reference_type',
         'reference_id',
@@ -76,5 +79,10 @@ class WalletTransaction extends Model
     public function scopeCreditTransactions($query)
     {
         return $query->whereIn('type', ['credit_purchase', 'credit_usage']);
+    }
+
+    public function scopeQuoteTransactions($query)
+    {
+        return $query->whereIn('type', ['quote_purchase', 'quote_submission']);
     }
 }

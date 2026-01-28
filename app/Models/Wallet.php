@@ -19,6 +19,7 @@ class Wallet extends Model
         'balance',
         'currency',
         'ad_credits',
+        'quote_credits',
     ];
 
     protected $casts = [
@@ -224,5 +225,76 @@ class Wallet extends Model
     public function hasCredits($credits)
     {
         return $this->ad_credits >= $credits;
+    }
+
+    /**
+     * Add quote credits to wallet
+     * @param  int  $credits
+     * @param  string|null  $description
+     * @param  mixed  $reference  Transaction (gateway/bank) or null
+     * @param  float|null  $amount  Cash paid (e.g. gateway/bank transfer). Omit for wallet-funded.
+     */
+    public function addQuoteCredits($credits, $description = null, $reference = null, $amount = null)
+    {
+        $ref = $reference ?? $this;
+        $creditsBefore = $this->quote_credits;
+        $balance = (float) $this->balance; // unchanged for credit-only ops
+        $this->increment('quote_credits', $credits);
+        $this->refresh();
+
+        return WalletTransaction::create([
+            'wallet_id' => $this->id,
+            'business_id' => $this->business_id,
+            'user_id' => $this->user_id,
+            'type' => 'quote_purchase',
+            'amount' => $amount !== null ? (float) $amount : 0,
+            'quote_credits' => $credits,
+            'quote_credits_before' => $creditsBefore,
+            'quote_credits_after' => $this->quote_credits,
+            'balance_before' => $balance,
+            'balance_after' => $balance,
+            'description' => $description ?? 'Quote credits added',
+            'reference_type' => get_class($ref),
+            'reference_id' => $ref->id,
+        ]);
+    }
+
+    /**
+     * Use quote credits (deduct 1 credit for quote submission)
+     * @param  string  $description
+     * @param  mixed  $reference  QuoteResponse or null
+     */
+    public function useQuoteCredit($description, $reference = null)
+    {
+        if ($this->quote_credits < 1) {
+            throw new \Exception('Insufficient quote credits');
+        }
+
+        $ref = $reference ?? $this;
+        $creditsBefore = $this->quote_credits;
+        $balance = (float) $this->balance; // unchanged for credit-only ops
+        $this->decrement('quote_credits', 1);
+        $this->refresh();
+
+        return WalletTransaction::create([
+            'wallet_id' => $this->id,
+            'business_id' => $this->business_id,
+            'user_id' => $this->user_id,
+            'type' => 'quote_submission',
+            'amount' => 0,
+            'quote_credits' => 1,
+            'quote_credits_before' => $creditsBefore,
+            'quote_credits_after' => $this->quote_credits,
+            'balance_before' => $balance,
+            'balance_after' => $balance,
+            'description' => $description,
+            'reference_type' => get_class($ref),
+            'reference_id' => $ref->id,
+        ]);
+    }
+
+    public function hasQuoteCredits($credits = 1)
+    {
+        return $this->quote_credits >= $credits;
     }
 }
