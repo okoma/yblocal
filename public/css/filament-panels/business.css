@@ -250,14 +250,6 @@ footer {
     max-width: 100% !important;
 }
 
-/* Fix the topbar layout properly */
-.fi-topbar {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 0 1rem; /* Add horizontal padding */
-}
-
 /* Adjust global search to not cause overflow */
 .fi-topbar .fi-global-search {
     display: flex !important;
@@ -265,14 +257,13 @@ footer {
     max-width: 32rem;
     margin: 0 1rem;
     align-items: center;
-    min-width: 0; /* Allow shrinking if needed */
+    min-width: 46rem; /* Allow shrinking if needed */
 }
 
-/* Ensure topbar items don't cause width issues */
-.fi-topbar > * {
-    flex-shrink: 0;
-}
 
 .fi-topbar .fi-global-search {
     flex-shrink: 1; /* Allow search to shrink */
+}
+.fi-global-search-field {
+    width: 500px;
 }
