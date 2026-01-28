@@ -12,11 +12,12 @@
             Didn't receive the email?
         </p>
 
-        <x-filament-panels::form wire:submit="sendNotification">
-            <x-filament-panels::form.actions
-                :actions="$this->getCachedFormActions()"
-                :full-width="$this->hasFullWidthFormActions()"
-            />
-        </x-filament-panels::form>
+        <x-filament::button
+            type="button"
+            wire:click="sendNotification"
+            class="w-full"
+        >
+            Resend verification email
+        </x-filament::button>
     </div>
 </x-filament-panels::page.simple>
