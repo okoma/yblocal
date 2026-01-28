@@ -12,10 +12,19 @@ use App\Http\Controllers\LeadController;
 use App\Http\Controllers\FilterController;
 use App\Http\Controllers\PhotoController;
 use App\Http\Controllers\MapController;
+use App\Http\Controllers\CustomerSocialAuthController;
 
 //welcome
 Route::get('/', function () {
     return view('welcome');
+});
+
+// ============================================
+// CUSTOMER SOCIAL AUTH (MUST BE ABOVE CLEAN URL ROUTES)
+// ============================================
+Route::prefix('customer/auth')->name('customer.auth.')->group(function () {
+    Route::get('/{provider}/redirect', [CustomerSocialAuthController::class, 'redirect'])->name('redirect');
+    Route::get('/{provider}/callback', [CustomerSocialAuthController::class, 'callback'])->name('callback');
 });
 
 // ============================================

@@ -30,7 +30,11 @@ class BusinessPanelProvider extends PanelProvider
         return $panel
             ->id('business')
             ->path('dashboard')
-            ->login()
+            ->domain('biz.yellowbooks.ng')
+            ->login(\App\Filament\Business\Pages\Auth\Login::class)
+            ->registration(\App\Filament\Business\Pages\Auth\Register::class)
+            ->passwordReset(\App\Filament\Business\Pages\Auth\RequestPasswordReset::class)
+            ->emailVerification(\App\Filament\Business\Pages\Auth\EmailVerificationPrompt::class)
             ->brandName('YellowBooks')
             ->brandLogo(asset('images/logo.png'))
             ->brandLogoHeight('2rem')

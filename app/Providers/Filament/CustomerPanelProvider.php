@@ -30,7 +30,10 @@ class CustomerPanelProvider extends PanelProvider
         return $panel
             ->id('customer')
             ->path('customer')
-            ->login()
+            ->login(\App\Filament\Customer\Pages\Auth\Login::class)
+            ->registration(\App\Filament\Customer\Pages\Auth\Register::class)
+            ->passwordReset(\App\Filament\Customer\Pages\Auth\RequestPasswordReset::class)
+            ->emailVerification(\App\Filament\Customer\Pages\Auth\EmailVerificationPrompt::class)
             ->brandName('YellowBooks')
             ->brandLogo(asset('images/logo.png'))
             ->brandLogoHeight('2rem')

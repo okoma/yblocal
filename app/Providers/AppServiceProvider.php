@@ -16,6 +16,7 @@ use App\Listeners\SyncLaravelNotificationToCustomTable;
 use Illuminate\Notifications\Events\NotificationSent;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Event;
+use SocialiteProviders\Manager\SocialiteWasCalled;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -50,5 +51,10 @@ class AppServiceProvider extends ServiceProvider
             NotificationSent::class,
             SyncLaravelNotificationToCustomTable::class
         );
+
+        // Register SocialiteProviders (Apple)
+        Event::listen(function (SocialiteWasCalled $event) {
+            $event->extendSocialite('apple', \SocialiteProviders\Apple\Provider::class);
+        });
     }
 }

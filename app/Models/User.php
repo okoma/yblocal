@@ -11,10 +11,11 @@ use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class User extends Authenticatable implements FilamentUser
+class User extends Authenticatable implements FilamentUser, MustVerifyEmail
 {
     use HasFactory, Notifiable, SoftDeletes;
 
@@ -24,6 +25,9 @@ class User extends Authenticatable implements FilamentUser
         'password',
         'phone',
         'role',
+        // Social auth (customer only)
+        'oauth_provider',
+        'oauth_provider_id',
         'avatar',
         'bio',
         'is_active',
