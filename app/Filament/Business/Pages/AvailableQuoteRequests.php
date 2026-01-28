@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Business\Resources\QuoteResponseResource\Pages;
+namespace App\Filament\Business\Pages;
 
 use App\Models\QuoteRequest;
 use App\Models\QuoteResponse;
@@ -19,6 +19,8 @@ use Illuminate\Support\Facades\DB;
 class AvailableQuoteRequests extends Page implements HasTable
 {
     use InteractsWithTable;
+    
+    protected static ?string $slug = 'available-quote-requests';
     
     protected static string $view = 'filament.business.pages.available-quote-requests';
     

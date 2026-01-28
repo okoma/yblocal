@@ -24,7 +24,7 @@ class ListQuoteResponses extends ListRecords
                 ->label('Browse Available Requests')
                 ->icon('heroicon-o-magnifying-glass')
                 ->color('primary')
-                ->url(fn () => static::getResource()::getUrl('available')),
+                ->url(fn () => \App\Filament\Business\Pages\AvailableQuoteRequests::getUrl()),
         ];
     }
 }

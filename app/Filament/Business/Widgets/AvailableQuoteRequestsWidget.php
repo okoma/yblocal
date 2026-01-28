@@ -79,7 +79,7 @@ class AvailableQuoteRequestsWidget extends BaseWidget
                 Tables\Actions\Action::make('view_all')
                     ->label('View All & Submit Quotes')
                     ->icon('heroicon-o-arrow-right')
-                    ->url(fn () => \App\Filament\Business\Resources\QuoteResponseResource::getUrl('available'))
+                    ->url(fn () => \App\Filament\Business\Pages\AvailableQuoteRequests::getUrl())
                     ->color('primary'),
             ]);
     }
