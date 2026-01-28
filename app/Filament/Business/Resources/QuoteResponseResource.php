@@ -178,7 +178,7 @@ class QuoteResponseResource extends Resource
     {
         return [
             'index' => Pages\ListQuoteResponses::route('/'),
-            'create' => Pages\CreateQuoteResponse::route('/create'),
+            'available' => Pages\AvailableQuoteRequests::route('/available'),
             'view' => Pages\ViewQuoteResponse::route('/{record}'),
         ];
     }

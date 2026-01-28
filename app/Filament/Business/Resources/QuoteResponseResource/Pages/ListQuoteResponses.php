@@ -4,11 +4,14 @@ namespace App\Filament\Business\Resources\QuoteResponseResource\Pages;
 
 use App\Filament\Business\Resources\QuoteResponseResource;
 use App\Models\QuoteRequest;
+use App\Models\Wallet;
 use App\Services\ActiveBusiness;
 use App\Services\QuoteDistributionService;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Actions;
+use Filament\Forms;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\DB;
 
 class ListQuoteResponses extends ListRecords
 {
@@ -17,11 +20,12 @@ class ListQuoteResponses extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\Action::make('browse_requests')
+            Actions\Action::make('browse_available')
                 ->label('Browse Available Requests')
                 ->icon('heroicon-o-magnifying-glass')
                 ->color('primary')
-                ->url(fn () => static::getResource()::getUrl('create')),
+                ->url(fn () => static::getResource()::getUrl('available')),
         ];
     }
 }
+

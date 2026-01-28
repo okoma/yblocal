@@ -20,6 +20,7 @@ class Dashboard extends BaseDashboard
             \App\Filament\Business\Widgets\StatsOverviewWidget::class,
             \App\Filament\Business\Widgets\RecentLeadsWidget::class,
             \App\Filament\Business\Widgets\BusinessPerformanceChart::class,
+            \App\Filament\Business\Widgets\AvailableQuoteRequestsWidget::class,
         ];
     }
     
