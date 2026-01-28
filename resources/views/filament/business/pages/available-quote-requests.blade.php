@@ -54,7 +54,7 @@
                 
                 <div class="ml-6">
                     <a 
-                        href="/business/wallet-page"
+                        href="/dashboard/wallet-page"
                         class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition"
                     >
                         <x-heroicon-o-plus class="h-4 w-4" />

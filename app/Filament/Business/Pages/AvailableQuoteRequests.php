@@ -15,7 +15,6 @@ use Filament\Tables\Contracts\HasTable;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\HtmlString;
 
 class AvailableQuoteRequests extends Page implements HasTable
 {
@@ -54,12 +53,10 @@ class AvailableQuoteRequests extends Page implements HasTable
         $credits = $wallet ? $wallet->quote_credits : 0;
         
         $creditText = $credits > 0 
-            ? "You have <strong>{$credits}</strong> quote credit" . ($credits > 1 ? 's' : '') . " available."
-            : "You have <strong>0 quote credits</strong>. Purchase credits to submit quotes.";
+            ? "You have {$credits} quote credit" . ($credits > 1 ? 's' : '') . " available."
+            : "You have 0 quote credits. Purchase credits to submit quotes.";
         
-        return new HtmlString(
-            "Browse quote requests from customers looking for your services. {$creditText}"
-        );
+        return "Browse quote requests from customers looking for your services. {$creditText}";
     }
 
     public function table(Table $table): Table
