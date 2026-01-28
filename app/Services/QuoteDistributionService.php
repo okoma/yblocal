@@ -66,7 +66,7 @@ class QuoteDistributionService
         });
         
         // Exclude businesses that already responded
-        $query->whereDoesntHave('quoteResponses', function ($q) use ($quoteRequest) {
+        $query->whereDoesntHave('responses', function ($q) use ($quoteRequest) {
             $q->where('quote_request_id', $quoteRequest->id);
         });
         
@@ -117,7 +117,7 @@ class QuoteDistributionService
             return ['eligible' => false, 'reason' => 'Already submitted a quote'];
         }
         
-        // Check quote credits
+        // Check quote credits (for actual submission, not viewing)
         $wallet = $business->wallet;
         if (!$wallet || $wallet->quote_credits < 1) {
             return ['eligible' => false, 'reason' => 'Insufficient quote credits'];
@@ -128,6 +128,8 @@ class QuoteDistributionService
     
     /**
      * Get available quote requests for a business
+     * Businesses can VIEW all matching requests regardless of credits
+     * Credit check happens during quote submission
      * 
      * @param Business $business
      * @return \Illuminate\Database\Eloquent\Collection
@@ -178,14 +180,10 @@ class QuoteDistributionService
             $q->where('business_id', $business->id);
         });
         
-        // Must have quote credits
-        $wallet = $business->wallet;
-        if (!$wallet || $wallet->quote_credits < 1) {
-            // Return empty collection if no credits
-            return QuoteRequest::whereRaw('1 = 0')->get();
-        }
+        // REMOVED: Credit check - businesses can see all available requests
+        // Credit check happens during quote submission instead
         
-        return $query->with(['category', 'location', 'user'])
+        return $query->with(['category', 'stateLocation', 'cityLocation', 'user'])
             ->orderBy('created_at', 'desc')
             ->get();
     }
