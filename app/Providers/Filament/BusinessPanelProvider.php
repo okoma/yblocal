@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Http\Middleware\AllowUnverifiedBusinessCreation;
 use App\Http\Middleware\EnsureActiveBusiness;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -66,6 +67,7 @@ class BusinessPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
+                AllowUnverifiedBusinessCreation::class, // Allow unverified users to create business
                 EnsureActiveBusiness::class,
             ])
             ->authMiddleware([

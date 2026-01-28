@@ -48,11 +48,26 @@ class Register extends BaseRegister
 
     protected function handleRegistration(array $data): User
     {
-        return User::create([
+        $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => $data['password'], // Already hashed in form
             'role' => UserRole::BUSINESS_OWNER,
         ]);
+
+        // Set session flag to allow unverified users to create business
+        session()->put('allow_unverified_business_creation', true);
+        session()->put('new_business_owner_registration', true);
+
+        return $user;
+    }
+
+    /**
+     * Redirect to create business page after registration
+     * Allow unverified users to create their first business
+     */
+    protected function getRedirectUrl(): string
+    {
+        return \App\Filament\Business\Resources\BusinessResource::getUrl('create');
     }
 }

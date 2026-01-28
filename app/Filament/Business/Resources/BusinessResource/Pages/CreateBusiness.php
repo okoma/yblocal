@@ -34,6 +34,16 @@ class CreateBusiness extends CreateRecord
     use HasWizard;
     
     protected static string $resource = BusinessResource::class;
+
+    public function mount(): void
+    {
+        parent::mount();
+        
+        // Clear email verification redirect flags when user accesses create business page
+        // This allows unverified users to create their first business
+        session()->forget('showing_email_verification');
+        session()->put('allow_unverified_business_creation', true);
+    }
     
     protected function getSteps(): array
     {
@@ -990,6 +1000,11 @@ Wizard\Step::make('Business Hours')
 
     protected function getRedirectUrl(): string
     {
+        // Clear session flags after business is created
+        session()->forget('allow_unverified_business_creation');
+        session()->forget('showing_email_verification');
+        session()->forget('new_business_owner_registration');
+        
         return $this->getResource()::getUrl('view', ['record' => $this->getRecord()]);
     }
     

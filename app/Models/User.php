@@ -607,6 +607,33 @@ public function getPreferencesAttribute()
     }
 
     // ============================================
+    // Email Verification
+    // ============================================
+
+    /**
+     * Send the email verification notification.
+     * Override to use Filament's panel-aware verification URLs.
+     */
+    public function sendEmailVerificationNotification(): void
+    {
+        // Determine which panel the user should verify from based on their role
+        $panelId = match(true) {
+            $this->isCustomer() => 'customer',
+            $this->isBusinessOwner() => 'business',
+            default => 'customer', // fallback
+        };
+
+        // Get the Filament panel instance
+        $panel = \Filament\Facades\Filament::getPanel($panelId);
+        
+        // Get Filament's verification URL for this user
+        $verificationUrl = $panel->getVerifyEmailUrl($this);
+        
+        // Create and send a custom verification notification with Filament's URL
+        $this->notify(new \App\Notifications\VerifyEmailNotification($verificationUrl));
+    }
+
+    // ============================================
     // Other Helper Methods
     // ============================================
 
