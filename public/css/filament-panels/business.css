@@ -230,22 +230,23 @@ footer {
     color: #d1d5db;
 }
 
-/* Hide global search from sidebar (will be moved to topbar via JS) */
+/* Hide global search from sidebar */
 .fi-sidebar .fi-global-search {
     display: none !important;
 }
 
-/* Style topbar global search container */
-.fi-topbar-global-search-wrapper {
-    display: flex;
-    align-items: center;
+/* Style global search in topbar - Filament renders it there by default */
+.fi-topbar .fi-global-search {
+    display: flex !important;
     flex: 1;
     max-width: 32rem;
     margin: 0 1rem;
+    align-items: center;
 }
 
-/* Style the moved global search */
-#global-search-topbar-container .fi-global-search {
-    display: flex !important;
-    width: 100%;
+/* Ensure topbar layout accommodates search */
+.fi-topbar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
 }

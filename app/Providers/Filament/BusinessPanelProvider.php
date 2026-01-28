@@ -51,7 +51,6 @@ class BusinessPanelProvider extends PanelProvider
                 //Widgets\AccountWidget::class,
             ])
             ->renderHook(PanelsRenderHook::SIDEBAR_NAV_START, fn () => view('filament.components.business-switcher-sidebar'))
-            ->renderHook(PanelsRenderHook::TOPBAR_START, fn () => view('filament.components.global-search-topbar'))
             ->renderHook(PanelsRenderHook::CONTENT_END, fn () => view('filament.components.global-footer'))
             ->middleware([
                 EncryptCookies::class,
