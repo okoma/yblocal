@@ -68,19 +68,19 @@ class AvailableQuoteRequestsWidget extends BaseWidget
                     ->dateTime('M d, Y')
                     ->sortable(),
             ])
+            ->actions([
+                Tables\Actions\Action::make('view')
+                    ->label('View & Quote')
+                    ->icon('heroicon-o-eye')
+                    ->url(fn (QuoteRequest $record) => \App\Filament\Business\Pages\AvailableQuoteRequests::getUrl(['record' => $record->id]))
+                    ->color('primary'),
+            ])
             ->defaultSort('created_at', 'desc')
             ->heading('Available Quote Requests')
             ->description('Quote requests matching your business category and location')
             ->emptyStateHeading('No available quote requests')
             ->emptyStateDescription('New quote requests matching your business will appear here')
             ->emptyStateIcon('heroicon-o-document-text')
-            ->paginated([5, 10])
-            ->defaultActions([
-                Tables\Actions\Action::make('view_all')
-                    ->label('View All & Submit Quotes')
-                    ->icon('heroicon-o-arrow-right')
-                    ->url(fn () => \App\Filament\Business\Pages\AvailableQuoteRequests::getUrl())
-                    ->color('primary'),
-            ]);
+            ->paginated([5, 10]);
     }
 }
