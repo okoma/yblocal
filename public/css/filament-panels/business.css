@@ -230,23 +230,49 @@ footer {
     color: #d1d5db;
 }
 
-/* Hide global search from sidebar */
-.fi-sidebar .fi-global-search {
-    display: none !important;
+/* Fix topbar full width */
+.fi-topbar {
+    max-width: 100% !important;
+    width: 100% !important;
 }
 
-/* Style global search in topbar - Filament renders it there by default */
+.fi-topbar-container {
+    max-width: 100% !important;
+    width: 100% !important;
+}
+
+/* Ensure main content area is full width */
+.fi-main-ctn {
+    max-width: 100% !important;
+}
+
+.fi-body {
+    max-width: 100% !important;
+}
+
+/* Fix the topbar layout properly */
+.fi-topbar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0 1rem; /* Add horizontal padding */
+}
+
+/* Adjust global search to not cause overflow */
 .fi-topbar .fi-global-search {
     display: flex !important;
     flex: 1;
     max-width: 32rem;
     margin: 0 1rem;
     align-items: center;
+    min-width: 0; /* Allow shrinking if needed */
 }
 
-/* Ensure topbar layout accommodates search */
-.fi-topbar {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
+/* Ensure topbar items don't cause width issues */
+.fi-topbar > * {
+    flex-shrink: 0;
+}
+
+.fi-topbar .fi-global-search {
+    flex-shrink: 1; /* Allow search to shrink */
 }
