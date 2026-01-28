@@ -8,4 +8,3 @@ class RequestPasswordReset extends BaseRequestPasswordReset
 {
     protected static string $view = 'filament.business.auth.password-reset-request';
 }
-

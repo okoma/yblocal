@@ -8,4 +8,3 @@ class EmailVerificationPrompt extends BaseEmailVerificationPrompt
 {
     protected static string $view = 'filament.business.auth.verify-email';
 }
-
