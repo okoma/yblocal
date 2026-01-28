@@ -229,4 +229,23 @@ class QuoteRequestResource extends Resource
             'edit' => Pages\EditQuoteRequest::route('/{record}/edit'),
         ];
     }
+
+    /**
+     * Show count of new quote responses for customer's quote requests
+     */
+    public static function getNavigationBadge(): ?string
+    {
+        $newResponsesCount = \App\Models\QuoteResponse::whereHas('quoteRequest', function ($query) {
+            $query->where('user_id', Auth::id());
+        })
+        ->where('status', 'submitted')
+        ->count();
+
+        return $newResponsesCount > 0 ? (string) $newResponsesCount : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'success';
+    }
 }

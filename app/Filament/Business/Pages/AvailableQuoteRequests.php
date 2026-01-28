@@ -35,6 +35,35 @@ class AvailableQuoteRequests extends Page implements HasTable
     protected static ?int $navigationSort = 1;
     
     protected static bool $shouldRegisterNavigation = true;
+
+    /**
+     * Show count of new available quote requests for the business
+     */
+    public static function getNavigationBadge(): ?string
+    {
+        $activeBusiness = app(ActiveBusiness::class);
+        $businessId = $activeBusiness->getActiveBusinessId();
+        
+        if (!$businessId) {
+            return null;
+        }
+        
+        $business = \App\Models\Business::find($businessId);
+        if (!$business) {
+            return null;
+        }
+        
+        $distributionService = app(QuoteDistributionService::class);
+        $availableRequests = $distributionService->getAvailableQuoteRequests($business);
+        $count = $availableRequests->count();
+        
+        return $count > 0 ? (string) $count : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'success';
+    }
     
     public function getHeading(): string
     {
