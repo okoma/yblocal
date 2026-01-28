@@ -31,6 +31,16 @@ class WalletPage extends Page implements HasTable, HasActions
     protected static ?string $navigationGroup = 'Billing & Marketing';
     protected static ?int $navigationSort = 1;
     protected static string $view = 'filament.business.pages.wallet';
+    
+    // Add these properties to fix modal issues
+    protected static bool $shouldRegisterNavigation = true;
+    
+    // This helps with Livewire component initialization
+    public function mount(): void
+    {
+        // Ensure the page is fully initialized
+        $this->getWallet();
+    }
 
     public function getWallet()
     {
@@ -64,6 +74,43 @@ class WalletPage extends Page implements HasTable, HasActions
     }
     
     /**
+     * Get header widgets
+     */
+    protected function getHeaderWidgets(): array
+    {
+        return [];
+    }
+    
+    /**
+     * Get footer widgets
+     */
+    protected function getFooterWidgets(): array
+    {
+        return [];
+    }
+    
+    /**
+     * Pass data to the view
+     */
+    protected function getViewData(): array
+    {
+        return [
+            'wallet' => $this->getWallet(),
+        ];
+    }
+    
+    /**
+     * Add custom scripts to fix modal initialization
+     */
+    public function getExtraBodyAttributes(): array
+    {
+        return [
+            'x-data' => '{}',
+            'x-init' => '$nextTick(() => { $dispatch("modal-ready") })',
+        ];
+    }
+    
+    /**
      * Add Funds Action
      */
     protected function makeAddFundsAction(): Action
@@ -73,6 +120,7 @@ class WalletPage extends Page implements HasTable, HasActions
             ->icon('heroicon-o-plus-circle')
             ->color('success')
             ->modalWidth('lg')
+            ->requiresConfirmation(false)
             ->form([
                 Forms\Components\TextInput::make('amount')
                     ->label('Amount (₦)')
@@ -161,6 +209,7 @@ class WalletPage extends Page implements HasTable, HasActions
             ->icon('heroicon-o-sparkles')
             ->color('primary')
             ->modalWidth('lg')
+            ->requiresConfirmation(false)
             ->form([
                 Forms\Components\Select::make('credit_package')
                     ->label('Select Credit Package')
@@ -271,6 +320,7 @@ class WalletPage extends Page implements HasTable, HasActions
             ->icon('heroicon-o-document-text')
             ->color('info')
             ->modalWidth('lg')
+            ->requiresConfirmation(false)
             ->form([
                 Forms\Components\Select::make('credit_package')
                     ->label('Select Quote Credit Package')
@@ -382,6 +432,7 @@ class WalletPage extends Page implements HasTable, HasActions
             ->color('danger')
             ->visible(fn () => $this->getWallet()->balance >= 1000)
             ->modalWidth('md')
+            ->requiresConfirmation(false)
             ->form([
                 Forms\Components\Placeholder::make('current_balance')
                     ->label('Current Balance')
