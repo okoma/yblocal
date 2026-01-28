@@ -35,6 +35,12 @@ class ReviewReplyNotification extends Notification implements ShouldQueue
             $channels[] = 'database';
         }
         
+        // Check if user wants Telegram notification
+        // TODO: Implement Telegram channel when Telegram API is integrated
+        // if ($preferences && $preferences->notify_review_reply_received_telegram && $preferences->getTelegramIdentifier()) {
+        //     $channels[] = 'telegram';
+        // }
+        
         return $channels;
     }
 

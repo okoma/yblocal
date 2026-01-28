@@ -141,6 +141,32 @@ class ViewQuoteRequest extends ViewRecord
                                                         ]
                                                     );
                                                 }
+                                                
+                                                // Send Telegram notification to customer if enabled (optional - they performed the action)
+                                                $customer = $this->record->user;
+                                                if ($customer) {
+                                                    $preferences = $customer->preferences;
+                                                    if ($preferences && 
+                                                        $preferences->notify_quote_updates_telegram && 
+                                                        $preferences->telegram_notifications &&
+                                                        $preferences->getTelegramIdentifier()) {
+                                                        
+                                                        try {
+                                                            // TODO: Implement Telegram API integration
+                                                            \Illuminate\Support\Facades\Log::info('Telegram quote update notification (pending API integration)', [
+                                                                'user_id' => $customer->id,
+                                                                'quote_response_id' => $record->id,
+                                                                'action' => 'shortlisted',
+                                                                'telegram_id' => $preferences->getTelegramIdentifier(),
+                                                            ]);
+                                                        } catch (\Exception $e) {
+                                                            \Illuminate\Support\Facades\Log::error('Failed to send Telegram quote update notification', [
+                                                                'user_id' => $customer->id,
+                                                                'error' => $e->getMessage(),
+                                                            ]);
+                                                        }
+                                                    }
+                                                }
                                             } catch (\Exception $e) {
                                                 Log::error('Failed to send shortlist notification', [
                                                     'quote_response_id' => $record->id,
@@ -180,6 +206,32 @@ class ViewQuoteRequest extends ViewRecord
                                                             'quote_response_id' => $record->id,
                                                         ]
                                                     );
+                                                }
+                                                
+                                                // Send Telegram notification to customer if enabled (optional - they performed the action)
+                                                $customer = $this->record->user;
+                                                if ($customer) {
+                                                    $preferences = $customer->preferences;
+                                                    if ($preferences && 
+                                                        $preferences->notify_quote_updates_telegram && 
+                                                        $preferences->telegram_notifications &&
+                                                        $preferences->getTelegramIdentifier()) {
+                                                        
+                                                        try {
+                                                            // TODO: Implement Telegram API integration
+                                                            \Illuminate\Support\Facades\Log::info('Telegram quote update notification (pending API integration)', [
+                                                                'user_id' => $customer->id,
+                                                                'quote_response_id' => $record->id,
+                                                                'action' => 'accepted',
+                                                                'telegram_id' => $preferences->getTelegramIdentifier(),
+                                                            ]);
+                                                        } catch (\Exception $e) {
+                                                            \Illuminate\Support\Facades\Log::error('Failed to send Telegram quote update notification', [
+                                                                'user_id' => $customer->id,
+                                                                'error' => $e->getMessage(),
+                                                            ]);
+                                                        }
+                                                    }
                                                 }
                                             } catch (\Exception $e) {
                                                 Log::error('Failed to send acceptance notification', [
@@ -221,6 +273,32 @@ class ViewQuoteRequest extends ViewRecord
                                                             'quote_response_id' => $record->id,
                                                         ]
                                                     );
+                                                }
+                                                
+                                                // Send Telegram notification to customer if enabled (optional - they performed the action)
+                                                $customer = $this->record->user;
+                                                if ($customer) {
+                                                    $preferences = $customer->preferences;
+                                                    if ($preferences && 
+                                                        $preferences->notify_quote_updates_telegram && 
+                                                        $preferences->telegram_notifications &&
+                                                        $preferences->getTelegramIdentifier()) {
+                                                        
+                                                        try {
+                                                            // TODO: Implement Telegram API integration
+                                                            \Illuminate\Support\Facades\Log::info('Telegram quote update notification (pending API integration)', [
+                                                                'user_id' => $customer->id,
+                                                                'quote_response_id' => $record->id,
+                                                                'action' => 'rejected',
+                                                                'telegram_id' => $preferences->getTelegramIdentifier(),
+                                                            ]);
+                                                        } catch (\Exception $e) {
+                                                            \Illuminate\Support\Facades\Log::error('Failed to send Telegram quote update notification', [
+                                                                'user_id' => $customer->id,
+                                                                'error' => $e->getMessage(),
+                                                            ]);
+                                                        }
+                                                    }
                                                 }
                                             } catch (\Exception $e) {
                                                 Log::error('Failed to send rejection notification', [

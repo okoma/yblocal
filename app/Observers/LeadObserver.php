@@ -53,6 +53,43 @@ class LeadObserver
                 try {
                     $lead->user->notify(new InquiryResponseNotification($lead));
                     
+                    // Send Telegram notification if enabled
+                    $preferences = $lead->user->preferences;
+                    if ($preferences && 
+                        $preferences->notify_inquiry_response_received_telegram && 
+                        $preferences->telegram_notifications &&
+                        $preferences->getTelegramIdentifier()) {
+                        
+                        try {
+                            // TODO: Implement Telegram API integration
+                            // Recommended services:
+                            // 1. Telegram Bot API: https://core.telegram.org/bots/api
+                            // 2. Laravel Telegram Bot: https://github.com/irazasyed/telegram-bot-sdk
+                            //
+                            // Example implementation:
+                            // $telegram = app('telegram');
+                            // $telegram->sendMessage([
+                            //     'chat_id' => $preferences->getTelegramIdentifier(),
+                            //     'text' => "📧 Inquiry Response\n\n" .
+                            //              "{$lead->business->business_name} responded to your inquiry:\n\n" .
+                            //              "\"{$lead->reply_message}\"\n\n" .
+                            //              "View: " . url('/customer/my-inquiries/' . $lead->id)
+                            // ]);
+                            
+                            Log::info('Telegram inquiry response notification (pending API integration)', [
+                                'user_id' => $lead->user_id,
+                                'lead_id' => $lead->id,
+                                'telegram_id' => $preferences->getTelegramIdentifier(),
+                            ]);
+                        } catch (\Exception $e) {
+                            Log::error('Failed to send Telegram inquiry response notification', [
+                                'user_id' => $lead->user_id,
+                                'lead_id' => $lead->id,
+                                'error' => $e->getMessage(),
+                            ]);
+                        }
+                    }
+                    
                     Log::info('Inquiry response notification sent', [
                         'lead_id' => $lead->id,
                         'customer_id' => $lead->user_id,

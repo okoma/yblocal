@@ -27,6 +27,43 @@ class ReviewObserver
                 try {
                     $review->user->notify(new ReviewReplyNotification($review));
                     
+                    // Send Telegram notification if enabled
+                    $preferences = $review->user->preferences;
+                    if ($preferences && 
+                        $preferences->notify_review_reply_received_telegram && 
+                        $preferences->telegram_notifications &&
+                        $preferences->getTelegramIdentifier()) {
+                        
+                        try {
+                            // TODO: Implement Telegram API integration
+                            // Recommended services:
+                            // 1. Telegram Bot API: https://core.telegram.org/bots/api
+                            // 2. Laravel Telegram Bot: https://github.com/irazasyed/telegram-bot-sdk
+                            //
+                            // Example implementation:
+                            // $telegram = app('telegram');
+                            // $telegram->sendMessage([
+                            //     'chat_id' => $preferences->getTelegramIdentifier(),
+                            //     'text' => "💬 Review Reply\n\n" .
+                            //              "{$review->reviewable->business_name} replied to your review:\n\n" .
+                            //              "\"{$review->reply}\"\n\n" .
+                            //              "View: " . url('/customer/my-reviews/' . $review->id)
+                            // ]);
+                            
+                            Log::info('Telegram review reply notification (pending API integration)', [
+                                'user_id' => $review->user_id,
+                                'review_id' => $review->id,
+                                'telegram_id' => $preferences->getTelegramIdentifier(),
+                            ]);
+                        } catch (\Exception $e) {
+                            Log::error('Failed to send Telegram review reply notification', [
+                                'user_id' => $review->user_id,
+                                'review_id' => $review->id,
+                                'error' => $e->getMessage(),
+                            ]);
+                        }
+                    }
+                    
                     Log::info('Review reply notification sent', [
                         'review_id' => $review->id,
                         'customer_id' => $review->user_id,

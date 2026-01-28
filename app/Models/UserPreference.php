@@ -71,6 +71,14 @@ class UserPreference extends Model
         'notify_quote_updates',
         'notify_quote_responses_app',
         'notify_quote_updates_app',
+        // Customer: Telegram notifications
+        'notify_review_reply_received_telegram',
+        'notify_inquiry_response_received_telegram',
+        'notify_saved_business_updates_telegram',
+        'notify_promotions_customer_telegram',
+        'notify_newsletter_customer_telegram',
+        'notify_quote_responses_telegram',
+        'notify_quote_updates_telegram',
         // Display Preferences
         'theme',
         'language',
@@ -130,6 +138,14 @@ class UserPreference extends Model
         'notify_quote_updates' => 'boolean',
         'notify_quote_responses_app' => 'boolean',
         'notify_quote_updates_app' => 'boolean',
+        // Customer: Telegram notifications
+        'notify_review_reply_received_telegram' => 'boolean',
+        'notify_inquiry_response_received_telegram' => 'boolean',
+        'notify_saved_business_updates_telegram' => 'boolean',
+        'notify_promotions_customer_telegram' => 'boolean',
+        'notify_newsletter_customer_telegram' => 'boolean',
+        'notify_quote_responses_telegram' => 'boolean',
+        'notify_quote_updates_telegram' => 'boolean',
         // Other
         'show_email' => 'boolean',
         'show_phone' => 'boolean',
@@ -192,6 +208,14 @@ class UserPreference extends Model
                 'notify_quote_updates' => true,
                 'notify_quote_responses_app' => true,
                 'notify_quote_updates_app' => true,
+                // Customer: Telegram notifications (defaults)
+                'notify_review_reply_received_telegram' => false,
+                'notify_inquiry_response_received_telegram' => false,
+                'notify_saved_business_updates_telegram' => false,
+                'notify_promotions_customer_telegram' => false,
+                'notify_newsletter_customer_telegram' => false,
+                'notify_quote_responses_telegram' => false,
+                'notify_quote_updates_telegram' => false,
                 // Display & Privacy
                 'theme' => 'system',
                 'language' => 'en',

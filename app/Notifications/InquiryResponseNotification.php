@@ -35,6 +35,9 @@ class InquiryResponseNotification extends Notification implements ShouldQueue
             $channels[] = 'database';
         }
         
+        // Note: Telegram notifications are handled separately via custom service
+        // Check is done in the notification sending logic
+        
         return $channels;
     }
 

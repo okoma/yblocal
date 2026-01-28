@@ -45,6 +45,18 @@ class NotificationPreferences extends Page
             'notify_quote_updates' => $preferences->notify_quote_updates ?? true,
             'notify_quote_responses_app' => $preferences->notify_quote_responses_app ?? true,
             'notify_quote_updates_app' => $preferences->notify_quote_updates_app ?? true,
+            
+            // Telegram preferences
+            'telegram_notifications' => $preferences->telegram_notifications ?? false,
+            'telegram_username' => $preferences->telegram_username ?? null,
+            'telegram_chat_id' => $preferences->telegram_chat_id ?? null,
+            'notify_review_reply_received_telegram' => $preferences->notify_review_reply_received_telegram ?? false,
+            'notify_inquiry_response_received_telegram' => $preferences->notify_inquiry_response_received_telegram ?? false,
+            'notify_saved_business_updates_telegram' => $preferences->notify_saved_business_updates_telegram ?? false,
+            'notify_promotions_customer_telegram' => $preferences->notify_promotions_customer_telegram ?? false,
+            'notify_newsletter_customer_telegram' => $preferences->notify_newsletter_customer_telegram ?? false,
+            'notify_quote_responses_telegram' => $preferences->notify_quote_responses_telegram ?? false,
+            'notify_quote_updates_telegram' => $preferences->notify_quote_updates_telegram ?? false,
         ]);
     }
 
@@ -139,6 +151,87 @@ class NotificationPreferences extends Page
                             ->inline(false)
                             ->onIcon('heroicon-o-bell')
                             ->offIcon('heroicon-o-bell-slash'),
+                    ])
+                    ->columns(1)
+                    ->collapsible(),
+                
+                Forms\Components\Section::make('Telegram Notifications')
+                    ->description('Receive notifications via Telegram.')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->schema([
+                        Forms\Components\Toggle::make('telegram_notifications')
+                            ->label('Enable Telegram Notifications')
+                            ->helperText('Receive notifications via Telegram')
+                            ->default(false)
+                            ->live()
+                            ->onIcon('heroicon-o-bell')
+                            ->offIcon('heroicon-o-bell-slash'),
+                        
+                        Forms\Components\TextInput::make('telegram_username')
+                            ->label('Telegram Username')
+                            ->placeholder('@username')
+                            ->maxLength(255)
+                            ->helperText('Your Telegram username (e.g., @username)')
+                            ->visible(fn (Forms\Get $get) => $get('telegram_notifications')),
+                        
+                        Forms\Components\TextInput::make('telegram_chat_id')
+                            ->label('Telegram Chat ID')
+                            ->maxLength(255)
+                            ->helperText('Your Telegram Chat ID (if available, this will be used instead of username)')
+                            ->visible(fn (Forms\Get $get) => $get('telegram_notifications')),
+                        
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\Toggle::make('notify_review_reply_received_telegram')
+                                    ->label('Review Replies')
+                                    ->helperText('When a business replies to your review')
+                                    ->default(false)
+                                    ->onIcon('heroicon-o-bell')
+                                    ->offIcon('heroicon-o-bell-slash'),
+                                
+                                Forms\Components\Toggle::make('notify_inquiry_response_received_telegram')
+                                    ->label('Inquiry Responses')
+                                    ->helperText('When a business responds to your inquiry')
+                                    ->default(false)
+                                    ->onIcon('heroicon-o-bell')
+                                    ->offIcon('heroicon-o-bell-slash'),
+                                
+                                Forms\Components\Toggle::make('notify_saved_business_updates_telegram')
+                                    ->label('Business Updates')
+                                    ->helperText('Updates from businesses you\'ve saved')
+                                    ->default(false)
+                                    ->onIcon('heroicon-o-bell')
+                                    ->offIcon('heroicon-o-bell-slash'),
+                                
+                                Forms\Components\Toggle::make('notify_promotions_customer_telegram')
+                                    ->label('Special Offers & Promotions')
+                                    ->helperText('Exclusive deals from businesses')
+                                    ->default(false)
+                                    ->onIcon('heroicon-o-bell')
+                                    ->offIcon('heroicon-o-bell-slash'),
+                                
+                                Forms\Components\Toggle::make('notify_newsletter_customer_telegram')
+                                    ->label('Newsletter & Platform Updates')
+                                    ->helperText('Platform news and feature updates')
+                                    ->default(false)
+                                    ->onIcon('heroicon-o-bell')
+                                    ->offIcon('heroicon-o-bell-slash'),
+                                
+                                Forms\Components\Toggle::make('notify_quote_responses_telegram')
+                                    ->label('Quote Responses')
+                                    ->helperText('When businesses submit quotes for your requests')
+                                    ->default(false)
+                                    ->onIcon('heroicon-o-bell')
+                                    ->offIcon('heroicon-o-bell-slash'),
+                                
+                                Forms\Components\Toggle::make('notify_quote_updates_telegram')
+                                    ->label('Quote Updates')
+                                    ->helperText('When quotes are shortlisted, accepted, or rejected')
+                                    ->default(false)
+                                    ->onIcon('heroicon-o-bell')
+                                    ->offIcon('heroicon-o-bell-slash'),
+                            ])
+                            ->visible(fn (Forms\Get $get) => $get('telegram_notifications')),
                     ])
                     ->columns(1)
                     ->collapsible(),

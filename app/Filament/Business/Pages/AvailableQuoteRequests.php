@@ -253,7 +253,7 @@ class AvailableQuoteRequests extends Page implements HasTable
                                 if ($customer && $business) {
                                     $preferences = $customer->preferences;
                                     
-                                    // Check if customer wants to receive quote response notifications
+                                    // Send email/in-app notification if enabled
                                     if ($preferences && $preferences->notify_quote_responses) {
                                         \App\Models\Notification::send(
                                             userId: $customer->id,
@@ -267,6 +267,44 @@ class AvailableQuoteRequests extends Page implements HasTable
                                                 'business_id' => $businessId,
                                             ]
                                         );
+                                    }
+                                    
+                                    // Send Telegram notification if enabled
+                                    if ($preferences && 
+                                        $preferences->notify_quote_responses_telegram && 
+                                        $preferences->telegram_notifications &&
+                                        $preferences->getTelegramIdentifier()) {
+                                        
+                                        try {
+                                            // TODO: Implement Telegram API integration
+                                            // Recommended services:
+                                            // 1. Telegram Bot API: https://core.telegram.org/bots/api
+                                            // 2. Laravel Telegram Bot: https://github.com/irazasyed/telegram-bot-sdk
+                                            //
+                                            // Example implementation:
+                                            // $telegram = app('telegram');
+                                            // $telegram->sendMessage([
+                                            //     'chat_id' => $preferences->getTelegramIdentifier(),
+                                            //     'text' => "💼 New Quote Received\n\n" .
+                                            //              "{$business->business_name} has submitted a quote for your request:\n" .
+                                            //              "'{$record->title}'\n\n" .
+                                            //              "Price: ₦" . number_format($quoteResponse->price, 2) . "\n" .
+                                            //              "Delivery: {$quoteResponse->delivery_time}\n\n" .
+                                            //              "View quote: " . url(\App\Filament\Customer\Resources\QuoteRequestResource::getUrl('view', ['record' => $record->id], panel: 'customer'))
+                                            // ]);
+                                            
+                                            \Illuminate\Support\Facades\Log::info('Telegram quote response notification (pending API integration)', [
+                                                'user_id' => $customer->id,
+                                                'quote_response_id' => $quoteResponse->id,
+                                                'telegram_id' => $preferences->getTelegramIdentifier(),
+                                            ]);
+                                        } catch (\Exception $e) {
+                                            \Illuminate\Support\Facades\Log::error('Failed to send Telegram quote response notification', [
+                                                'user_id' => $customer->id,
+                                                'quote_response_id' => $quoteResponse->id,
+                                                'error' => $e->getMessage(),
+                                            ]);
+                                        }
                                     }
                                 }
                             } catch (\Exception $e) {
