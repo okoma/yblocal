@@ -7,25 +7,43 @@
         Sign in to Customer Portal
     </x-slot>
 
-    {{ $this->form }}
+    <form method="POST" action="">
+        @csrf
+        {{ $this->form }}
 
-    <x-filament::button
-        tag="a"
-        color="gray"
-        class="w-full mt-4"
-        href="{{ url('/customer/auth/google/redirect') }}"
-    >
-        Continue with Google
-    </x-filament::button>
+        <x-filament::button
+            type="submit"
+            class="w-full mt-4"
+        >
+            Log in
+        </x-filament::button>
+    </form>
 
-    <x-filament::button
-        tag="a"
-        color="gray"
-        class="w-full mt-2"
-        href="{{ url('/customer/auth/apple/redirect') }}"
-    >
-        Continue with Apple
-    </x-filament::button>
+    <div class="mt-6 flex items-center gap-3">
+        <div class="h-px flex-1 bg-gray-200"></div>
+        <span class="text-xs uppercase tracking-wide text-gray-400">or</span>
+        <div class="h-px flex-1 bg-gray-200"></div>
+    </div>
+
+    <div class="mt-4 grid grid-cols-2 gap-3">
+        <x-filament::button
+            tag="a"
+            color="gray"
+            class="w-full"
+            href="{{ url('/customer/auth/google/redirect') }}"
+        >
+            Google
+        </x-filament::button>
+
+        <x-filament::button
+            tag="a"
+            color="gray"
+            class="w-full"
+            href="{{ url('/customer/auth/apple/redirect') }}"
+        >
+            Apple
+        </x-filament::button>
+    </div>
 
     <div class="mt-6 text-center text-sm text-gray-500">
         Don’t have an account?
