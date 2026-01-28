@@ -183,9 +183,21 @@ class QuoteResponseResource extends Resource
         ];
     }
 
+    protected static ?string $recordTitleAttribute = 'quoteRequest.title';
+
     public static function getGlobalSearchEloquentQuery(): Builder
     {
         return static::getEloquentQuery();
+    }
+
+    public static function getGlobalSearchResultTitle(Model $record): string
+    {
+        return $record->quoteRequest->title ?? 'Quote Response';
+    }
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['quoteRequest.title', 'quoteRequest.category.name', 'price'];
     }
 
     public static function getGlobalSearchResultDetails(Model $record): array

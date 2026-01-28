@@ -315,9 +315,21 @@ class ReviewResource extends Resource
         return false; // Reviews are created by customers, not business owners
     }
 
+    protected static ?string $recordTitleAttribute = 'user.name';
+
     public static function getGlobalSearchEloquentQuery(): Builder
     {
         return static::getEloquentQuery();
+    }
+
+    public static function getGlobalSearchResultTitle(Model $record): string
+    {
+        return ($record->user->name ?? 'Customer') . ' - ' . str_repeat('⭐', $record->rating);
+    }
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['user.name', 'user.email', 'comment'];
     }
 
     public static function getGlobalSearchResultDetails(Model $record): array

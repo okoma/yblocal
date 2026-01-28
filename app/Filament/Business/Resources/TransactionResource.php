@@ -236,9 +236,21 @@ class TransactionResource extends Resource
         return 'warning';
     }
 
+    protected static ?string $recordTitleAttribute = 'transaction_ref';
+
     public static function getGlobalSearchEloquentQuery(): Builder
     {
         return static::getEloquentQuery();
+    }
+
+    public static function getGlobalSearchResultTitle(Model $record): string
+    {
+        return $record->transaction_ref;
+    }
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['transaction_ref', 'description'];
     }
 
     public static function getGlobalSearchResultDetails(Model $record): array

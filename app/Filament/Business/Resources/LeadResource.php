@@ -293,9 +293,21 @@ class LeadResource extends Resource
         return false;
     }
 
+    protected static ?string $recordTitleAttribute = 'client_name';
+
     public static function getGlobalSearchEloquentQuery(): Builder
     {
         return static::getEloquentQuery();
+    }
+
+    public static function getGlobalSearchResultTitle(Model $record): string
+    {
+        return $record->client_name;
+    }
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['client_name', 'email', 'phone'];
     }
 
     public static function getGlobalSearchResultDetails(Model $record): array

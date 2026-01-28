@@ -295,9 +295,21 @@ class ProductResource extends Resource
         return static::canEdit($record);
     }
 
+    protected static ?string $recordTitleAttribute = 'name';
+
     public static function getGlobalSearchEloquentQuery(): Builder
     {
         return static::getEloquentQuery();
+    }
+
+    public static function getGlobalSearchResultTitle(Model $record): string
+    {
+        return $record->name;
+    }
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['name', 'header_title', 'description'];
     }
 
     public static function getGlobalSearchResultDetails(Model $record): array
