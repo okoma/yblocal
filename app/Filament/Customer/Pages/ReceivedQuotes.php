@@ -10,18 +10,12 @@ use Filament\Actions;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Filament\Tables;
-use Filament\Tables\Table;  // ✅ ADD THIS LINE
-use Filament\Tables\Concerns\InteractsWithTable;
-use Filament\Tables\Contracts\HasTable;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\HtmlString;
 
-class ReceivedQuotes extends Page implements HasTable
+class ReceivedQuotes extends Page
 {
-    use InteractsWithTable;
-
     protected static ?string $navigationIcon = 'heroicon-o-inbox';
 
     protected static ?string $navigationLabel = 'Received Quotes';
@@ -35,6 +29,17 @@ class ReceivedQuotes extends Page implements HasTable
     public function getTitle(): string
     {
         return 'Received Quotes';
+    }
+
+    // Get all responses grouped by quote request
+    public function getQuoteRequests()
+    {
+        return \App\Models\QuoteRequest::query()
+            ->where('user_id', Auth::id())
+            ->whereHas('responses')
+            ->with(['responses.business', 'category', 'stateLocation', 'cityLocation'])
+            ->orderByDesc('created_at')
+            ->get();
     }
 
     public function getShortlistedCount(): int
@@ -156,101 +161,60 @@ class ReceivedQuotes extends Page implements HasTable
         ];
     }
 
-    public function table(Table $table): Table
+    // Actions for quotes
+    public function shortlistQuote($quoteResponseId): void
     {
-        return $table
-            ->query(
-                QuoteResponse::query()
-                    ->whereHas('quoteRequest', fn ($q) => $q->where('user_id', Auth::id()))
-                    ->with(['business', 'quoteRequest'])
-            )
-            ->columns([
-                Tables\Columns\TextColumn::make('quoteRequest.title')
-                    ->label('Quote Request')
-                    ->searchable()
-                    ->sortable()
-                    ->weight('bold')
-                    ->url(fn (QuoteResponse $record) => \App\Filament\Customer\Resources\QuoteRequestResource::getUrl('view', ['record' => $record->quote_request_id])),
-                Tables\Columns\TextColumn::make('business.business_name')
-                    ->label('Business')
-                    ->searchable()
-                    ->sortable()
-                    ->weight('bold'),
-                Tables\Columns\TextColumn::make('price')
-                    ->label('Price')
-                    ->money('NGN')
-                    ->sortable()
-                    ->weight('bold')
-                    ->color('success'),
-                Tables\Columns\TextColumn::make('delivery_time')
-                    ->label('Delivery Time')
-                    ->icon('heroicon-o-clock'),
-                Tables\Columns\TextColumn::make('message')
-                    ->label('Message')
-                    ->limit(40)
-                    ->tooltip(fn (QuoteResponse $record) => $record->message),
-                Tables\Columns\TextColumn::make('status')
-                    ->label('Status')
-                    ->badge()
-                    ->color(fn (string $state) => match ($state) {
-                        'submitted' => 'gray',
-                        'shortlisted' => 'info',
-                        'accepted' => 'success',
-                        'rejected' => 'danger',
-                        default => 'gray',
-                    }),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Received')
-                    ->dateTime('M d, Y')
-                    ->sortable(),
-            ])
-            ->actions([
-                Tables\Actions\Action::make('shortlist')
-                    ->label('Shortlist')
-                    ->icon('heroicon-o-star')
-                    ->color('info')
-                    ->requiresConfirmation()
-                    ->modalHeading('Shortlist Quote')
-                    ->modalDescription('Add this quote to your shortlist for comparison.')
-                    ->action(function (QuoteResponse $record) {
-                        $record->shortlist();
-                        $this->sendShortlistedNotification($record);
-                        Notification::make()->title('Quote shortlisted')->success()->send();
-                    })
-                    ->visible(fn (QuoteResponse $record) => $record->status === 'submitted' && $record->quoteRequest->status === 'open'),
+        $quote = QuoteResponse::findOrFail($quoteResponseId);
+        
+        if ($quote->quoteRequest->user_id !== Auth::id()) {
+            Notification::make()->title('Unauthorized')->danger()->send();
+            return;
+        }
 
-                Tables\Actions\Action::make('accept')
-                    ->label('Accept Quote')
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
-                    ->requiresConfirmation()
-                    ->modalHeading('Accept Quote')
-                    ->modalDescription('Are you sure? This will close the request and reject all other quotes.')
-                    ->action(function (QuoteResponse $record) {
-                        $record->accept();
-                        $this->sendAcceptedNotification($record);
-                        Notification::make()->title('Quote accepted')->body('The quote request has been closed and other quotes have been rejected.')->success()->send();
-                    })
-                    ->visible(fn (QuoteResponse $record) => in_array($record->status, ['submitted', 'shortlisted']) && $record->quoteRequest->status === 'open'),
+        $quote->shortlist();
+        $this->sendShortlistedNotification($quote);
+        Notification::make()->title('Quote shortlisted')->success()->send();
+    }
 
-                Tables\Actions\Action::make('reject')
-                    ->label('Reject')
-                    ->icon('heroicon-o-x-circle')
-                    ->color('danger')
-                    ->requiresConfirmation()
-                    ->modalHeading('Reject Quote')
-                    ->modalDescription('Are you sure you want to reject this quote?')
-                    ->action(function (QuoteResponse $record) {
-                        $record->reject();
-                        $this->sendRejectedNotification($record);
-                        Notification::make()->title('Quote rejected')->success()->send();
-                    })
-                    ->visible(fn (QuoteResponse $record) => in_array($record->status, ['submitted', 'shortlisted']) && $record->quoteRequest->status === 'open'),
-            ])
-            ->defaultSort('created_at', 'desc')
-            ->emptyStateHeading('No quotes received yet')
-            ->emptyStateDescription('When businesses respond to your quote requests, they will appear here.')
-            ->emptyStateIcon('heroicon-o-inbox');
+    public function acceptQuote($quoteResponseId): void
+    {
+        $quote = QuoteResponse::findOrFail($quoteResponseId);
+        
+        if ($quote->quoteRequest->user_id !== Auth::id()) {
+            Notification::make()->title('Unauthorized')->danger()->send();
+            return;
+        }
+
+        $quote->accept();
+        $this->sendAcceptedNotification($quote);
+        Notification::make()->title('Quote accepted')->body('The quote request has been closed and other quotes have been rejected.')->success()->send();
+    }
+
+    public function rejectQuote($quoteResponseId): void
+    {
+        $quote = QuoteResponse::findOrFail($quoteResponseId);
+        
+        if ($quote->quoteRequest->user_id !== Auth::id()) {
+            Notification::make()->title('Unauthorized')->danger()->send();
+            return;
+        }
+
+        $quote->reject();
+        $this->sendRejectedNotification($quote);
+        Notification::make()->title('Quote rejected')->success()->send();
+    }
+
+    public function removeFromShortlist($quoteResponseId): void
+    {
+        $quote = QuoteResponse::findOrFail($quoteResponseId);
+        
+        if ($quote->quoteRequest->user_id !== Auth::id()) {
+            Notification::make()->title('Unauthorized')->danger()->send();
+            return;
+        }
+
+        $quote->update(['status' => 'submitted']);
+        Notification::make()->title('Removed from shortlist')->success()->send();
     }
 
     protected function sendShortlistedNotification(QuoteResponse $record): void
@@ -294,5 +258,21 @@ class ReceivedQuotes extends Page implements HasTable
         } catch (\Throwable $e) {
             Log::error('Reject notification failed', ['quote_response_id' => $record->id, 'error' => $e->getMessage()]);
         }
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        $count = QuoteResponse::whereHas('quoteRequest', function ($query) {
+            $query->where('user_id', Auth::id());
+        })
+        ->where('status', 'submitted')
+        ->count();
+        
+        return $count > 0 ? (string) $count : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'success';
     }
 }
