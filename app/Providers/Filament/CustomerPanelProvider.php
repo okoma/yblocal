@@ -41,6 +41,9 @@ class CustomerPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Amber,
             ])
+            ->collapsibleNavigationGroups(false)
+            //->sidebarCollapsibleOnDesktop()
+            ->viteTheme('resources/css/app.css')
             ->discoverResources(in: app_path('Filament/Customer/Resources'), for: 'App\\Filament\\Customer\\Resources')
             ->discoverPages(in: app_path('Filament/Customer/Pages'), for: 'App\\Filament\\Customer\\Pages')
             ->pages([
