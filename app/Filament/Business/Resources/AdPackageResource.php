@@ -179,7 +179,7 @@ class AdPackageResource extends Resource
                     ->label('Purchase')
                     ->icon('heroicon-o-shopping-cart')
                     ->color('success')
-                    ->modalWidth('3xl')
+                    ->modalWidth('2xl')
                     ->form([
                         Forms\Components\Select::make('business_id')
                             ->label('Business')
