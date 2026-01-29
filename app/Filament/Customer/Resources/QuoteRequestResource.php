@@ -21,11 +21,13 @@ class QuoteRequestResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
     
-    protected static ?string $navigationLabel = 'Quote Requests';
+    protected static ?string $navigationLabel = 'Request Quote';
+    
+    protected static ?string $navigationGroup = 'Quote';
     
     protected static ?string $modelLabel = 'Quote Request';
     
-    protected static ?int $navigationSort = 5;
+    protected static ?int $navigationSort = 1;
 
     public static function getEloquentQuery(): Builder
     {
