@@ -14,9 +14,20 @@ return new class extends Migration
     {
         Schema::create('customer_referral_transactions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('customer_referral_wallet_id')->constrained()->onDelete('cascade');
-            $table->foreignId('customer_referral_id')->nullable()->constrained('customer_referrals')->onDelete('set null');
-            $table->foreignId('transaction_id')->nullable()->constrained('transactions')->onDelete('set null');
+            $table->foreignId('customer_referral_wallet_id')
+                ->constrained()
+                ->onDelete('cascade')
+                ->name('crt_wallet_fk'); // Custom short name
+            $table->foreignId('customer_referral_id')
+                ->nullable()
+                ->constrained('customer_referrals')
+                ->onDelete('set null')
+                ->name('crt_referral_fk'); // Custom short name
+            $table->foreignId('transaction_id')
+                ->nullable()
+                ->constrained('transactions')
+                ->onDelete('set null')
+                ->name('crt_transaction_fk'); // Custom short name
             $table->decimal('amount', 14, 2);
             $table->enum('type', ['commission', 'withdrawal', 'adjustment'])->index();
             $table->decimal('balance_before', 14, 2);
