@@ -7,9 +7,8 @@ namespace App\Filament\Business\Resources\AdPackageResource\Pages;
 
 use App\Filament\Business\Resources\AdPackageResource;
 use App\Models\Business;
-use App\Models\PaymentGateway;
+use App\Models\Wallet;
 use App\Services\ActiveBusiness;
-use App\Services\PaymentService;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Notifications\Notification;
@@ -55,25 +54,53 @@ class ViewAdPackage extends ViewRecord
                         ->rows(2)
                         ->maxLength(500),
                     
-                    Forms\Components\Select::make('payment_gateway_id')
-                        ->label('Payment Method')
-                        ->options(function () {
-                            return PaymentGateway::enabled()
-                                ->ordered()
-                                ->get()
-                                ->mapWithKeys(function ($gateway) {
-                                    return [$gateway->id => $gateway->display_name];
-                                });
-                        })
-                        ->required()
-                        ->searchable()
-                        ->preload()
-                        ->helperText('Select how you want to pay for this package'),
-                    
-                    Forms\Components\Placeholder::make('package_price')
-                        ->label('Package Price')
-                        ->content(fn () => '₦' . number_format($this->getRecord()->price, 2))
-                        ->extraAttributes(['class' => 'text-lg font-bold']),
+                    Forms\Components\Section::make('Payment Information')
+                        ->schema([
+                            Forms\Components\Placeholder::make('package_price')
+                                ->label('Package Price')
+                                ->content(fn () => '₦' . number_format($this->getRecord()->price, 2))
+                                ->extraAttributes(['class' => 'text-lg font-bold']),
+                            
+                            Forms\Components\Placeholder::make('credits_cost')
+                                ->label('Credits Required')
+                                ->content(fn () => number_format($this->getRecord()->getCreditsCost()) . ' credits')
+                                ->extraAttributes(['class' => 'text-lg font-semibold text-primary-600']),
+                            
+                            Forms\Components\Placeholder::make('available_credits')
+                                ->label('Your Available Credits')
+                                ->content(function () {
+                                    $businessId = app(ActiveBusiness::class)->getActiveBusinessId();
+                                    if (!$businessId) {
+                                        return '0 credits';
+                                    }
+                                    $wallet = Wallet::where('business_id', $businessId)->first();
+                                    $credits = $wallet ? $wallet->ad_credits : 0;
+                                    $required = $this->getRecord()->getCreditsCost();
+                                    $color = $credits >= $required ? 'text-success-600' : 'text-danger-600';
+                                    return '<span class="' . $color . ' font-bold">' . number_format($credits) . ' credits</span>';
+                                })
+                                ->extraAttributes(['class' => 'text-base']),
+                            
+                            Forms\Components\Placeholder::make('insufficient_credits_warning')
+                                ->label('')
+                                ->content(function () {
+                                    $businessId = app(ActiveBusiness::class)->getActiveBusinessId();
+                                    if (!$businessId) {
+                                        return '<p class="text-sm text-danger-600">Please select a business first.</p>';
+                                    }
+                                    $wallet = Wallet::where('business_id', $businessId)->first();
+                                    $credits = $wallet ? $wallet->ad_credits : 0;
+                                    $required = $this->getRecord()->getCreditsCost();
+                                    
+                                    if ($credits < $required) {
+                                        $shortfall = $required - $credits;
+                                        return '<p class="text-sm text-danger-600 font-medium">⚠️ Insufficient credits. You need ' . number_format($shortfall) . ' more credits. <a href="' . route('filament.business.pages.wallet-page') . '" class="underline">Purchase credits</a> to continue.</p>';
+                                    }
+                                    return '<p class="text-sm text-success-600">✓ You have sufficient credits to purchase this package.</p>';
+                                })
+                                ->visible(fn () => app(ActiveBusiness::class)->getActiveBusinessId() !== null),
+                        ])
+                        ->columns(1),
                 ])
                 ->action(function (array $data) {
                     try {
@@ -91,11 +118,38 @@ class ViewAdPackage extends ViewRecord
                             return;
                         }
                         
+                        // Get wallet and check credits
+                        $wallet = Wallet::where('business_id', $data['business_id'])->first();
+                        if (!$wallet) {
+                            Notification::make()
+                                ->danger()
+                                ->title('Wallet Not Found')
+                                ->body('Please contact support to set up your wallet.')
+                                ->send();
+                            return;
+                        }
+                        
+                        $creditsRequired = $record->getCreditsCost();
+                        if ($wallet->ad_credits < $creditsRequired) {
+                            Notification::make()
+                                ->danger()
+                                ->title('Insufficient Credits')
+                                ->body("You need {$creditsRequired} credits but only have {$wallet->ad_credits} credits. Please purchase more credits first.")
+                                ->actions([
+                                    \Filament\Notifications\Actions\Action::make('purchase_credits')
+                                        ->label('Purchase Credits')
+                                        ->url(route('filament.business.pages.wallet-page'))
+                                        ->button(),
+                                ])
+                                ->send();
+                            return;
+                        }
+                        
                         // Use database transaction
                         DB::beginTransaction();
                         
                         try {
-                            // Create the campaign (initially unpaid)
+                            // Create the campaign
                             $campaign = $record->createCampaign(
                                 $data['business_id'],
                                 $user->id,
@@ -103,68 +157,29 @@ class ViewAdPackage extends ViewRecord
                                     'starts_at' => $data['start_date'],
                                     'ends_at' => now()->parse($data['start_date'])->addDays($record->duration_days),
                                     'description' => $data['notes'] ?? null,
-                                    'is_paid' => false,
-                                    'is_active' => false, // Inactive until payment
+                                    'is_paid' => true,
+                                    'is_active' => true, // Activate immediately after credit deduction
                                 ]
                             );
                             
-                            // Initialize payment
-                            $paymentService = app(PaymentService::class);
-                            $result = $paymentService->initializePayment(
-                                user: $user,
-                                amount: $record->price,
-                                gatewayId: $data['payment_gateway_id'],
-                                payable: $campaign,
-                                metadata: [
-                                    'package_id' => $record->id,
-                                    'package_name' => $record->name,
-                                    'duration_days' => $record->duration_days,
-                                    'campaign_type' => $record->campaign_type,
-                                ]
+                            // Deduct credits from wallet
+                            $wallet->useCredits(
+                                $creditsRequired,
+                                "Ad package purchase: {$record->name} ({$record->campaign_type})",
+                                $campaign
                             );
                             
                             DB::commit();
                             
-                            // Handle payment result
-                            if ($result->requiresRedirect()) {
-                                Notification::make()
-                                    ->info()
-                                    ->title('Redirecting to Payment')
-                                    ->body('You will be redirected to complete your payment.')
-                                    ->send();
-                                
-                                return redirect($result->redirectUrl);
-                            } elseif ($result->isBankTransfer()) {
-                                Notification::make()
-                                    ->info()
-                                    ->title('Bank Transfer Instructions')
-                                    ->body($result->instructions)
-                                    ->persistent()
-                                    ->send();
-                                
-                                // Redirect to campaign view
-                                $this->redirect(
-                                    \App\Filament\Business\Resources\AdCampaignResource::getUrl('view', ['record' => $campaign->id])
-                                );
-                            } elseif ($result->isSuccess()) {
-                                // Payment successful (wallet payment)
-                                // Campaign will be activated automatically via PaymentController
-                                Notification::make()
-                                    ->success()
-                                    ->title('Payment Successful')
-                                    ->body('Your campaign has been created and activated!')
-                                    ->send();
-                                
-                                $this->redirect(
-                                    \App\Filament\Business\Resources\AdCampaignResource::getUrl('view', ['record' => $campaign->id])
-                                );
-                            } else {
-                                Notification::make()
-                                    ->danger()
-                                    ->title('Payment Failed')
-                                    ->body($result->message ?? 'Unable to process payment. Please try again.')
-                                    ->send();
-                            }
+                            Notification::make()
+                                ->success()
+                                ->title('Campaign Created Successfully!')
+                                ->body("Your campaign has been created and activated. {$creditsRequired} credits have been deducted from your wallet.")
+                                ->send();
+                            
+                            $this->redirect(
+                                \App\Filament\Business\Resources\AdCampaignResource::getUrl('view', ['record' => $campaign->id])
+                            );
                             
                         } catch (\Exception $e) {
                             DB::rollBack();
@@ -188,8 +203,22 @@ class ViewAdPackage extends ViewRecord
                 })
                 ->requiresConfirmation()
                 ->modalHeading('Purchase Ad Package')
-                ->modalDescription(fn () => 'You are about to purchase the "' . $this->getRecord()->name . '" package for ₦' . number_format($this->getRecord()->price, 2))
-                ->modalSubmitActionLabel('Purchase & Pay')
+                ->modalDescription(function () {
+                    $record = $this->getRecord();
+                    $businessId = app(ActiveBusiness::class)->getActiveBusinessId();
+                    $wallet = $businessId ? Wallet::where('business_id', $businessId)->first() : null;
+                    $credits = $wallet ? $wallet->ad_credits : 0;
+                    $required = $record->getCreditsCost();
+                    
+                    $desc = 'You are about to purchase the "' . $record->name . '" package for ' . number_format($required) . ' credits.';
+                    
+                    if ($credits < $required) {
+                        $desc .= "\n\n⚠️ Warning: You have insufficient credits (" . number_format($credits) . " available, " . number_format($required) . " required).";
+                    }
+                    
+                    return $desc;
+                })
+                ->modalSubmitActionLabel('Purchase with Credits')
                 ->modalFooterActionsAlignment('right'),
 
             Actions\Action::make('back')
