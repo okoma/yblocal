@@ -24,7 +24,9 @@ class ShortlistedQuotes extends Page implements HasTable
     protected static ?string $navigationGroup = 'Quote';
     
     protected static ?int $navigationSort = 2;
-    
+
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static string $view = 'filament.customer.pages.shortlisted-quotes';
     
     public function getTitle(): string

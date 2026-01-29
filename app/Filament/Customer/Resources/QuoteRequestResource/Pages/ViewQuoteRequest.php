@@ -23,7 +23,7 @@ class ViewQuoteRequest extends ViewRecord
     {
         return [
             Actions\Action::make('view_quotes')
-                ->label('View All Quotes')
+                ->label('Received Quotes')
                 ->icon('heroicon-o-document-text')
                 ->url(fn () => QuoteRequestResource::getUrl('view', ['record' => $this->record]) . '#quotes'),
         ];
@@ -85,11 +85,91 @@ class ViewQuoteRequest extends ViewRecord
                     ->columns(2)
                     ->visible(fn ($record) => $record->budget_min || $record->budget_max),
                 
-                Infolists\Components\Section::make('All Quotes Received')
+                Infolists\Components\Section::make('Received Quotes')
                     ->schema([
-                        Infolists\Components\RepeatableEntry::make('responses')
-                            ->label('')
-                            ->getStateUsing(fn ($record) => $record->responses()->where('status', '!=', 'shortlisted')->get())
+                        Infolists\Components\Section::make('Shortlisted')
+                            ->schema([
+                                Infolists\Components\RepeatableEntry::make('shortlisted_responses')
+                                    ->label('')
+                                    ->getStateUsing(fn ($record) => $record->responses()->where('status', 'shortlisted')->get())
+                                    ->schema([
+                                        Infolists\Components\TextEntry::make('business.business_name')
+                                            ->label('Business')
+                                            ->weight('bold')
+                                            ->size('lg'),
+                                        Infolists\Components\TextEntry::make('price')
+                                            ->label('Price')
+                                            ->money('NGN')
+                                            ->weight('bold')
+                                            ->size('lg')
+                                            ->color('success'),
+                                        Infolists\Components\TextEntry::make('delivery_time')
+                                            ->label('Delivery Time')
+                                            ->icon('heroicon-o-clock'),
+                                        Infolists\Components\TextEntry::make('message')
+                                            ->label('Message')
+                                            ->columnSpanFull()
+                                            ->limit(200),
+                                        Infolists\Components\Actions::make([
+                                            Infolists\Components\Actions\Action::make('accept')
+                                                ->label('Accept Quote')
+                                                ->icon('heroicon-o-check-circle')
+                                                ->color('success')
+                                                ->requiresConfirmation()
+                                                ->modalHeading('Accept Quote')
+                                                ->modalDescription('Are you sure you want to accept this quote? This will close the request and reject all other quotes.')
+                                                ->action(function ($record) {
+                                                    $record->accept();
+                                                    try {
+                                                        $business = $record->business;
+                                                        if ($business && $business->user) {
+                                                            $business->user->notify(new QuoteAcceptedNotification($record));
+                                                        }
+                                                        $customer = $this->record->user;
+                                                        if ($customer && $customer->preferences?->notify_quote_updates_telegram && $customer->preferences?->telegram_notifications && $customer->preferences?->getTelegramIdentifier()) {
+                                                            \Illuminate\Support\Facades\Log::info('Telegram quote update (accepted)', ['user_id' => $customer->id, 'quote_response_id' => $record->id]);
+                                                        }
+                                                    } catch (\Exception $e) {
+                                                        Log::error('Accept notification failed', ['quote_response_id' => $record->id, 'error' => $e->getMessage()]);
+                                                    }
+                                                    Notification::make()->title('Quote accepted')->body('The quote request has been closed and other quotes have been rejected.')->success()->send();
+                                                })
+                                                ->visible(fn ($record) => $this->record->status === 'open'),
+                                            Infolists\Components\Actions\Action::make('remove_from_shortlist')
+                                                ->label('Remove from Shortlist')
+                                                ->icon('heroicon-o-x-mark')
+                                                ->color('gray')
+                                                ->requiresConfirmation()
+                                                ->modalHeading('Remove from Shortlist')
+                                                ->modalDescription('This quote will be moved back to submitted status.')
+                                                ->action(function ($record) {
+                                                    $record->update(['status' => 'submitted']);
+                                                    Notification::make()->title('Removed from shortlist')->success()->send();
+                                                })
+                                                ->visible(fn ($record) => $this->record->status === 'open'),
+                                        ])->columnSpanFull(),
+                                    ])
+                                    ->columns(3),
+                            ])
+                            ->id('shortlisted')
+                            ->visible(fn ($record) => $record->responses()->where('status', 'shortlisted')->count() > 0)
+                            ->collapsible(),
+
+                        Infolists\Components\Section::make('Compare')
+                            ->schema([
+                                Infolists\Components\ViewEntry::make('price_comparison')
+                                    ->view('filament.customer.infolists.price-comparison-table')
+                                    ->columnSpanFull(),
+                            ])
+                            ->id('comparison')
+                            ->visible(fn ($record) => $record->responses()->where('status', 'shortlisted')->count() > 1)
+                            ->collapsible(),
+
+                        Infolists\Components\Section::make('All responses')
+                            ->schema([
+                                Infolists\Components\RepeatableEntry::make('responses')
+                                    ->label('')
+                                    ->getStateUsing(fn ($record) => $record->responses()->get())
                             ->schema([
                                 Infolists\Components\TextEntry::make('business.business_name')
                                     ->label('Business')
@@ -297,6 +377,7 @@ class ViewQuoteRequest extends ViewRecord
                                     ->columnSpanFull(),
                             ])
                             ->columns(3),
+                        ]),
                     ])
                     ->id('quotes')
                     ->visible(fn ($record) => $record->responses()->count() > 0),

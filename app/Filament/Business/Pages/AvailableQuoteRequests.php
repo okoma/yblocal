@@ -24,9 +24,9 @@ class AvailableQuoteRequests extends Page implements HasTable
     
     protected static string $view = 'filament.business.pages.available-quote-requests';
     
-    protected static ?string $navigationLabel = 'Available Requests';
+    protected static ?string $navigationLabel = 'Quote Requests';
     
-    protected static ?string $title = 'Available Quote Requests';
+    protected static ?string $title = 'Quote Requests';
     
     protected static ?string $navigationIcon = 'heroicon-o-magnifying-glass';
     
@@ -67,7 +67,7 @@ class AvailableQuoteRequests extends Page implements HasTable
     
     public function getHeading(): string
     {
-        return 'Available Quote Requests';
+        return 'Quote Requests';
     }
     
     public function getSubheading(): ?string
@@ -444,7 +444,7 @@ class AvailableQuoteRequests extends Page implements HasTable
                     ->modalDescription('Complete the form below to submit your quote. This will cost 1 quote credit.')
                     ->slideOver(),
             ])
-            ->emptyStateHeading('No Quote Requests Available')
+            ->emptyStateHeading('No quote requests available')
             ->emptyStateDescription('There are currently no quote requests matching your business category and location. Check back soon!')
             ->emptyStateIcon('heroicon-o-inbox')
             ->poll('30s'); // Auto-refresh every 30 seconds

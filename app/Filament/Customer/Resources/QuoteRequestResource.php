@@ -21,7 +21,7 @@ class QuoteRequestResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
     
-    protected static ?string $navigationLabel = 'Request Quote';
+    protected static ?string $navigationLabel = 'My Quote Requests';
     
     protected static ?string $navigationGroup = 'Quote';
     

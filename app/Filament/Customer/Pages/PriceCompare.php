@@ -15,7 +15,9 @@ class PriceCompare extends Page
     protected static ?string $navigationGroup = 'Quote';
     
     protected static ?int $navigationSort = 3;
-    
+
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static string $view = 'filament.customer.pages.price-compare';
     
     public function getTitle(): string
