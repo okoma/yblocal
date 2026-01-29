@@ -162,6 +162,7 @@ class ShortlistedQuotes extends Page implements HasTable
             ->emptyStateHeading('No shortlisted quotes')
             ->emptyStateDescription('Shortlist quotes from your quote requests to compare them here.')
             ->emptyStateIcon('heroicon-o-star');
+    }  // <-- ADDED THIS CLOSING BRACE
     
     public static function getNavigationBadge(): ?string
     {
