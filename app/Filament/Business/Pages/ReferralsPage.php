@@ -20,7 +20,7 @@ class ReferralsPage extends Page implements HasForms
 
     protected static ?string $navigationIcon = 'heroicon-o-user-plus';
     protected static ?string $navigationLabel = 'Referrals';
-    protected static ?string $navigationGroup = 'Billing & Marketing';
+    protected static ?string $navigationGroup = 'Account';
     protected static ?int $navigationSort = 12;
     protected static string $view = 'filament.business.pages.referrals';
     protected static bool $shouldRegisterNavigation = true;

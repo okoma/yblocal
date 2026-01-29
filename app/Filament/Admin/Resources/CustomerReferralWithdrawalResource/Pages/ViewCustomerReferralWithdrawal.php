@@ -11,7 +11,7 @@ class ViewCustomerReferralWithdrawal extends ViewRecord
 {
     protected static string $resource = CustomerReferralWithdrawalResource::class;
 
-    public static function infolist(Infolist $infolist): Infolist
+    public function infolist(Infolist $infolist): Infolist
     {
         return $infolist
             ->schema([

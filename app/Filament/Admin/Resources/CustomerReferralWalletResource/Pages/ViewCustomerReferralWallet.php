@@ -11,7 +11,7 @@ class ViewCustomerReferralWallet extends ViewRecord
 {
     protected static string $resource = CustomerReferralWalletResource::class;
 
-    public static function infolist(Infolist $infolist): Infolist
+  public function infolist(Infolist $infolist): Infolist
     {
         return $infolist
             ->schema([
