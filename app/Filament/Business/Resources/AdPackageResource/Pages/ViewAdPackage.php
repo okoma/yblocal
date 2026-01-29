@@ -39,9 +39,7 @@ class ViewAdPackage extends ViewRecord
                         })
                         ->default(fn () => app(ActiveBusiness::class)->getActiveBusinessId())
                         ->required()
-                        ->searchable()
-                        ->preload()
-                        ->helperText('Active business for this campaign'),
+                        ->hidden(),
 
                     Forms\Components\DatePicker::make('start_date')
                         ->label('Start Date')

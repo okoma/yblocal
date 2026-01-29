@@ -190,10 +190,7 @@ class AdPackageResource extends Resource
                             })
                             ->default(fn () => app(ActiveBusiness::class)->getActiveBusinessId())
                             ->required()
-                            ->searchable()
-                            ->preload()
-                            ->helperText('Active business for this campaign')
-                            ->live(),
+                            ->hidden(),
 
                         Forms\Components\DatePicker::make('start_date')
                             ->label('Start Date')
