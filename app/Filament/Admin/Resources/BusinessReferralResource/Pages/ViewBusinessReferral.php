@@ -11,7 +11,7 @@ class ViewBusinessReferral extends ViewRecord
 {
     protected static string $resource = BusinessReferralResource::class;
 
-    public static function infolist(Infolist $infolist): Infolist
+    public function infolist(Infolist $infolist): Infolist
     {
         return $infolist
             ->schema([
