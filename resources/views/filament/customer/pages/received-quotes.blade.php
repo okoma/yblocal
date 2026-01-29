@@ -51,33 +51,6 @@
                         </div>
                     </div>
 
-                    {{-- Shortlisted Section --}}
-                    @php
-                        $shortlistedQuotes = $quoteRequest->responses->where('status', 'shortlisted');
-                    @endphp
-                    @if($shortlistedQuotes->count() > 0)
-                        <div class="px-6 py-4 bg-blue-50 dark:bg-blue-900/20 border-b border-gray-200 dark:border-gray-700">
-                            <div class="flex items-center justify-between mb-3">
-                                <h4 class="text-sm font-semibold text-blue-900 dark:text-blue-100 flex items-center gap-2">
-                                    <x-heroicon-o-star class="h-5 w-5 text-blue-600 dark:text-blue-400"/>
-                                    Shortlisted ({{ $shortlistedQuotes->count() }})
-                                </h4>
-                            </div>
-
-                            <div class="space-y-3">
-                                @foreach($shortlistedQuotes as $quote)
-                                    @include('filament.customer.received-quotes.quote-card', ['quote' => $quote, 'quoteRequest' => $quoteRequest, 'isShortlisted' => true])
-                                @endforeach
-                            </div>
-
-                            @if($shortlistedQuotes->count() > 1)
-                                <div class="mt-4">
-                                    @include('filament.customer.received-quotes.price-comparison', ['quotes' => $shortlistedQuotes])
-                                </div>
-                            @endif
-                        </div>
-                    @endif
-
                     {{-- All Responses --}}
                     <div class="px-6 py-4">
                         <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">
@@ -85,7 +58,7 @@
                         </h4>
                         <div class="space-y-3">
                             @foreach($quoteRequest->responses as $quote)
-                                @include('filament.customer.received-quotes.quote-card', ['quote' => $quote, 'quoteRequest' => $quoteRequest, 'isShortlisted' => false])
+                                @include('filament.customer.received-quotes.quote-card', ['quote' => $quote, 'quoteRequest' => $quoteRequest])
                             @endforeach
                         </div>
                     </div>
