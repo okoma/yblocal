@@ -59,8 +59,5 @@ class AppServiceProvider extends ServiceProvider
             $event->extendSocialite('apple', \SocialiteProviders\Apple\Provider::class);
         });
 
-        FilamentAsset::register([
-            Js::make('modal-fix', __DIR__.'/../../resources/js/modal-fix.js'),
-        ]);
     }
 }
