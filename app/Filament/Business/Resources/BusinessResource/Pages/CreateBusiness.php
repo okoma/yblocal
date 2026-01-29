@@ -9,6 +9,7 @@ namespace App\Filament\Business\Resources\BusinessResource\Pages;
 use App\Filament\Business\Resources\BusinessResource;
 use App\Services\ActiveBusiness;
 use App\Services\NewBusinessPlanLimits;
+use App\Services\ReferralSignupService;
 use App\Models\BusinessType;
 use App\Models\Category;
 use App\Models\PaymentMethod;
@@ -34,6 +35,8 @@ class CreateBusiness extends CreateRecord
     use HasWizard;
     
     protected static string $resource = BusinessResource::class;
+
+    // Email verification redirect removed - no need for session flags anymore
     
     protected function getSteps(): array
     {
@@ -830,6 +833,14 @@ Wizard\Step::make('Business Hours')
         $data['status'] = 'pending_review';
         $data['is_claimed'] = false;
         $data['claimed_by'] = null;
+
+        // Ensure new business has unique referral_code (for business → business referral links)
+        if (empty($data['referral_code'])) {
+            do {
+                $code = 'B' . strtoupper(\Illuminate\Support\Str::random(9));
+            } while (\App\Models\Business::where('referral_code', $code)->exists());
+            $data['referral_code'] = $code;
+        }
         
         // ✅ FIXED: Transform business_hours from individual fields to keyed array
         $businessHours = [];
@@ -981,6 +992,17 @@ Wizard\Step::make('Business Hours')
         }
 
         app(ActiveBusiness::class)->setActiveBusinessId($business->id);
+
+        // Process referral (customer or business ref code from session)
+        app(ReferralSignupService::class)->processReferralForNewBusiness($business);
+    }
+
+    public function mount(): void
+    {
+        parent::mount();
+        if (request()->has('ref')) {
+            app(ReferralSignupService::class)->storeReferralCodeInSession(request('ref'));
+        }
     }
     
     protected function getCreatedNotificationTitle(): ?string

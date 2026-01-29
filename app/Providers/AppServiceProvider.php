@@ -12,6 +12,8 @@ use App\Observers\BusinessObserver;
 use App\Observers\LeadObserver;
 use App\Observers\ReviewObserver;
 use App\Observers\UserObserver;
+use Filament\Support\Assets\Js;
+use Filament\Support\Facades\FilamentAsset;
 use App\Listeners\SyncLaravelNotificationToCustomTable;
 use Illuminate\Notifications\Events\NotificationSent;
 use Illuminate\Support\ServiceProvider;
@@ -56,5 +58,6 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(function (SocialiteWasCalled $event) {
             $event->extendSocialite('apple', \SocialiteProviders\Apple\Provider::class);
         });
+
     }
 }

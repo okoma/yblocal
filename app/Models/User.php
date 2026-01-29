@@ -248,6 +248,33 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
     }
 
     /**
+     * Customer referral wallet (commission balance; customers who refer businesses)
+     */
+    public function customerReferralWallet()
+    {
+        return $this->hasOne(CustomerReferralWallet::class);
+    }
+
+    /**
+     * Customer referrals (businesses this customer referred; 10% commission on their payments)
+     */
+    public function customerReferrals()
+    {
+        return $this->hasMany(CustomerReferral::class, 'referrer_user_id');
+    }
+
+    /**
+     * Get or create customer referral wallet (for commission balance).
+     */
+    public function getOrCreateCustomerReferralWallet(): CustomerReferralWallet
+    {
+        return CustomerReferralWallet::firstOrCreate(
+            ['user_id' => $this->id],
+            ['balance' => 0, 'currency' => 'NGN']
+        );
+    }
+
+    /**
      * Business Manager assignments
      */
     public function businessManagerAssignments()
@@ -604,6 +631,33 @@ public function getPreferencesAttribute()
         if (!$this->isAdmin()) {
             $this->assignRole(UserRole::CUSTOMER);
         }
+    }
+
+    // ============================================
+    // Email Verification
+    // ============================================
+
+    /**
+     * Send the email verification notification.
+     * Override to use Filament's panel-aware verification URLs.
+     */
+    public function sendEmailVerificationNotification(): void
+    {
+        // Determine which panel the user should verify from based on their role
+        $panelId = match(true) {
+            $this->isCustomer() => 'customer',
+            $this->isBusinessOwner() => 'business',
+            default => 'customer', // fallback
+        };
+
+        // Get the Filament panel instance
+        $panel = \Filament\Facades\Filament::getPanel($panelId);
+        
+        // Get Filament's verification URL for this user
+        $verificationUrl = $panel->getVerifyEmailUrl($this);
+        
+        // Create and send a custom verification notification with Filament's URL
+        $this->notify(new \App\Notifications\VerifyEmailNotification($verificationUrl));
     }
 
     // ============================================

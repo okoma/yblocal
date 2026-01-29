@@ -4,6 +4,7 @@ namespace App\Filament\Business\Pages\Auth;
 
 use App\Enums\UserRole;
 use App\Models\User;
+use App\Services\ReferralSignupService;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Pages\Auth\Register as BaseRegister;
@@ -13,6 +14,14 @@ use Illuminate\Validation\Rules\Password;
 class Register extends BaseRegister
 {
     protected static string $view = 'filament.business.auth.register';
+
+    public function mount(): void
+    {
+        parent::mount();
+        if (request()->has('ref')) {
+            app(ReferralSignupService::class)->storeReferralCodeInSession(request('ref'));
+        }
+    }
 
     public function form(Form $form): Form
     {
@@ -48,11 +57,25 @@ class Register extends BaseRegister
 
     protected function handleRegistration(array $data): User
     {
-        return User::create([
+        $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => $data['password'], // Already hashed in form
             'role' => UserRole::BUSINESS_OWNER,
         ]);
+
+        // Send email verification notification automatically
+        $user->sendEmailVerificationNotification();
+
+        return $user;
+    }
+
+    /**
+     * Redirect to create business page after registration
+     * Email verification notice will show on dashboard after business is created
+     */
+    protected function getRedirectUrl(): string
+    {
+        return \App\Filament\Business\Resources\BusinessResource::getUrl('create');
     }
 }

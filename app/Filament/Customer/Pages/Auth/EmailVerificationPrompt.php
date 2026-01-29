@@ -2,9 +2,9 @@
 
 namespace App\Filament\Customer\Pages\Auth;
 
-use Filament\Notifications\Auth\VerifyEmail;
 use Filament\Notifications\Notification;
 use Filament\Pages\Auth\EmailVerification\EmailVerificationPrompt as BaseEmailVerificationPrompt;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 
 class EmailVerificationPrompt extends BaseEmailVerificationPrompt
@@ -20,10 +20,8 @@ class EmailVerificationPrompt extends BaseEmailVerificationPrompt
             return;
         }
 
-        $notification = new VerifyEmail();
-        $notification->url = filament()->getVerifyEmailUrl($user);
-        
-        $user->notify($notification);
+        // Use Laravel's built-in VerifyEmail notification which sends actual emails
+        $user->sendEmailVerificationNotification();
 
         Notification::make()
             ->title('Verification email has been resent.')

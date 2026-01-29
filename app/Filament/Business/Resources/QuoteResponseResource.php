@@ -20,13 +20,13 @@ class QuoteResponseResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
     
-    protected static ?string $navigationLabel = 'My Quotes';
+    protected static ?string $navigationLabel = 'My Responses';
     
     protected static ?string $modelLabel = 'My Submissions';
     
     protected static ?string $navigationGroup = 'Quotes';
     
-    protected static ?int $navigationSort = 0;
+    protected static ?int $navigationSort = 2;
 
     public static function getEloquentQuery(): Builder
     {

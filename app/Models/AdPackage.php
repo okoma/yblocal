@@ -94,4 +94,13 @@ class AdPackage extends Model
         if ($this->duration_days == 0) return 0;
         return $this->price / $this->duration_days;
     }
+
+    /**
+     * Get the credit cost for this package (1 credit = NGN 10)
+     * So NGN 100 = 10 credits, NGN 1000 = 100 credits, etc.
+     */
+    public function getCreditsCost(): int
+    {
+        return (int) ceil($this->price / 10);
+    }
 }

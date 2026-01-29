@@ -76,7 +76,7 @@ class AvailableQuoteRequestsWidget extends BaseWidget
                     ->color('primary'),
             ])
             ->defaultSort('created_at', 'desc')
-            ->heading('Available Quote Requests')
+            ->heading('Quote Requests')
             ->description('Quote requests matching your business category and location')
             ->emptyStateHeading('No available quote requests')
             ->emptyStateDescription('New quote requests matching your business will appear here')

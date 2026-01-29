@@ -21,11 +21,13 @@ class QuoteRequestResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
     
-    protected static ?string $navigationLabel = 'Quote Requests';
+    protected static ?string $navigationLabel = 'My Quote Requests';
+    
+    protected static ?string $navigationGroup = 'Quote';
     
     protected static ?string $modelLabel = 'Quote Request';
     
-    protected static ?int $navigationSort = 5;
+    protected static ?int $navigationSort = 2;
 
     public static function getEloquentQuery(): Builder
     {
@@ -228,5 +230,24 @@ class QuoteRequestResource extends Resource
             'view' => Pages\ViewQuoteRequest::route('/{record}'),
             'edit' => Pages\EditQuoteRequest::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Show count of new quote responses for customer's quote requests
+     */
+    public static function getNavigationBadge(): ?string
+    {
+        $newResponsesCount = \App\Models\QuoteResponse::whereHas('quoteRequest', function ($query) {
+            $query->where('user_id', Auth::id());
+        })
+        ->where('status', 'submitted')
+        ->count();
+
+        return $newResponsesCount > 0 ? (string) $newResponsesCount : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'success';
     }
 }

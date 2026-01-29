@@ -14,7 +14,7 @@ class ListQuoteRequests extends ListRecords
     {
         return [
             Actions\CreateAction::make()
-                ->label('New Quote Request')
+                ->label('Request a Quote')
                 ->icon('heroicon-o-plus-circle'),
         ];
     }

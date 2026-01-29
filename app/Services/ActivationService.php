@@ -14,9 +14,14 @@ use Illuminate\Support\Facades\Log;
  * Single place for completing transactions and activating payables
  * (Subscription, AdCampaign, Wallet). Used by webhooks, callbacks,
  * wallet payments, and admin "mark as completed".
+ * After activation, customer referral commission (10%) is processed if applicable.
  */
 class ActivationService
 {
+    public function __construct(
+        protected ReferralCommissionService $referralCommissionService
+    ) {}
+
     /**
      * Complete a transaction and activate its payable.
      * Idempotent: skips if already processed (paid_at set).
@@ -34,6 +39,9 @@ class ActivationService
 
         $transaction->markAsPaid();
         $this->activatePayable($transaction);
+
+        // Process customer referral commission (10% when referred business pays)
+        $this->referralCommissionService->processCustomerCommission($transaction);
     }
 
     /**

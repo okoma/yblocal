@@ -516,6 +516,386 @@ class PaymentService
             return PaymentResult::failed('Wallet payment failed. Please try again.');
         }
     }
+    
+    // ==========================================
+    // WALLET-SPECIFIC OPERATIONS
+    // ==========================================
+    
+    /**
+     * Add funds to wallet
+     * 
+     * @param Wallet $wallet
+     * @param float $amount
+     * @param int $gatewayId
+     * @param array $metadata
+     * @return PaymentResult
+     */
+    public function addFunds(
+        Wallet $wallet,
+        float $amount,
+        int $gatewayId,
+        array $metadata = []
+    ): PaymentResult {
+        try {
+            // Validate wallet
+            if (!$wallet || !$wallet->id) {
+                return PaymentResult::failed('Invalid wallet.');
+            }
+            
+            // Get user
+            $user = $wallet->user;
+            if (!$user) {
+                return PaymentResult::failed('Wallet user not found.');
+            }
+            
+            // Merge metadata
+            $metadata = array_merge([
+                'type' => 'wallet_funding',
+                'wallet_id' => $wallet->id,
+            ], $metadata);
+            
+            // Initialize payment
+            return $this->initializePayment(
+                user: $user,
+                amount: $amount,
+                gatewayId: $gatewayId,
+                payable: $wallet,
+                metadata: $metadata
+            );
+            
+        } catch (\Exception $e) {
+            Log::error('Add funds failed', [
+                'wallet_id' => $wallet->id ?? null,
+                'amount' => $amount,
+                'error' => $e->getMessage(),
+            ]);
+            
+            return PaymentResult::failed('Unable to add funds. Please try again.');
+        }
+    }
+    
+    /**
+     * Purchase ad credits
+     * 
+     * @param Wallet $wallet
+     * @param int $credits
+     * @param int $gatewayId
+     * @param array $metadata
+     * @return PaymentResult
+     */
+    public function purchaseAdCredits(
+        Wallet $wallet,
+        int $credits,
+        int $gatewayId,
+        array $metadata = []
+    ): PaymentResult {
+        try {
+            // Validate
+            if (!$wallet || !$wallet->id) {
+                return PaymentResult::failed('Invalid wallet.');
+            }
+            
+            if ($credits < 10) {
+                return PaymentResult::failed('Minimum 10 credits required.');
+            }
+            
+            // Calculate amount (1 credit = ₦10)
+            $amount = $credits * 10;
+            
+            // Get gateway
+            $gateway = PaymentGateway::find($gatewayId);
+            if (!$gateway) {
+                return PaymentResult::failed('Invalid payment method.');
+            }
+            
+            // Merge metadata
+            $metadata = array_merge([
+                'type' => 'credit_purchase',
+                'credits' => $credits,
+                'wallet_id' => $wallet->id,
+            ], $metadata);
+            
+            // If using wallet payment, handle directly
+            if ($gateway->isWallet()) {
+                return $this->purchaseCreditsWithWallet($wallet, $credits, $amount);
+            }
+            
+            // Otherwise, initialize payment through gateway
+            return $this->initializePayment(
+                user: $wallet->user,
+                amount: $amount,
+                gatewayId: $gatewayId,
+                payable: $wallet,
+                metadata: $metadata
+            );
+            
+        } catch (\Exception $e) {
+            Log::error('Purchase ad credits failed', [
+                'wallet_id' => $wallet->id ?? null,
+                'credits' => $credits,
+                'error' => $e->getMessage(),
+            ]);
+            
+            return PaymentResult::failed('Unable to purchase credits. Please try again.');
+        }
+    }
+    
+    /**
+     * Purchase quote credits
+     * 
+     * @param Wallet $wallet
+     * @param int $credits
+     * @param int $gatewayId
+     * @param array $metadata
+     * @return PaymentResult
+     */
+    public function purchaseQuoteCredits(
+        Wallet $wallet,
+        int $credits,
+        int $gatewayId,
+        array $metadata = []
+    ): PaymentResult {
+        try {
+            // Validate
+            if (!$wallet || !$wallet->id) {
+                return PaymentResult::failed('Invalid wallet.');
+            }
+            
+            if ($credits < 1) {
+                return PaymentResult::failed('Minimum 1 quote credit required.');
+            }
+            
+            // Calculate amount (1 quote credit = ₦100)
+            $amount = $credits * 100;
+            
+            // Get gateway
+            $gateway = PaymentGateway::find($gatewayId);
+            if (!$gateway) {
+                return PaymentResult::failed('Invalid payment method.');
+            }
+            
+            // Merge metadata
+            $metadata = array_merge([
+                'type' => 'quote_credit_purchase',
+                'quote_credits' => $credits,
+                'wallet_id' => $wallet->id,
+            ], $metadata);
+            
+            // If using wallet payment, handle directly
+            if ($gateway->isWallet()) {
+                return $this->purchaseQuoteCreditsWithWallet($wallet, $credits, $amount);
+            }
+            
+            // Otherwise, initialize payment through gateway
+            return $this->initializePayment(
+                user: $wallet->user,
+                amount: $amount,
+                gatewayId: $gatewayId,
+                payable: $wallet,
+                metadata: $metadata
+            );
+            
+        } catch (\Exception $e) {
+            Log::error('Purchase quote credits failed', [
+                'wallet_id' => $wallet->id ?? null,
+                'credits' => $credits,
+                'error' => $e->getMessage(),
+            ]);
+            
+            return PaymentResult::failed('Unable to purchase quote credits. Please try again.');
+        }
+    }
+    
+    /**
+     * Request withdrawal from wallet
+     * 
+     * @param Wallet $wallet
+     * @param float $amount
+     * @param array $bankDetails
+     * @return PaymentResult
+     */
+    public function requestWithdrawal(
+        Wallet $wallet,
+        float $amount,
+        array $bankDetails
+    ): PaymentResult {
+        try {
+            // Validate
+            if (!$wallet || !$wallet->id) {
+                return PaymentResult::failed('Invalid wallet.');
+            }
+            
+            if ($amount < 1000) {
+                return PaymentResult::failed('Minimum withdrawal amount is ₦1,000.');
+            }
+            
+            if (!$wallet->hasBalance($amount)) {
+                $shortfall = $amount - $wallet->balance;
+                return PaymentResult::failed(sprintf(
+                    'Insufficient balance. You need ₦%s more.',
+                    number_format($shortfall, 2)
+                ));
+            }
+            
+            // Validate bank details
+            $required = ['account_number', 'account_name', 'bank_name'];
+            foreach ($required as $field) {
+                if (empty($bankDetails[$field])) {
+                    return PaymentResult::failed("Missing required field: {$field}");
+                }
+            }
+            
+            DB::beginTransaction();
+            
+            try {
+                // Create withdrawal transaction (deduct from wallet)
+                $transaction = $wallet->withdraw(
+                    $amount,
+                    "Withdrawal request to {$bankDetails['bank_name']} - {$bankDetails['account_number']}",
+                    null,
+                    [
+                        'withdrawal_type' => 'bank_transfer',
+                        'status' => 'pending_approval',
+                    ]
+                );
+                
+                // Create withdrawal request for admin approval
+                $withdrawalRequest = \App\Models\WithdrawalRequest::create([
+                    'user_id' => $wallet->user_id,
+                    'wallet_id' => $wallet->id,
+                    'amount' => $amount,
+                    'bank_name' => $bankDetails['bank_name'],
+                    'account_name' => $bankDetails['account_name'],
+                    'account_number' => $bankDetails['account_number'],
+                    'sort_code' => $bankDetails['sort_code'] ?? null,
+                    'status' => 'pending',
+                    'transaction_id' => $transaction->id,
+                ]);
+                
+                DB::commit();
+                
+                Log::info('Withdrawal request created', [
+                    'wallet_id' => $wallet->id,
+                    'amount' => $amount,
+                    'withdrawal_request_id' => $withdrawalRequest->id,
+                ]);
+                
+                return PaymentResult::success('Withdrawal request submitted. Processing time: 24-48 hours.');
+                
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
+            }
+            
+        } catch (\Exception $e) {
+            Log::error('Withdrawal request failed', [
+                'wallet_id' => $wallet->id ?? null,
+                'amount' => $amount,
+                'error' => $e->getMessage(),
+            ]);
+            
+            return PaymentResult::failed('Unable to process withdrawal. Please try again.');
+        }
+    }
+    
+    /**
+     * Purchase ad credits directly with wallet balance
+     */
+    protected function purchaseCreditsWithWallet(Wallet $wallet, int $credits, float $amount): PaymentResult
+    {
+        try {
+            // Check balance
+            if (!$wallet->hasBalance($amount)) {
+                $shortfall = $amount - $wallet->balance;
+                return PaymentResult::failed(sprintf(
+                    'Insufficient balance. You need ₦%s more. Current balance: ₦%s',
+                    number_format($shortfall, 2),
+                    number_format($wallet->balance, 2)
+                ));
+            }
+            
+            DB::beginTransaction();
+            
+            try {
+                // Deduct from balance and add credits in one operation
+                $wallet->purchase($amount, "Purchased {$credits} ad credits", null, $credits);
+                
+                DB::commit();
+                
+                Log::info('Ad credits purchased with wallet', [
+                    'wallet_id' => $wallet->id,
+                    'credits' => $credits,
+                    'amount' => $amount,
+                ]);
+                
+                return PaymentResult::success("{$credits} ad credits added to your account.");
+                
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
+            }
+            
+        } catch (\Exception $e) {
+            Log::error('Wallet credit purchase failed', [
+                'wallet_id' => $wallet->id,
+                'credits' => $credits,
+                'error' => $e->getMessage(),
+            ]);
+            
+            return PaymentResult::failed('Unable to purchase credits. Please try again.');
+        }
+    }
+    
+    /**
+     * Purchase quote credits directly with wallet balance
+     */
+    protected function purchaseQuoteCreditsWithWallet(Wallet $wallet, int $credits, float $amount): PaymentResult
+    {
+        try {
+            // Check balance
+            if (!$wallet->hasBalance($amount)) {
+                $shortfall = $amount - $wallet->balance;
+                return PaymentResult::failed(sprintf(
+                    'Insufficient balance. You need ₦%s more. Current balance: ₦%s',
+                    number_format($shortfall, 2),
+                    number_format($wallet->balance, 2)
+                ));
+            }
+            
+            DB::beginTransaction();
+            
+            try {
+                // Deduct from balance
+                $wallet->withdraw($amount, "Purchased {$credits} quote credits");
+                
+                // Add quote credits
+                $wallet->addQuoteCredits($credits, "Purchased {$credits} quote credits", null, $amount);
+                
+                DB::commit();
+                
+                Log::info('Quote credits purchased with wallet', [
+                    'wallet_id' => $wallet->id,
+                    'credits' => $credits,
+                    'amount' => $amount,
+                ]);
+                
+                return PaymentResult::success("{$credits} quote credits added to your account.");
+                
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
+            }
+            
+        } catch (\Exception $e) {
+            Log::error('Wallet quote credit purchase failed', [
+                'wallet_id' => $wallet->id,
+                'credits' => $credits,
+                'error' => $e->getMessage(),
+            ]);
+            
+            return PaymentResult::failed('Unable to purchase quote credits. Please try again.');
+        }
+    }
 }
 
 /**

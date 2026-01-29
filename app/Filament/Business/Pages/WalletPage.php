@@ -21,21 +21,15 @@ use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
 use Filament\Forms;
 use Filament\Notifications\Notification;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class WalletPage extends Page implements HasTable, HasActions
 {
     use InteractsWithTable, InteractsWithActions;
 
     protected static ?string $navigationIcon = 'heroicon-o-wallet';
-
     protected static ?string $navigationLabel = 'My Wallet';
-
     protected static ?string $navigationGroup = 'Billing & Marketing';
-
     protected static ?int $navigationSort = 1;
-
     protected static string $view = 'filament.business.pages.wallet';
 
     public function getWallet()
@@ -47,7 +41,6 @@ class WalletPage extends Page implements HasTable, HasActions
             throw new \Exception('No active business selected. Please select a business first.');
         }
         
-        // Get or create wallet for the active business
         return Wallet::firstOrCreate(
             ['business_id' => $businessId],
             [
@@ -63,429 +56,376 @@ class WalletPage extends Page implements HasTable, HasActions
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('add_funds')
-                ->label('Add Fund')
-                ->icon('heroicon-o-plus-circle')
-                ->color('success')
-                ->modalWidth('lg')
-                ->form([
-                    Forms\Components\TextInput::make('amount')
-                        ->label('Amount (₦)')
-                        ->numeric()
-                        ->required()
-                        ->minValue(100)
-                        ->maxValue(1000000)
-                        ->prefix('₦')
-                        ->live(debounce: 500)
-                        ->helperText('Minimum: ₦100, Maximum: ₦1,000,000'),
-
-                    Forms\Components\Select::make('payment_gateway_id')
-                        ->label('Payment Method')
-                        ->options(function () {
-                            return PaymentGateway::where('is_active', true)
-                                ->where('is_enabled', true)
-                                ->where('slug', '!=', 'wallet') // Can't use wallet to fund wallet
-                                ->pluck('name', 'id');
-                        })
-                        ->native(false)
-                        ->required()
-                        ->live()
-                        ->afterStateUpdated(function (Forms\Set $set) {
-                            // Clear proof upload when payment method changes
-                            $set('payment_proof', null);
-                        })
-                        ->helperText('Select your preferred payment method'),
-
-                    // Payment Summary (shown for all payment methods)
-                    Forms\Components\Section::make('Payment Summary')
-                        ->schema([
-                            Forms\Components\Placeholder::make('summary_amount')
-                                ->label('Amount to Pay')
-                                ->content(fn (Forms\Get $get) => '₦' . number_format($get('amount') ?? 0, 2))
-                                ->extraAttributes(['class' => 'text-2xl font-bold text-primary-600 dark:text-primary-400']),
-                        ])
-                        ->visible(fn (Forms\Get $get) => $get('amount') > 0 && $get('payment_gateway_id'))
-                        ->columnSpanFull(),
-
-                    // Bank Transfer Details (shown only when bank transfer is selected)
-                    Forms\Components\Section::make('Bank Transfer Details')
-                        ->schema([
-                            Forms\Components\Placeholder::make('bank_details')
-                                ->label('')
-                                ->content(function (Forms\Get $get) {
-                                    $gatewayId = $get('payment_gateway_id');
-                                    if (!$gatewayId) return '';
-                                    
-                                    $gateway = PaymentGateway::find($gatewayId);
-                                    if (!$gateway || !$gateway->isBankTransfer()) return '';
-                                    
-                                    $bankDetails = $gateway->bank_account_details ?? [];
-                                    $accountNumber = $bankDetails['account_number'] ?? 'N/A';
-                                    $accountName = $bankDetails['account_name'] ?? 'N/A';
-                                    $bankName = $bankDetails['bank_name'] ?? 'N/A';
-                                    
-                                    return new \Illuminate\Support\HtmlString(
-                                        view('filament.components.bank-transfer-details', [
-                                            'accountNumber' => $accountNumber,
-                                            'accountName' => $accountName,
-                                            'bankName' => $bankName,
-                                        ])->render()
-                                    );
-                                })
-                                ->columnSpanFull(),
-
-                            Forms\Components\Placeholder::make('transfer_instructions')
-                                ->label('')
-                                ->content('After making the transfer, upload your payment proof below. Your wallet will be credited within 24-48 hours after verification.')
-                                ->extraAttributes(['class' => 'text-sm text-gray-600 dark:text-gray-400']),
-                        ])
-                        ->visible(fn (Forms\Get $get) => $this->isBankTransferSelected($get('payment_gateway_id')))
-                        ->collapsible()
-                        ->collapsed(false),
-
-                    // Payment Proof Section (separate)
-                    Forms\Components\Section::make('Payment Proof')
-                        ->schema([
-                            Forms\Components\FileUpload::make('payment_proof')
-                                ->label('Upload Proof of Payment')
-                                ->helperText('Upload receipt or screenshot of your transfer (JPEG, PNG, or PDF)')
-                                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'])
-                                ->maxSize(5120) // 5MB
-                                ->directory('transfer-proofs')
-                                ->visibility('private')
-                                ->required()
-                                ->downloadable()
-                                ->previewable()
-                                ->columnSpanFull(),
-                        ])
-                        ->visible(fn (Forms\Get $get) => $this->isBankTransferSelected($get('payment_gateway_id')))
-                        ->collapsible()
-                        ->collapsed(false),
-                ])
-                ->action(function (array $data) {
-                    return $this->processFunding($data);
-                })
-                ->modalSubmitActionLabel('Add Fund')
-                ->modalFooterActionsAlignment('right'),
-
-            Action::make('buy_credits')
-                ->label('Buy Ad Credits')
-                ->icon('heroicon-o-sparkles')
-                ->color('primary')
-                ->modalWidth('lg')
-                ->form([
-                    Forms\Components\Select::make('credit_package')
-                        ->label('Select Credit Package')
-                        ->options([
-                            '100' => '100 Credits - ₦1,000',
-                            '500' => '500 Credits - ₦5,000',
-                            '1000' => '1,000 Credits - ₦10,000',
-                            '2500' => '2,500 Credits - ₦25,000',
-                            '5000' => '5,000 Credits - ₦50,000',
-                            '10000' => '10,000 Credits - ₦100,000',
-                            'custom' => 'Custom Amount',
-                        ])
-                        ->native(false)
-                        ->required()
-                        ->live()
-                        ->afterStateUpdated(function (Forms\Set $set, $state) {
-                            if ($state && $state !== 'custom') {
-                                $set('credits', (int) $state);
-                                $set('amount', (int) $state * 10);
-                            } else {
-                                $set('credits', null);
-                                $set('amount', null);
-                            }
-                        })
-                        ->helperText('Choose a package or enter custom amount'),
-
-                    Forms\Components\TextInput::make('credits')
-                        ->label('Custom Credits')
-                        ->numeric()
-                        ->required(fn (Forms\Get $get) => $get('credit_package') === 'custom')
-                        ->minValue(10)
-                        ->maxValue(10000)
-                        ->live(debounce: 500)
-                        ->afterStateUpdated(fn (Forms\Set $set, $state) => 
-                            $set('amount', $state ? ((int) $state * 10) : 0)
-                        )
-                        ->visible(fn (Forms\Get $get) => $get('credit_package') === 'custom')
-                        ->helperText('Minimum: 10 credits, Maximum: 10,000 credits'),
-                    
-                    Forms\Components\Hidden::make('amount'),
-
-                    Forms\Components\Select::make('payment_gateway_id')
-                        ->label('Payment Method')
-                        ->options(function () {
-                            return PaymentGateway::where('is_active', true)
-                                ->where('is_enabled', true)
-                                ->pluck('name', 'id');
-                        })
-                        ->native(false)
-                        ->required()
-                        ->live()
-                        ->helperText('Select your preferred payment method'),
-
-                    // Payment Summary (shown for all payment methods)
-                    Forms\Components\Section::make('Payment Summary')
-                        ->schema([
-                            Forms\Components\Placeholder::make('credits_summary')
-                                ->label('Credits to Purchase')
-                                ->content(fn (Forms\Get $get) => number_format($get('credits') ?? 0) . ' Credits')
-                                ->extraAttributes(['class' => 'text-xl font-bold text-primary-600 dark:text-primary-400']),
-                            
-                            Forms\Components\Placeholder::make('amount_summary')
-                                ->label('Total Amount')
-                                ->content(fn (Forms\Get $get) => '₦' . number_format(($get('credits') ?? 0) * 10, 2))
-                                ->extraAttributes(['class' => 'text-2xl font-bold text-success-600 dark:text-success-400']),
-                        ])
-                        ->columns(2)
-                        ->visible(fn (Forms\Get $get) => $get('credits') > 0 && $get('payment_gateway_id'))
-                        ->columnSpanFull(),
-
-                    // Bank Transfer Details (shown only when bank transfer is selected)
-                    Forms\Components\Section::make('Bank Transfer Details')
-                        ->schema([
-                            Forms\Components\Placeholder::make('bank_details')
-                                ->label('')
-                                ->content(function (Forms\Get $get) {
-                                    $gatewayId = $get('payment_gateway_id');
-                                    if (!$gatewayId) return '';
-                                    
-                                    $gateway = PaymentGateway::find($gatewayId);
-                                    if (!$gateway || !$gateway->isBankTransfer()) return '';
-                                    
-                                    $bankDetails = $gateway->bank_account_details ?? [];
-                                    $accountNumber = $bankDetails['account_number'] ?? 'N/A';
-                                    $accountName = $bankDetails['account_name'] ?? 'N/A';
-                                    $bankName = $bankDetails['bank_name'] ?? 'N/A';
-                                    
-                                    return new \Illuminate\Support\HtmlString(
-                                        view('filament.components.bank-transfer-details', [
-                                            'accountNumber' => $accountNumber,
-                                            'accountName' => $accountName,
-                                            'bankName' => $bankName,
-                                        ])->render()
-                                    );
-                                })
-                                ->columnSpanFull(),
-
-                            Forms\Components\Placeholder::make('transfer_instructions')
-                                ->label('')
-                                ->content('After making the transfer, upload your payment proof below. Credits will be added within 24-48 hours after verification.')
-                                ->extraAttributes(['class' => 'text-sm text-gray-600 dark:text-gray-400']),
-                        ])
-                        ->visible(fn (Forms\Get $get) => $this->isBankTransferSelected($get('payment_gateway_id')))
-                        ->collapsible()
-                        ->collapsed(false),
-
-                    // Payment Proof Section (separate)
-                    Forms\Components\Section::make('Payment Proof')
-                        ->schema([
-                            Forms\Components\FileUpload::make('payment_proof')
-                                ->label('Upload Proof of Payment')
-                                ->helperText('Upload receipt or screenshot of your transfer (JPEG, PNG, or PDF)')
-                                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'])
-                                ->maxSize(5120) // 5MB
-                                ->directory('credit-transfer-proofs')
-                                ->visibility('private')
-                                ->required()
-                                ->downloadable()
-                                ->previewable()
-                                ->columnSpanFull(),
-                        ])
-                        ->visible(fn (Forms\Get $get) => $this->isBankTransferSelected($get('payment_gateway_id')))
-                        ->collapsible()
-                        ->collapsed(false),
-                ])
-                ->action(function (array $data) {
-                    return $this->processCreditPurchase($data);
-                })
-                ->modalSubmitActionLabel('Buy Credits')
-                ->modalFooterActionsAlignment('right'),
-
-            Action::make('buy_quote_credits')
-                ->label('Buy Quote Credits')
-                ->icon('heroicon-o-document-text')
-                ->color('info')
-                ->modalWidth('lg')
-                ->form([
-                    Forms\Components\Select::make('credit_package')
-                        ->label('Select Quote Credit Package')
-                        ->options([
-                            '10' => '10 Quote Credits - ₦1,000',
-                            '25' => '25 Quote Credits - ₦2,500',
-                            '50' => '50 Quote Credits - ₦5,000',
-                            '100' => '100 Quote Credits - ₦10,000',
-                            '250' => '250 Quote Credits - ₦25,000',
-                            '500' => '500 Quote Credits - ₦50,000',
-                            'custom' => 'Custom Amount',
-                        ])
-                        ->native(false)
-                        ->required()
-                        ->live()
-                        ->afterStateUpdated(function (Forms\Set $set, $state) {
-                            if ($state && $state !== 'custom') {
-                                $set('credits', (int) $state);
-                                $set('amount', (int) $state * 100);
-                            } else {
-                                $set('credits', null);
-                                $set('amount', null);
-                            }
-                        })
-                        ->helperText('Choose a package or enter custom amount'),
-
-                    Forms\Components\TextInput::make('credits')
-                        ->label('Custom Quote Credits')
-                        ->numeric()
-                        ->required(fn (Forms\Get $get) => $get('credit_package') === 'custom')
-                        ->minValue(1)
-                        ->maxValue(1000)
-                        ->live(debounce: 500)
-                        ->afterStateUpdated(fn (Forms\Set $set, $state) => 
-                            $set('amount', $state ? ((int) $state * 100) : 0)
-                        )
-                        ->visible(fn (Forms\Get $get) => $get('credit_package') === 'custom')
-                        ->helperText('Minimum: 1 credit, Maximum: 1,000 credits (₦100 per credit)'),
-                    
-                    Forms\Components\Hidden::make('amount'),
-
-                    Forms\Components\Select::make('payment_gateway_id')
-                        ->label('Payment Method')
-                        ->options(function () {
-                            return PaymentGateway::where('is_active', true)
-                                ->where('is_enabled', true)
-                                ->pluck('name', 'id');
-                        })
-                        ->native(false)
-                        ->required()
-                        ->live()
-                        ->helperText('Select your preferred payment method'),
-
-                    Forms\Components\Section::make('Payment Summary')
-                        ->schema([
-                            Forms\Components\Placeholder::make('credits_summary')
-                                ->label('Quote Credits to Purchase')
-                                ->content(fn (Forms\Get $get) => number_format($get('credits') ?? 0) . ' Quote Credits')
-                                ->extraAttributes(['class' => 'text-xl font-bold text-primary-600 dark:text-primary-400']),
-                            
-                            Forms\Components\Placeholder::make('amount_summary')
-                                ->label('Total Amount')
-                                ->content(fn (Forms\Get $get) => '₦' . number_format(($get('credits') ?? 0) * 100, 2))
-                                ->extraAttributes(['class' => 'text-2xl font-bold text-success-600 dark:text-success-400']),
-                        ])
-                        ->columns(2)
-                        ->visible(fn (Forms\Get $get) => $get('credits') > 0 && $get('payment_gateway_id'))
-                        ->columnSpanFull(),
-
-                    Forms\Components\Section::make('Bank Transfer Details')
-                        ->schema([
-                            Forms\Components\Placeholder::make('bank_details')
-                                ->label('')
-                                ->content(function (Forms\Get $get) {
-                                    $gatewayId = $get('payment_gateway_id');
-                                    if (!$gatewayId) return '';
-                                    
-                                    $gateway = PaymentGateway::find($gatewayId);
-                                    if (!$gateway || !$gateway->isBankTransfer()) return '';
-                                    
-                                    $bankDetails = $gateway->bank_account_details ?? [];
-                                    $accountNumber = $bankDetails['account_number'] ?? 'N/A';
-                                    $accountName = $bankDetails['account_name'] ?? 'N/A';
-                                    $bankName = $bankDetails['bank_name'] ?? 'N/A';
-                                    
-                                    return new \Illuminate\Support\HtmlString(
-                                        view('filament.components.bank-transfer-details', [
-                                            'accountNumber' => $accountNumber,
-                                            'accountName' => $accountName,
-                                            'bankName' => $bankName,
-                                        ])->render()
-                                    );
-                                })
-                                ->columnSpanFull(),
-
-                            Forms\Components\Placeholder::make('transfer_instructions')
-                                ->label('')
-                                ->content('After making the transfer, upload your payment proof below. Quote credits will be added within 24-48 hours after verification.')
-                                ->extraAttributes(['class' => 'text-sm text-gray-600 dark:text-gray-400']),
-                        ])
-                        ->visible(fn (Forms\Get $get) => $this->isBankTransferSelected($get('payment_gateway_id')))
-                        ->collapsible()
-                        ->collapsed(false),
-
-                    Forms\Components\Section::make('Payment Proof')
-                        ->schema([
-                            Forms\Components\FileUpload::make('payment_proof')
-                                ->label('Upload Proof of Payment')
-                                ->helperText('Upload receipt or screenshot of your transfer (JPEG, PNG, or PDF)')
-                                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'])
-                                ->maxSize(5120)
-                                ->directory('quote-credit-transfer-proofs')
-                                ->visibility('private')
-                                ->required()
-                                ->downloadable()
-                                ->previewable()
-                                ->columnSpanFull(),
-                        ])
-                        ->visible(fn (Forms\Get $get) => $this->isBankTransferSelected($get('payment_gateway_id')))
-                        ->collapsible()
-                        ->collapsed(false),
-                ])
-                ->action(function (array $data) {
-                    return $this->processQuoteCreditPurchase($data);
-                })
-                ->modalSubmitActionLabel('Buy Quote Credits')
-                ->modalFooterActionsAlignment('right'),
-
-            Action::make('withdraw')
-                ->label('Withdraw Funds')
-                ->icon('heroicon-o-arrow-down-tray')
-                ->color('danger')
-                ->visible(fn () => $this->getWallet()->balance >= 1000)
-                ->modalWidth('md')
-                ->form([
-                    Forms\Components\Placeholder::make('current_balance')
-                        ->label('Current Balance')
-                        ->content(fn () => '₦' . number_format($this->getWallet()->balance, 2)),
-                    
-                    Forms\Components\TextInput::make('amount')
-                        ->label('Withdrawal Amount (₦)')
-                        ->numeric()
-                        ->required()
-                        ->minValue(1000)
-                        ->maxValue(fn () => $this->getWallet()->balance)
-                        ->prefix('₦')
-                        ->helperText('Minimum: ₦1,000 | Processing time: 24-48 hours'),
-
-                    Forms\Components\TextInput::make('account_number')
-                        ->label('Account Number')
-                        ->required()
-                        ->maxLength(10)
-                        ->minLength(10)
-                        ->numeric(),
-                    
-                    Forms\Components\TextInput::make('account_name')
-                        ->label('Account Name')
-                        ->required()
-                        ->maxLength(255),
-                    
-                    Forms\Components\TextInput::make('bank_name')
-                        ->label('Bank Name')
-                        ->required()
-                        ->maxLength(255),
-                    
-                    Forms\Components\Textarea::make('reason')
-                        ->label('Reason for Withdrawal (Optional)')
-                        ->rows(2)
-                        ->maxLength(500),
-                ])
-                ->action(function (array $data) {
-                    return $this->processWithdrawal($data);
-                })
-                ->modalSubmitActionLabel('Withdraw Funds')
-                ->modalFooterActionsAlignment('right'),
+            $this->makeAddFundsAction(),
+            $this->makeBuyCreditsAction(),
+            $this->makeBuyQuoteCreditsAction(),
+            $this->makeWithdrawAction(),
         ];
     }
+    
+    /**
+     * Add Funds Action
+     */
+    protected function makeAddFundsAction(): Action
+    {
+        return Action::make('add_funds')
+            ->label('Add Fund')
+            ->icon('heroicon-o-plus-circle')
+            ->color('success')
+            ->modalWidth('lg')
+            ->form([
+                Forms\Components\TextInput::make('amount')
+                    ->label('Amount (₦)')
+                    ->numeric()
+                    ->required()
+                    ->minValue(100)
+                    ->maxValue(1000000)
+                    ->prefix('₦')
+                    ->live(debounce: 500)
+                    ->helperText('Minimum: ₦100, Maximum: ₦1,000,000'),
+
+                Forms\Components\Select::make('payment_gateway_id')
+                    ->label('Payment Method')
+                    ->options(function () {
+                        return PaymentGateway::where('is_active', true)
+                            ->where('is_enabled', true)
+                            ->where('slug', '!=', 'wallet')
+                            ->pluck('name', 'id');
+                    })
+                    ->native(false)
+                    ->required()
+                    ->live()
+                    ->afterStateUpdated(function (Forms\Set $set) {
+                        $set('payment_proof', null);
+                    })
+                    ->helperText('Select your preferred payment method'),
+
+                Forms\Components\Section::make('Payment Summary')
+                    ->schema([
+                        Forms\Components\Placeholder::make('summary_amount')
+                            ->label('Amount to Pay')
+                            ->content(fn (Forms\Get $get) => '₦' . number_format($get('amount') ?? 0, 2))
+                            ->extraAttributes(['class' => 'text-2xl font-bold text-primary-600 dark:text-primary-400']),
+                    ])
+                    ->visible(fn (Forms\Get $get) => $get('amount') > 0 && $get('payment_gateway_id'))
+                    ->columnSpanFull(),
+
+                Forms\Components\Section::make('Bank Transfer Details')
+                    ->schema([
+                        Forms\Components\Placeholder::make('bank_details')
+                            ->label('')
+                            ->content(function (Forms\Get $get) {
+                                return $this->getBankDetailsContent($get('payment_gateway_id'));
+                            })
+                            ->columnSpanFull(),
+
+                        Forms\Components\Placeholder::make('transfer_instructions')
+                            ->label('')
+                            ->content('After making the transfer, upload your payment proof below. Your wallet will be credited within 24-48 hours after verification.')
+                            ->extraAttributes(['class' => 'text-sm text-gray-600 dark:text-gray-400']),
+                    ])
+                    ->visible(fn (Forms\Get $get) => $this->isBankTransferSelected($get('payment_gateway_id')))
+                    ->collapsible()
+                    ->collapsed(false),
+
+                Forms\Components\Section::make('Payment Proof')
+                    ->schema([
+                        Forms\Components\FileUpload::make('payment_proof')
+                            ->label('Upload Proof of Payment')
+                            ->helperText('Upload receipt or screenshot of your transfer (JPEG, PNG, or PDF)')
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'])
+                            ->maxSize(5120)
+                            ->directory('transfer-proofs')
+                            ->visibility('private')
+                            ->required()
+                            ->downloadable()
+                            ->previewable()
+                            ->columnSpanFull(),
+                    ])
+                    ->visible(fn (Forms\Get $get) => $this->isBankTransferSelected($get('payment_gateway_id')))
+                    ->collapsible()
+                    ->collapsed(false),
+            ])
+            ->action(fn (array $data) => $this->processFunding($data))
+            ->modalSubmitActionLabel('Add Fund')
+            ->modalFooterActionsAlignment('right');
+    }
+    
+    /**
+     * Buy Ad Credits Action
+     */
+    protected function makeBuyCreditsAction(): Action
+    {
+        return Action::make('buy_credits')
+            ->label('Buy Ad Credits')
+            ->icon('heroicon-o-sparkles')
+            ->color('primary')
+            ->modalWidth('lg')
+            ->form([
+                Forms\Components\Select::make('credit_package')
+                    ->label('Select Credit Package')
+                    ->options([
+                        '100' => '100 Credits - ₦1,000',
+                        '500' => '500 Credits - ₦5,000',
+                        '1000' => '1,000 Credits - ₦10,000',
+                        '2500' => '2,500 Credits - ₦25,000',
+                        '5000' => '5,000 Credits - ₦50,000',
+                        '10000' => '10,000 Credits - ₦100,000',
+                        'custom' => 'Custom Amount',
+                    ])
+                    ->native(false)
+                    ->required()
+                    ->live()
+                    ->afterStateUpdated(function (Forms\Set $set, $state) {
+                        if ($state && $state !== 'custom') {
+                            $set('credits', (int) $state);
+                        } else {
+                            $set('credits', null);
+                        }
+                    })
+                    ->helperText('Choose a package or enter custom amount'),
+
+                Forms\Components\TextInput::make('credits')
+                    ->label('Custom Credits')
+                    ->numeric()
+                    ->required(fn (Forms\Get $get) => $get('credit_package') === 'custom')
+                    ->minValue(10)
+                    ->maxValue(10000)
+                    ->visible(fn (Forms\Get $get) => $get('credit_package') === 'custom')
+                    ->helperText('Minimum: 10 credits, Maximum: 10,000 credits'),
+
+                Forms\Components\Select::make('payment_gateway_id')
+                    ->label('Payment Method')
+                    ->options(function () {
+                        return PaymentGateway::where('is_active', true)
+                            ->where('is_enabled', true)
+                            ->pluck('name', 'id');
+                    })
+                    ->native(false)
+                    ->required()
+                    ->live()
+                    ->helperText('Select your preferred payment method'),
+
+                Forms\Components\Section::make('Payment Summary')
+                    ->schema([
+                        Forms\Components\Placeholder::make('credits_summary')
+                            ->label('Credits to Purchase')
+                            ->content(fn (Forms\Get $get) => number_format($get('credits') ?? 0) . ' Credits')
+                            ->extraAttributes(['class' => 'text-xl font-bold text-primary-600 dark:text-primary-400']),
+                        
+                        Forms\Components\Placeholder::make('amount_summary')
+                            ->label('Total Amount')
+                            ->content(fn (Forms\Get $get) => '₦' . number_format(($get('credits') ?? 0) * 10, 2))
+                            ->extraAttributes(['class' => 'text-2xl font-bold text-success-600 dark:text-success-400']),
+                    ])
+                    ->columns(2)
+                    ->visible(fn (Forms\Get $get) => $get('credits') > 0 && $get('payment_gateway_id'))
+                    ->columnSpanFull(),
+
+                Forms\Components\Section::make('Bank Transfer Details')
+                    ->schema([
+                        Forms\Components\Placeholder::make('bank_details')
+                            ->label('')
+                            ->content(fn (Forms\Get $get) => $this->getBankDetailsContent($get('payment_gateway_id')))
+                            ->columnSpanFull(),
+
+                        Forms\Components\Placeholder::make('transfer_instructions')
+                            ->label('')
+                            ->content('After making the transfer, upload your payment proof below. Credits will be added within 24-48 hours after verification.')
+                            ->extraAttributes(['class' => 'text-sm text-gray-600 dark:text-gray-400']),
+                    ])
+                    ->visible(fn (Forms\Get $get) => $this->isBankTransferSelected($get('payment_gateway_id')))
+                    ->collapsible()
+                    ->collapsed(false),
+
+                Forms\Components\Section::make('Payment Proof')
+                    ->schema([
+                        Forms\Components\FileUpload::make('payment_proof')
+                            ->label('Upload Proof of Payment')
+                            ->helperText('Upload receipt or screenshot of your transfer (JPEG, PNG, or PDF)')
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'])
+                            ->maxSize(5120)
+                            ->directory('credit-transfer-proofs')
+                            ->visibility('private')
+                            ->required()
+                            ->downloadable()
+                            ->previewable()
+                            ->columnSpanFull(),
+                    ])
+                    ->visible(fn (Forms\Get $get) => $this->isBankTransferSelected($get('payment_gateway_id')))
+                    ->collapsible()
+                    ->collapsed(false),
+            ])
+            ->action(fn (array $data) => $this->processCreditPurchase($data))
+            ->modalSubmitActionLabel('Buy Credits')
+            ->modalFooterActionsAlignment('right');
+    }
+    
+    /**
+     * Buy Quote Credits Action
+     */
+    protected function makeBuyQuoteCreditsAction(): Action
+    {
+        return Action::make('buy_quote_credits')
+            ->label('Buy Quote Credits')
+            ->icon('heroicon-o-document-text')
+            ->color('info')
+            ->modalWidth('lg')
+            ->form([
+                Forms\Components\Select::make('credit_package')
+                    ->label('Select Quote Credit Package')
+                    ->options([
+                        '10' => '10 Quote Credits - ₦1,000',
+                        '25' => '25 Quote Credits - ₦2,500',
+                        '50' => '50 Quote Credits - ₦5,000',
+                        '100' => '100 Quote Credits - ₦10,000',
+                        '250' => '250 Quote Credits - ₦25,000',
+                        '500' => '500 Quote Credits - ₦50,000',
+                        'custom' => 'Custom Amount',
+                    ])
+                    ->native(false)
+                    ->required()
+                    ->live()
+                    ->afterStateUpdated(function (Forms\Set $set, $state) {
+                        if ($state && $state !== 'custom') {
+                            $set('credits', (int) $state);
+                        } else {
+                            $set('credits', null);
+                        }
+                    })
+                    ->helperText('Choose a package or enter custom amount'),
+
+                Forms\Components\TextInput::make('credits')
+                    ->label('Custom Quote Credits')
+                    ->numeric()
+                    ->required(fn (Forms\Get $get) => $get('credit_package') === 'custom')
+                    ->minValue(1)
+                    ->maxValue(1000)
+                    ->visible(fn (Forms\Get $get) => $get('credit_package') === 'custom')
+                    ->helperText('Minimum: 1 credit, Maximum: 1,000 credits (₦100 per credit)'),
+
+                Forms\Components\Select::make('payment_gateway_id')
+                    ->label('Payment Method')
+                    ->options(function () {
+                        return PaymentGateway::where('is_active', true)
+                            ->where('is_enabled', true)
+                            ->pluck('name', 'id');
+                    })
+                    ->native(false)
+                    ->required()
+                    ->live()
+                    ->helperText('Select your preferred payment method'),
+
+                Forms\Components\Section::make('Payment Summary')
+                    ->schema([
+                        Forms\Components\Placeholder::make('credits_summary')
+                            ->label('Quote Credits to Purchase')
+                            ->content(fn (Forms\Get $get) => number_format($get('credits') ?? 0) . ' Quote Credits')
+                            ->extraAttributes(['class' => 'text-xl font-bold text-primary-600 dark:text-primary-400']),
+                        
+                        Forms\Components\Placeholder::make('amount_summary')
+                            ->label('Total Amount')
+                            ->content(fn (Forms\Get $get) => '₦' . number_format(($get('credits') ?? 0) * 100, 2))
+                            ->extraAttributes(['class' => 'text-2xl font-bold text-success-600 dark:text-success-400']),
+                    ])
+                    ->columns(2)
+                    ->visible(fn (Forms\Get $get) => $get('credits') > 0 && $get('payment_gateway_id'))
+                    ->columnSpanFull(),
+
+                Forms\Components\Section::make('Bank Transfer Details')
+                    ->schema([
+                        Forms\Components\Placeholder::make('bank_details')
+                            ->label('')
+                            ->content(fn (Forms\Get $get) => $this->getBankDetailsContent($get('payment_gateway_id')))
+                            ->columnSpanFull(),
+
+                        Forms\Components\Placeholder::make('transfer_instructions')
+                            ->label('')
+                            ->content('After making the transfer, upload your payment proof below. Quote credits will be added within 24-48 hours after verification.')
+                            ->extraAttributes(['class' => 'text-sm text-gray-600 dark:text-gray-400']),
+                    ])
+                    ->visible(fn (Forms\Get $get) => $this->isBankTransferSelected($get('payment_gateway_id')))
+                    ->collapsible()
+                    ->collapsed(false),
+
+                Forms\Components\Section::make('Payment Proof')
+                    ->schema([
+                        Forms\Components\FileUpload::make('payment_proof')
+                            ->label('Upload Proof of Payment')
+                            ->helperText('Upload receipt or screenshot of your transfer (JPEG, PNG, or PDF)')
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'])
+                            ->maxSize(5120)
+                            ->directory('quote-credit-transfer-proofs')
+                            ->visibility('private')
+                            ->required()
+                            ->downloadable()
+                            ->previewable()
+                            ->columnSpanFull(),
+                    ])
+                    ->visible(fn (Forms\Get $get) => $this->isBankTransferSelected($get('payment_gateway_id')))
+                    ->collapsible()
+                    ->collapsed(false),
+            ])
+            ->action(fn (array $data) => $this->processQuoteCreditPurchase($data))
+            ->modalSubmitActionLabel('Buy Quote Credits')
+            ->modalFooterActionsAlignment('right');
+    }
+    
+    /**
+     * Withdraw Funds Action
+     */
+    protected function makeWithdrawAction(): Action
+    {
+        return Action::make('withdraw')
+            ->label('Withdraw Funds')
+            ->icon('heroicon-o-arrow-down-tray')
+            ->color('danger')
+            ->visible(fn () => $this->getWallet()->balance >= 1000)
+            ->modalWidth('md')
+            ->form([
+                Forms\Components\Placeholder::make('current_balance')
+                    ->label('Current Balance')
+                    ->content(fn () => '₦' . number_format($this->getWallet()->balance, 2)),
+                
+                Forms\Components\TextInput::make('amount')
+                    ->label('Withdrawal Amount (₦)')
+                    ->numeric()
+                    ->required()
+                    ->minValue(1000)
+                    ->maxValue(fn () => $this->getWallet()->balance)
+                    ->prefix('₦')
+                    ->helperText('Minimum: ₦1,000 | Processing time: 24-48 hours'),
+
+                Forms\Components\TextInput::make('account_number')
+                    ->label('Account Number')
+                    ->required()
+                    ->maxLength(10)
+                    ->minLength(10)
+                    ->numeric(),
+                
+                Forms\Components\TextInput::make('account_name')
+                    ->label('Account Name')
+                    ->required()
+                    ->maxLength(255),
+                
+                Forms\Components\TextInput::make('bank_name')
+                    ->label('Bank Name')
+                    ->required()
+                    ->maxLength(255),
+                
+                Forms\Components\Textarea::make('reason')
+                    ->label('Reason for Withdrawal (Optional)')
+                    ->rows(2)
+                    ->maxLength(500),
+            ])
+            ->action(fn (array $data) => $this->processWithdrawal($data))
+            ->modalSubmitActionLabel('Withdraw Funds')
+            ->modalFooterActionsAlignment('right');
+    }
+    
+    // ==========================================
+    // HELPER METHODS
+    // ==========================================
     
     /**
      * Check if bank transfer is selected
@@ -499,91 +439,118 @@ class WalletPage extends Page implements HasTable, HasActions
         $gateway = PaymentGateway::find($gatewayId);
         return $gateway && $gateway->isBankTransfer();
     }
-
+    
+    /**
+     * Get bank details content
+     */
+    protected function getBankDetailsContent(?int $gatewayId)
+    {
+        if (!$gatewayId) {
+            return '';
+        }
+        
+        $gateway = PaymentGateway::find($gatewayId);
+        if (!$gateway || !$gateway->isBankTransfer()) {
+            return '';
+        }
+        
+        $bankDetails = $gateway->bank_account_details ?? [];
+        $accountNumber = $bankDetails['account_number'] ?? 'N/A';
+        $accountName = $bankDetails['account_name'] ?? 'N/A';
+        $bankName = $bankDetails['bank_name'] ?? 'N/A';
+        
+        return new \Illuminate\Support\HtmlString(
+            view('filament.components.bank-transfer-details', [
+                'accountNumber' => $accountNumber,
+                'accountName' => $accountName,
+                'bankName' => $bankName,
+            ])->render()
+        );
+    }
+    
+    /**
+     * Build metadata array for payments
+     */
+    protected function buildMetadata(array $data, string $type): array
+    {
+        $metadata = ['type' => $type];
+        
+        if (!empty($data['payment_proof'])) {
+            $metadata['payment_proof'] = $data['payment_proof'];
+            $metadata['payment_proof_uploaded_at'] = now()->toIso8601String();
+        }
+        
+        if (!empty($data['credits'])) {
+            $metadata['credits'] = $data['credits'];
+        }
+        
+        return $metadata;
+    }
+    
+    /**
+     * Handle payment result
+     */
+    protected function handlePaymentResult($result): mixed
+    {
+        if ($result->requiresRedirect()) {
+            return redirect()->away($result->redirectUrl);
+        }
+        
+        if ($result->isBankTransfer()) {
+            Notification::make()
+                ->success()
+                ->title('Payment Proof Uploaded')
+                ->body($result->message ?? 'Your payment proof has been received and will be verified within 24-48 hours.')
+                ->send();
+            return null;
+        }
+        
+        if ($result->isSuccess()) {
+            Notification::make()
+                ->success()
+                ->title('Success!')
+                ->body($result->message)
+                ->send();
+            return null;
+        }
+        
+        // Failed
+        Notification::make()
+            ->danger()
+            ->title('Payment Error')
+            ->body($result->message)
+            ->send();
+        return null;
+    }
+    
+    // ==========================================
+    // PAYMENT PROCESSING (Delegated to Service)
+    // ==========================================
+    
     /**
      * Process wallet funding
      */
     protected function processFunding(array $data): mixed
     {
         try {
-            $user = auth()->user();
-            $amount = $data['amount'];
-            $gatewayId = $data['payment_gateway_id'];
-            
-            // Get or create wallet
             $wallet = $this->getWallet();
+            $metadata = $this->buildMetadata($data, 'wallet_funding');
             
-            DB::beginTransaction();
+            $result = app(PaymentService::class)->addFunds(
+                wallet: $wallet,
+                amount: $data['amount'],
+                gatewayId: $data['payment_gateway_id'],
+                metadata: $metadata
+            );
             
-            try {
-                // Get gateway to check if it's bank transfer
-                $gateway = PaymentGateway::find($gatewayId);
-                $isBankTransfer = $gateway && $gateway->isBankTransfer();
-                
-                // Prepare metadata
-                $metadata = [
-                    'type' => 'wallet_funding',
-                    'amount' => $amount,
-                ];
-                
-                // Add payment proof if bank transfer
-                if ($isBankTransfer && !empty($data['payment_proof'])) {
-                    $metadata['payment_proof'] = $data['payment_proof'];
-                    $metadata['payment_proof_uploaded_at'] = now()->toIso8601String();
-                }
-                
-                // Initialize payment through service
-                $result = app(PaymentService::class)->initializePayment(
-                    user: $user,
-                    amount: $amount,
-                    gatewayId: $gatewayId,
-                    payable: $wallet,
-                    metadata: $metadata
-                );
-                
-                DB::commit();
-                
-                // Handle payment result
-                if ($result->requiresRedirect()) {
-                    return redirect()->away($result->redirectUrl);
-                } elseif ($result->isBankTransfer()) {
-                    // For bank transfer, show success message about proof upload
-                    Notification::make()
-                        ->success()
-                        ->title('Payment Proof Uploaded')
-                        ->body('Your payment proof has been received. Your wallet will be credited within 24-48 hours after verification.')
-                        ->send();
-                    
-                    return null;
-                } elseif ($result->isSuccess()) {
-                    Notification::make()
-                        ->success()
-                        ->title('Success!')
-                        ->body($result->message)
-                        ->send();
-                    return null;
-                } else {
-                    throw new \Exception($result->message);
-                }
-                
-            } catch (\Exception $e) {
-                DB::rollBack();
-                throw $e;
-            }
+            return $this->handlePaymentResult($result);
             
         } catch (\Exception $e) {
-            Log::error('Wallet funding failed', [
-                'user_id' => auth()->id(),
-                'amount' => $data['amount'] ?? null,
-                'error' => $e->getMessage(),
-            ]);
-            
             Notification::make()
                 ->danger()
-                ->title('Payment Error')
+                ->title('Error')
                 ->body($e->getMessage() ?: 'Unable to process payment. Please try again.')
                 ->send();
-            
             return null;
         }
     }
@@ -594,132 +561,31 @@ class WalletPage extends Page implements HasTable, HasActions
     protected function processCreditPurchase(array $data): mixed
     {
         try {
-            $user = auth()->user();
+            $wallet = $this->getWallet();
             
-            // Derive credits: 'credits' is only submitted when custom package (field visible).
-            // For pre-defined packages, the credits field is hidden so we use credit_package.
-            $credits = null;
-            if (isset($data['credits']) && $data['credits'] !== '' && $data['credits'] !== null) {
-                $credits = (int) $data['credits'];
-            } elseif (isset($data['credit_package']) && $data['credit_package'] !== 'custom') {
-                $credits = (int) $data['credit_package'];
-            } elseif (isset($data['amount']) && $data['amount'] > 0) {
-                $credits = (int) ($data['amount'] / 10); // Fallback: amount / 10
+            // Derive credits from package or custom input
+            $credits = $this->deriveCredits($data);
+            if (!$credits) {
+                throw new \Exception('Please select a credit package or enter custom credits.');
             }
             
-            if (!$credits || $credits < 10) {
-                throw new \Exception('Please select a credit package or enter custom credits (minimum 10).');
-            }
+            $metadata = $this->buildMetadata($data, 'credit_purchase');
             
-            $amount = $credits * 10; // 1 credit = ₦10
-            $gatewayId = $data['payment_gateway_id'];
+            $result = app(PaymentService::class)->purchaseAdCredits(
+                wallet: $wallet,
+                credits: $credits,
+                gatewayId: $data['payment_gateway_id'],
+                metadata: $metadata
+            );
             
-            // Check if using wallet payment
-            $gateway = PaymentGateway::find($gatewayId);
-            if (!$gateway) {
-                throw new \Exception('Invalid payment method selected.');
-            }
-            
-            if ($gateway->isWallet()) {
-                // Direct wallet payment for credits
-                $wallet = $this->getWallet();
-                
-                if (!$wallet->hasBalance($amount)) {
-                    Notification::make()
-                        ->danger()
-                        ->title('Insufficient Balance')
-                        ->body(sprintf(
-                            'You need ₦%s more. Current balance: ₦%s',
-                            number_format($amount - $wallet->balance, 2),
-                            number_format($wallet->balance, 2)
-                        ))
-                        ->send();
-                    return null;
-                }
-                
-                DB::beginTransaction();
-                
-                try {
-                    // Deduct from balance and add credits (purchase method now handles both)
-                    $wallet->purchase($amount, "Purchased {$credits} ad credits", null, $credits);
-                    
-                    DB::commit();
-                    
-                    Notification::make()
-                        ->success()
-                        ->title('Credits Purchased!')
-                        ->body("{$credits} ad credits added to your account.")
-                        ->send();
-                    
-                    return null;
-                    
-                } catch (\Exception $e) {
-                    DB::rollBack();
-                    throw $e;
-                }
-            } else {
-                // Bank transfer, Paystack, or Flutterwave: create pending txn, redirect or show instructions
-                $wallet = $this->getWallet();
-                $metadata = [
-                    'type' => 'credit_purchase',
-                    'credits' => $credits,
-                    'amount' => $amount,
-                ];
-                if ($gateway->isBankTransfer() && !empty($data['payment_proof'])) {
-                    $metadata['payment_proof'] = $data['payment_proof'];
-                    $metadata['payment_proof_uploaded_at'] = now()->toIso8601String();
-                }
-
-                DB::beginTransaction();
-                try {
-                    $result = app(PaymentService::class)->initializePayment(
-                        user: $user,
-                        amount: $amount,
-                        gatewayId: $gatewayId,
-                        payable: $wallet,
-                        metadata: $metadata
-                    );
-                    DB::commit();
-
-                    if ($result->requiresRedirect()) {
-                        return redirect()->away($result->redirectUrl);
-                    }
-                    if ($result->isBankTransfer()) {
-                        Notification::make()
-                            ->success()
-                            ->title('Payment Proof Uploaded')
-                            ->body("Your payment proof has been received. {$credits} credits will be added to your account within 24-48 hours after verification.")
-                            ->send();
-                        return null;
-                    }
-                    if ($result->isSuccess()) {
-                        Notification::make()
-                            ->success()
-                            ->title('Credits Purchased!')
-                            ->body("{$credits} ad credits added to your account.")
-                            ->send();
-                        return null;
-                    }
-                    throw new \Exception($result->message ?? 'Unable to process payment.');
-                } catch (\Exception $e) {
-                    DB::rollBack();
-                    throw $e;
-                }
-            }
+            return $this->handlePaymentResult($result);
             
         } catch (\Exception $e) {
-            Log::error('Credit purchase failed', [
-                'user_id' => auth()->id(),
-                'credits' => $data['credits'] ?? null,
-                'error' => $e->getMessage(),
-            ]);
-            
             Notification::make()
                 ->danger()
                 ->title('Purchase Error')
                 ->body($e->getMessage() ?: 'Unable to process purchase. Please try again.')
                 ->send();
-            
             return null;
         }
     }
@@ -730,133 +596,31 @@ class WalletPage extends Page implements HasTable, HasActions
     protected function processQuoteCreditPurchase(array $data): mixed
     {
         try {
-            $user = auth()->user();
+            $wallet = $this->getWallet();
             
-            // Derive credits: 'credits' is only submitted when custom package (field visible).
-            // For pre-defined packages, the credits field is hidden so we use credit_package.
-            $credits = null;
-            if (isset($data['credits']) && $data['credits'] !== '' && $data['credits'] !== null) {
-                $credits = (int) $data['credits'];
-            } elseif (isset($data['credit_package']) && $data['credit_package'] !== 'custom') {
-                $credits = (int) $data['credit_package'];
-            } elseif (isset($data['amount']) && $data['amount'] > 0) {
-                $credits = (int) ($data['amount'] / 100); // Fallback: amount / 100 (₦100 per credit)
+            // Derive credits from package or custom input
+            $credits = $this->deriveCredits($data);
+            if (!$credits) {
+                throw new \Exception('Please select a quote credit package or enter custom credits.');
             }
             
-            if (!$credits || $credits < 1) {
-                throw new \Exception('Please select a quote credit package or enter custom credits (minimum 1).');
-            }
+            $metadata = $this->buildMetadata($data, 'quote_credit_purchase');
             
-            $amount = $credits * 100; // 1 quote credit = ₦100
-            $gatewayId = $data['payment_gateway_id'];
+            $result = app(PaymentService::class)->purchaseQuoteCredits(
+                wallet: $wallet,
+                credits: $credits,
+                gatewayId: $data['payment_gateway_id'],
+                metadata: $metadata
+            );
             
-            // Check if using wallet payment
-            $gateway = PaymentGateway::find($gatewayId);
-            if (!$gateway) {
-                throw new \Exception('Invalid payment method selected.');
-            }
-            
-            if ($gateway->isWallet()) {
-                // Direct wallet payment for quote credits
-                $wallet = $this->getWallet();
-                
-                if (!$wallet->hasBalance($amount)) {
-                    Notification::make()
-                        ->danger()
-                        ->title('Insufficient Balance')
-                        ->body(sprintf(
-                            'You need ₦%s more. Current balance: ₦%s',
-                            number_format($amount - $wallet->balance, 2),
-                            number_format($wallet->balance, 2)
-                        ))
-                        ->send();
-                    return null;
-                }
-                
-                DB::beginTransaction();
-                
-                try {
-                    // Deduct from balance and add quote credits
-                    $wallet->withdraw($amount, "Purchased {$credits} quote credits");
-                    $wallet->addQuoteCredits($credits, "Purchased {$credits} quote credits", null, $amount);
-                    
-                    DB::commit();
-                    
-                    Notification::make()
-                        ->success()
-                        ->title('Quote Credits Purchased!')
-                        ->body("{$credits} quote credits added to your account.")
-                        ->send();
-                    
-                    return null;
-                    
-                } catch (\Exception $e) {
-                    DB::rollBack();
-                    throw $e;
-                }
-            } else {
-                // Bank transfer, Paystack, or Flutterwave: create pending txn, redirect or show instructions
-                $wallet = $this->getWallet();
-                $metadata = [
-                    'type' => 'quote_credit_purchase',
-                    'quote_credits' => $credits,
-                    'amount' => $amount,
-                ];
-                if ($gateway->isBankTransfer() && !empty($data['payment_proof'])) {
-                    $metadata['payment_proof'] = $data['payment_proof'];
-                    $metadata['payment_proof_uploaded_at'] = now()->toIso8601String();
-                }
-
-                DB::beginTransaction();
-                try {
-                    $result = app(PaymentService::class)->initializePayment(
-                        user: $user,
-                        amount: $amount,
-                        gatewayId: $gatewayId,
-                        payable: $wallet,
-                        metadata: $metadata
-                    );
-                    DB::commit();
-
-                    if ($result->requiresRedirect()) {
-                        return redirect()->away($result->redirectUrl);
-                    }
-                    if ($result->isBankTransfer()) {
-                        Notification::make()
-                            ->success()
-                            ->title('Payment Proof Uploaded')
-                            ->body("Your payment proof has been received. {$credits} quote credits will be added to your account within 24-48 hours after verification.")
-                            ->send();
-                        return null;
-                    }
-                    if ($result->isSuccess()) {
-                        Notification::make()
-                            ->success()
-                            ->title('Quote Credits Purchased!')
-                            ->body("{$credits} quote credits added to your account.")
-                            ->send();
-                        return null;
-                    }
-                    throw new \Exception($result->message ?? 'Unable to process payment.');
-                } catch (\Exception $e) {
-                    DB::rollBack();
-                    throw $e;
-                }
-            }
+            return $this->handlePaymentResult($result);
             
         } catch (\Exception $e) {
-            Log::error('Quote credit purchase failed', [
-                'user_id' => auth()->id(),
-                'credits' => $data['credits'] ?? null,
-                'error' => $e->getMessage(),
-            ]);
-            
             Notification::make()
                 ->danger()
                 ->title('Purchase Error')
                 ->body($e->getMessage() ?: 'Unable to process purchase. Please try again.')
                 ->send();
-            
             return null;
         }
     }
@@ -867,88 +631,58 @@ class WalletPage extends Page implements HasTable, HasActions
     protected function processWithdrawal(array $data): void
     {
         try {
-            $user = auth()->user();
             $wallet = $this->getWallet();
-            $amount = $data['amount'];
             
-            if (!$wallet->hasBalance($amount)) {
-                Notification::make()
-                    ->danger()
-                    ->title('Insufficient Balance')
-                    ->body('You do not have enough balance for this withdrawal.')
-                    ->send();
-                return;
-            }
+            $bankDetails = [
+                'account_number' => $data['account_number'],
+                'account_name' => $data['account_name'],
+                'bank_name' => $data['bank_name'],
+                'sort_code' => $data['sort_code'] ?? null,
+            ];
             
-            DB::beginTransaction();
+            $result = app(PaymentService::class)->requestWithdrawal(
+                wallet: $wallet,
+                amount: $data['amount'],
+                bankDetails: $bankDetails
+            );
             
-            try {
-                // Create withdrawal transaction (deduct from wallet)
-                $transaction = $wallet->withdraw(
-                    $amount, 
-                    "Withdrawal request to {$data['bank_name']} - {$data['account_number']}",
-                    null, // No related transaction
-                    [
-                        'withdrawal_type' => 'bank_transfer',
-                        'status' => 'pending_approval',
-                    ]
-                );
-                
-                // Create withdrawal request for admin approval
-                $withdrawalRequest = \App\Models\WithdrawalRequest::create([
-                    'user_id' => auth()->id(),
-                    'wallet_id' => $wallet->id,
-                    'amount' => $amount,
-                    'bank_name' => $data['bank_name'],
-                    'account_name' => $data['account_name'],
-                    'account_number' => $data['account_number'],
-                    'sort_code' => $data['sort_code'] ?? null,
-                    'status' => 'pending',
-                    'transaction_id' => $transaction->id,
-                ]);
-                
-                Log::info('Withdrawal request created', [
-                    'user_id' => auth()->id(),
-                    'wallet_id' => $wallet->id,
-                    'amount' => $amount,
-                    'transaction_id' => $transaction->id,
-                    'withdrawal_request_id' => $withdrawalRequest->id,
-                    'bank_details' => [
-                        'bank_name' => $data['bank_name'],
-                        'account_number' => $data['account_number'],
-                    ],
-                ]);
-                
-                DB::commit();
-                
+            if ($result->isSuccess()) {
                 Notification::make()
                     ->success()
                     ->title('Withdrawal Requested')
-                    ->body('Your withdrawal request has been submitted for approval. Processing time: 24-48 hours.')
+                    ->body($result->message)
                     ->send();
-                
-            } catch (\Exception $e) {
-                DB::rollBack();
-                Log::error('Withdrawal request failed', [
-                    'user_id' => auth()->id(),
-                    'error' => $e->getMessage(),
-                ]);
-                throw $e;
+            } else {
+                Notification::make()
+                    ->danger()
+                    ->title('Withdrawal Error')
+                    ->body($result->message)
+                    ->send();
             }
             
         } catch (\Exception $e) {
-            Log::error('Withdrawal failed', [
-                'user_id' => auth()->id(),
-                'amount' => $data['amount'] ?? null,
-                'error' => $e->getMessage(),
-            ]);
-            
             Notification::make()
                 ->danger()
                 ->title('Withdrawal Error')
                 ->body($e->getMessage() ?: 'Unable to process withdrawal. Please try again.')
                 ->send();
         }
+    }
+    
+    /**
+     * Derive credits from form data
+     */
+    protected function deriveCredits(array $data): ?int
+    {
+        if (isset($data['credits']) && $data['credits'] !== '' && $data['credits'] !== null) {
+            return (int) $data['credits'];
+        }
+        
+        if (isset($data['credit_package']) && $data['credit_package'] !== 'custom') {
+            return (int) $data['credit_package'];
+        }
+        
+        return null;
     }
 
     public function table(Table $table): Table
@@ -976,7 +710,6 @@ class WalletPage extends Page implements HasTable, HasActions
                     })
                     ->formatStateUsing(function ($record): string {
                         $state = $record->type;
-                        // Show "Credit Purchase" for purchase transactions with credits
                         if ($state === 'purchase' && ($record->credits ?? 0) > 0) {
                             return 'Credit Purchase';
                         }

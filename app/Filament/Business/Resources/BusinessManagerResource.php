@@ -90,7 +90,7 @@ class BusinessManagerResource extends Resource
                                     $component->state($granted);
                                 }
                             })
-                            ->dehydratedUsing(function ($state) {
+                            ->mutateDehydratedStateUsing(function ($state) {
                                 $permissions = [];
                                 $allPermissions = [
                                     'can_edit_business',

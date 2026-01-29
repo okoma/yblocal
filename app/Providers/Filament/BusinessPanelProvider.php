@@ -34,7 +34,7 @@ class BusinessPanelProvider extends PanelProvider
             ->login(\App\Filament\Business\Pages\Auth\Login::class)
             ->registration(\App\Filament\Business\Pages\Auth\Register::class)
             ->passwordReset(\App\Filament\Business\Pages\Auth\RequestPasswordReset::class)
-            ->emailVerification(\App\Filament\Business\Pages\Auth\EmailVerificationPrompt::class)
+            // Email verification redirect removed - showing notice on dashboard instead
             ->brandName('YellowBooks')
             ->brandLogo(asset('images/logo.png'))
             ->brandLogoHeight('2rem')
@@ -44,6 +44,7 @@ class BusinessPanelProvider extends PanelProvider
             ])
             ->collapsibleNavigationGroups(false)
             //->sidebarCollapsibleOnDesktop()
+            //->viteTheme('resources/css/app.css')
             ->font('Inter', url: asset('fonts/filament/filament/inter/index.css'))
             ->discoverResources(in: app_path('Filament/Business/Resources'), for: 'App\\Filament\\Business\\Resources')
             ->discoverPages(in: app_path('Filament/Business/Pages'), for: 'App\\Filament\\Business\\Pages')
