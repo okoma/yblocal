@@ -1,5 +1,3 @@
 <x-filament-panels::page>
-    <x-filament::infolist>
-        {{ $this->infolist }}
-    </x-filament::infolist>
+    {{ $this->table }}
 </x-filament-panels::page>
