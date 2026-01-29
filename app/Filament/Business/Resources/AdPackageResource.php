@@ -19,6 +19,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\HtmlString;
 
 class AdPackageResource extends Resource
 {
@@ -238,7 +239,23 @@ class AdPackageResource extends Resource
                             ->rows(2)
                             ->maxLength(500),
 
-                        Forms\Components\Section::make('Payment Information')
+                        Forms\Components\Section::make('Package Details')
+                            ->schema([
+                                Forms\Components\Placeholder::make('duration')
+                                    ->label('Duration')
+                                    ->content(fn ($record) => $record->duration_days . ' day' . ($record->duration_days != 1 ? 's' : '')),
+                                
+                                Forms\Components\Placeholder::make('max_impressions')
+                                    ->label('Max Impressions')
+                                    ->content(fn ($record) => $record->impressions_limit ? number_format($record->impressions_limit) : 'Unlimited'),
+                                
+                                Forms\Components\Placeholder::make('max_clicks')
+                                    ->label('Max Clicks')
+                                    ->content(fn ($record) => $record->clicks_limit ? number_format($record->clicks_limit) : 'Unlimited'),
+                            ])
+                            ->columns(3),
+
+                        Forms\Components\Section::make('Package Summary')
                             ->schema([
                                 Forms\Components\Placeholder::make('package_price')
                                     ->label('Package Price')
@@ -261,7 +278,7 @@ class AdPackageResource extends Resource
                                         $credits = $wallet ? $wallet->ad_credits : 0;
                                         $required = $record->getCreditsCost();
                                         $color = $credits >= $required ? 'text-success-600' : 'text-danger-600';
-                                        return '<span class="' . $color . ' font-bold">' . number_format($credits) . ' credits</span>';
+                                        return new HtmlString('<span class="' . $color . ' font-bold">' . number_format($credits) . ' credits</span>');
                                     })
                                     ->extraAttributes(['class' => 'text-base'])
                                     ->visible(fn (Forms\Get $get) => $get('business_id') !== null),
@@ -271,7 +288,7 @@ class AdPackageResource extends Resource
                                     ->content(function ($record, Forms\Get $get) {
                                         $businessId = $get('business_id');
                                         if (!$businessId) {
-                                            return '<p class="text-sm text-gray-500">Please select a business first.</p>';
+                                            return new HtmlString('<p class="text-sm text-gray-500">Please select a business first.</p>');
                                         }
                                         $wallet = \App\Models\Wallet::where('business_id', $businessId)->first();
                                         $credits = $wallet ? $wallet->ad_credits : 0;
@@ -279,9 +296,9 @@ class AdPackageResource extends Resource
                                         
                                         if ($credits < $required) {
                                             $shortfall = $required - $credits;
-                                            return '<p class="text-sm text-danger-600 font-medium">⚠️ Insufficient credits. You need ' . number_format($shortfall) . ' more credits. <a href="' . route('filament.business.pages.wallet-page') . '" class="underline" target="_blank">Purchase credits</a> to continue.</p>';
+                                            return new HtmlString('<p class="text-sm text-danger-600 font-medium">⚠️ Insufficient credits. You need ' . number_format($shortfall) . ' more credits. <a href="' . route('filament.business.pages.wallet-page') . '" class="underline" target="_blank">Purchase credits</a> to continue.</p>');
                                         }
-                                        return '<p class="text-sm text-success-600">✓ You have sufficient credits to purchase this package.</p>';
+                                        return new HtmlString('<p class="text-sm text-success-600">✓ You have sufficient credits to purchase this package.</p>');
                                     })
                                     ->visible(fn (Forms\Get $get) => $get('business_id') !== null),
                             ])
