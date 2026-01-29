@@ -24,8 +24,8 @@ class ViewQuoteRequest extends ViewRecord
         return [
             Actions\Action::make('view_quotes')
                 ->label('Received Quotes')
-                ->icon('heroicon-o-document-text')
-                ->url(fn () => QuoteRequestResource::getUrl('view', ['record' => $this->record]) . '#quotes'),
+                ->icon('heroicon-o-inbox')
+                ->url(\App\Filament\Customer\Pages\ReceivedQuotes::getUrl()),
         ];
     }
     
