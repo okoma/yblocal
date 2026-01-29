@@ -248,6 +248,33 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
     }
 
     /**
+     * Customer referral wallet (commission balance; customers who refer businesses)
+     */
+    public function customerReferralWallet()
+    {
+        return $this->hasOne(CustomerReferralWallet::class);
+    }
+
+    /**
+     * Customer referrals (businesses this customer referred; 10% commission on their payments)
+     */
+    public function customerReferrals()
+    {
+        return $this->hasMany(CustomerReferral::class, 'referrer_user_id');
+    }
+
+    /**
+     * Get or create customer referral wallet (for commission balance).
+     */
+    public function getOrCreateCustomerReferralWallet(): CustomerReferralWallet
+    {
+        return CustomerReferralWallet::firstOrCreate(
+            ['user_id' => $this->id],
+            ['balance' => 0, 'currency' => 'NGN']
+        );
+    }
+
+    /**
      * Business Manager assignments
      */
     public function businessManagerAssignments()

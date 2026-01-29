@@ -37,7 +37,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->collapsibleNavigationGroups(false)
             ->sidebarCollapsibleOnDesktop()
-          
+            //->viteTheme('resources/css/app.css')
             ->font('Inter', url: asset('fonts/filament/filament/inter/index.css'))
             ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\\Filament\\Admin\\Resources')
             ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\\Filament\\Admin\\Pages')

@@ -44,7 +44,7 @@ class BusinessPanelProvider extends PanelProvider
             ])
             ->collapsibleNavigationGroups(false)
             //->sidebarCollapsibleOnDesktop()
-           
+            //->viteTheme('resources/css/app.css')
             ->font('Inter', url: asset('fonts/filament/filament/inter/index.css'))
             ->discoverResources(in: app_path('Filament/Business/Resources'), for: 'App\\Filament\\Business\\Resources')
             ->discoverPages(in: app_path('Filament/Business/Pages'), for: 'App\\Filament\\Business\\Pages')

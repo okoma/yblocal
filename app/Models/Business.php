@@ -72,6 +72,10 @@ class Business extends Model
         'total_views',
         'total_leads',
         'total_saves',
+
+        // Referral (business → business)
+        'referral_code',
+        'referral_credits',
     ];
 
     protected $casts = [
@@ -88,6 +92,7 @@ class Business extends Model
         'total_views' => 'integer',
         'total_leads' => 'integer',
         'total_saves' => 'integer',
+        'referral_credits' => 'integer',
     ];
 
     // ============================================
@@ -188,6 +193,38 @@ class Business extends Model
     public function transactions(): HasMany
     {
         return $this->hasMany(Transaction::class);
+    }
+
+    /**
+     * Referrals where this business referred another (business → business)
+     */
+    public function businessReferralsAsReferrer(): HasMany
+    {
+        return $this->hasMany(BusinessReferral::class, 'referrer_business_id');
+    }
+
+    /**
+     * Referral where this business was referred by another business
+     */
+    public function businessReferralAsReferred(): HasOne
+    {
+        return $this->hasOne(BusinessReferral::class, 'referred_business_id');
+    }
+
+    /**
+     * Referral where this business was referred by a customer (for 10% commission)
+     */
+    public function customerReferralAsReferred(): HasOne
+    {
+        return $this->hasOne(CustomerReferral::class, 'referred_business_id');
+    }
+
+    /**
+     * Referral credit transaction history (earned, converted)
+     */
+    public function referralCreditTransactions(): HasMany
+    {
+        return $this->hasMany(BusinessReferralCreditTransaction::class);
     }
 
     /**

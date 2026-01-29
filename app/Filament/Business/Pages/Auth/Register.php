@@ -4,6 +4,7 @@ namespace App\Filament\Business\Pages\Auth;
 
 use App\Enums\UserRole;
 use App\Models\User;
+use App\Services\ReferralSignupService;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Pages\Auth\Register as BaseRegister;
@@ -13,6 +14,14 @@ use Illuminate\Validation\Rules\Password;
 class Register extends BaseRegister
 {
     protected static string $view = 'filament.business.auth.register';
+
+    public function mount(): void
+    {
+        parent::mount();
+        if (request()->has('ref')) {
+            app(ReferralSignupService::class)->storeReferralCodeInSession(request('ref'));
+        }
+    }
 
     public function form(Form $form): Form
     {
