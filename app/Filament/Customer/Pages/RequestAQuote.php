@@ -4,7 +4,6 @@ namespace App\Filament\Customer\Pages;
 
 use App\Filament\Customer\Resources\QuoteRequestResource;
 use Filament\Pages\Page;
-use Illuminate\Support\Facades\Redirect;
 
 class RequestAQuote extends Page
 {
@@ -20,8 +19,8 @@ class RequestAQuote extends Page
 
     protected static bool $shouldRegisterNavigation = true;
 
-    public function mount(): void
+    public function mount()
     {
-        Redirect::to(QuoteRequestResource::getUrl('create'))->send();
+        return redirect()->to(QuoteRequestResource::getUrl('create'));
     }
 }
