@@ -153,7 +153,7 @@ class BusinessFilters extends Component
     public function businesses()
     {
         $query = Business::with(['businessType', 'categories', 'location.parent'])
-            ->where('is_published', true);
+            ->where('status', true);
 
         // Apply context filters (from route)
         if ($this->contextLocation) {
