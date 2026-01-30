@@ -222,13 +222,15 @@ class BusinessFilters extends Component
         }
 
         // Search
-        if ($this->search) {
-            $query->where(function ($q) {
-                $q->where('business_name', 'like', '%' . $this->search . '%')
-                    ->orWhere('description', 'like', '%' . $this->search . '%')
-                    ->orWhere('tagline', 'like', '%' . $this->search . '%');
-            });
-        }
+  if ($this->search) {
+    $query->where(function ($q) {
+        $q->where('business_name', 'like', '%' . $this->search . '%')
+            ->orWhere('description', 'like', '%' . $this->search . '%')
+            ->orWhere('city', 'like', '%' . $this->search . '%')
+            ->orWhere('state', 'like', '%' . $this->search . '%')
+            ->orWhere('area', 'like', '%' . $this->search . '%');
+    });
+}
 
         // Sorting
         switch ($this->sort) {
