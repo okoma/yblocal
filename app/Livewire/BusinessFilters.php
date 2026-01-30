@@ -206,7 +206,7 @@ class BusinessFilters extends Component
         }
 
         if ($this->rating) {
-            $query->where('average_rating', '>=', $this->rating);
+            $query->where('avg_rating', '>=', $this->rating);
         }
 
         if ($this->verified) {
@@ -233,7 +233,7 @@ class BusinessFilters extends Component
         // Sorting
         switch ($this->sort) {
             case 'rating':
-                $query->orderBy('average_rating', 'desc');
+                $query->orderBy('avg_rating', 'desc');
                 break;
             case 'newest':
                 $query->orderBy('created_at', 'desc');
@@ -245,7 +245,7 @@ class BusinessFilters extends Component
             default:
                 $query->orderBy('is_premium', 'desc')
                     ->orderBy('is_verified', 'desc')
-                    ->orderBy('average_rating', 'desc');
+                    ->orderBy('avg_rating', 'desc');
                 break;
         }
 
