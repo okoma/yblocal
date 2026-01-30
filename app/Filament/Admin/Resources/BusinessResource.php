@@ -12,6 +12,7 @@ use App\Models\Business;
 use App\Models\Location;
 use App\Models\User;
 use App\Enums\UserRole;
+use App\Services\ExportService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -155,6 +156,45 @@ class BusinessResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\BulkAction::make('export')
+                        ->label('Export Selected')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('gray')
+                        ->visible(fn () => auth()->user()?->can('export-data'))
+                        ->action(function ($records) {
+                            $records->loadMissing(['owner', 'businessType']);
+
+                            return ExportService::streamCsvFromCollection(
+                                'businesses-' . now()->format('Ymd-His') . '.csv',
+                                [
+                                    'ID',
+                                    'Name',
+                                    'Owner',
+                                    'Owner Email',
+                                    'Type',
+                                    'Status',
+                                    'Verified',
+                                    'Premium',
+                                    'State',
+                                    'City',
+                                    'Created At',
+                                ],
+                                $records,
+                                fn (Business $record) => [
+                                    $record->id,
+                                    $record->business_name,
+                                    $record->owner?->name,
+                                    $record->owner?->email,
+                                    $record->businessType?->name,
+                                    $record->status,
+                                    $record->is_verified ? 'yes' : 'no',
+                                    $record->is_premium ? 'yes' : 'no',
+                                    $record->state,
+                                    $record->city,
+                                    optional($record->created_at)->toDateTimeString(),
+                                ]
+                            );
+                        }),
                     Tables\Actions\DeleteBulkAction::make()
                         ->requiresConfirmation()
                         ->successNotification(

@@ -349,4 +349,137 @@ class MapController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Cluster businesses for map viewport.
+     * Accepts either viewport bounds (bounds_ne_lat, bounds_ne_lng, bounds_sw_lat, bounds_sw_lng)
+     * or center + zoom. Returns clusters with center, count and sample markers.
+     */
+    public function cluster(Request $request): JsonResponse
+    {
+        $validator = \Validator::make($request->all(), [
+            'bounds_ne_lat' => 'nullable|numeric|between:-90,90',
+            'bounds_ne_lng' => 'nullable|numeric|between:-180,180',
+            'bounds_sw_lat' => 'nullable|numeric|between:-90,90',
+            'bounds_sw_lng' => 'nullable|numeric|between:-180,180',
+            'center_lat' => 'nullable|numeric|between:-90,90',
+            'center_lng' => 'nullable|numeric|between:-180,180',
+            'zoom' => 'nullable|integer|min:1|max:21',
+            'limit' => 'nullable|integer|min:10|max:5000',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        // Base query
+        $query = Business::query()
+            ->where('status', 'active')
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude');
+
+        // Apply same filters as index (optional q, category, business_type)
+        if ($request->filled('q')) {
+            $searchQuery = $request->q;
+            $query->where(function ($q) use ($searchQuery) {
+                $q->where('business_name', 'like', "%{$searchQuery}%")
+                  ->orWhere('description', 'like', "%{$searchQuery}%");
+            });
+        }
+
+        if ($request->filled('business_type')) {
+            $query->whereHas('businessType', function ($q) use ($request) {
+                $q->where('slug', $request->business_type);
+            });
+        }
+
+        if ($request->filled('category')) {
+            $query->whereHas('categories', function ($q) use ($request) {
+                $q->where('slug', $request->category);
+            });
+        }
+
+        // Bounds filter
+        $hasBounds = $request->filled(['bounds_ne_lat', 'bounds_ne_lng', 'bounds_sw_lat', 'bounds_sw_lng']);
+        if ($hasBounds) {
+            $neLat = (float) $request->bounds_ne_lat;
+            $neLng = (float) $request->bounds_ne_lng;
+            $swLat = (float) $request->bounds_sw_lat;
+            $swLng = (float) $request->bounds_sw_lng;
+            $query->whereBetween('latitude', [$swLat, $neLat])
+                  ->whereBetween('longitude', [$swLng, $neLng]);
+        }
+
+        // Determine clustering grid size
+        $zoom = (int) $request->get('zoom', 12); // default zoom
+        $clusterPixel = (int) $request->get('cluster_pixel', 80);
+
+        // degrees per pixel at given zoom (approximation)
+        $degreesPerPixel = 360 / (pow(2, max(1, $zoom)) * 256);
+        $gridDeg = max(0.0005, $degreesPerPixel * $clusterPixel); // guard min
+
+        // Retrieve a reasonable number of points to cluster server-side
+        $limit = min((int) $request->get('limit', 2000), 5000);
+        $points = $query->select([
+                'id', 'business_name', 'slug', 'latitude', 'longitude', 'logo', 'is_verified', 'is_premium'
+            ])
+            ->with(['businessType:id,name,slug'])
+            ->limit($limit)
+            ->get();
+
+        // Group into buckets
+        $buckets = [];
+        foreach ($points as $p) {
+            $lat = (float) $p->latitude;
+            $lng = (float) $p->longitude;
+            $bx = (int) floor(($lng + 180) / $gridDeg);
+            $by = (int) floor(($lat + 90) / $gridDeg);
+            $key = $bx . '_' . $by;
+            if (! isset($buckets[$key])) {
+                $buckets[$key] = [
+                    'count' => 0,
+                    'sumLat' => 0.0,
+                    'sumLng' => 0.0,
+                    'points' => [],
+                ];
+            }
+            $buckets[$key]['count']++;
+            $buckets[$key]['sumLat'] += $lat;
+            $buckets[$key]['sumLng'] += $lng;
+            $buckets[$key]['points'][] = [
+                'id' => $p->id,
+                'name' => $p->business_name,
+                'slug' => $p->slug,
+                'lat' => $lat,
+                'lng' => $lng,
+                'logo' => $p->logo ? asset('storage/' . $p->logo) : null,
+                'verified' => (bool) $p->is_verified,
+                'premium' => (bool) $p->is_premium,
+                'type' => $p->businessType->name ?? null,
+            ];
+        }
+
+        // Build cluster response
+        $clusters = [];
+        foreach ($buckets as $key => $b) {
+            $count = $b['count'];
+            $centerLat = $b['sumLat'] / $count;
+            $centerLng = $b['sumLng'] / $count;
+            $sample = array_slice($b['points'], 0, 5);
+            $clusters[] = [
+                'lat' => $centerLat,
+                'lng' => $centerLng,
+                'count' => $count,
+                'sample' => $sample,
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'clusters' => $clusters,
+            'point_count' => $points->count(),
+            'limit' => $limit,
+            'grid_deg' => $gridDeg,
+        ]);
+    }
 }

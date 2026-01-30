@@ -17,6 +17,9 @@ use Illuminate\Support\Facades\Session;
  */
 class ReferralSignupService
 {
+    public function __construct(protected FraudDetectionService $fraudDetection)
+    {
+    }
     /**
      * Store referral code in session (call when user lands on register/signup with ?ref=CODE).
      */
@@ -108,16 +111,32 @@ class ReferralSignupService
             return;
         }
 
-        CustomerReferral::create([
+        // Fraud detection
+        $ipAddress = request()->ip();
+        $deviceFingerprint = request()->header('X-Device-Fingerprint'); // Client should send this
+        $userAgent = request()->userAgent();
+        
+        $fraudCheck = $this->fraudDetection->checkReferralSignup($ipAddress, $deviceFingerprint, $referrer);
+
+        $referral = CustomerReferral::create([
             'referrer_user_id' => $referrer->id,
             'referred_business_id' => $business->id,
             'referral_code' => $code,
             'status' => 'pending',
+            'ip_address' => $ipAddress,
+            'device_fingerprint' => $deviceFingerprint,
+            'user_agent' => $userAgent,
+            'is_suspicious' => $fraudCheck['is_suspicious'],
+            'fraud_notes' => $fraudCheck['is_suspicious'] ? implode('; ', $fraudCheck['reasons']) : null,
         ]);
+        
+        // Record metrics for fraud tracking
+        $this->fraudDetection->recordReferralMetrics($ipAddress, $deviceFingerprint, $referrer);
 
         Log::info('ReferralSignupService: CustomerReferral created', [
             'referrer_user_id' => $referrer->id,
             'referred_business_id' => $business->id,
+            'is_suspicious' => $fraudCheck['is_suspicious'],
         ]);
     }
 
@@ -139,37 +158,63 @@ class ReferralSignupService
             return;
         }
 
+        // Fraud detection
+        $ipAddress = request()->ip();
+        $deviceFingerprint = request()->header('X-Device-Fingerprint');
+        $userAgent = request()->userAgent();
+        
+        $fraudCheck = $this->fraudDetection->checkReferralSignup($ipAddress, $deviceFingerprint, $referrerBusiness);
+
         $credits = ReferralConfig::businessCreditsPerSignup();
         if ($credits <= 0) {
             return;
         }
 
-        $referrerBusiness->increment('referral_credits', $credits);
-        $referrerBusiness->refresh();
+        // If suspicious, don't award credits immediately (pending admin review)
+        $status = $fraudCheck['is_suspicious'] ? 'pending' : 'credited';
+        $creditsAwarded = $fraudCheck['is_suspicious'] ? 0 : $credits;
+        
+        if (!$fraudCheck['is_suspicious']) {
+            $referrerBusiness->increment('referral_credits', $credits);
+            $referrerBusiness->refresh();
+        }
 
         $businessReferral = BusinessReferral::create([
             'referrer_business_id' => $referrerBusiness->id,
             'referred_business_id' => $referredBusiness->id,
             'referral_code' => $code,
-            'referral_credits_awarded' => $credits,
-            'status' => 'credited',
+            'referral_credits_awarded' => $creditsAwarded,
+            'status' => $status,
+            'ip_address' => $ipAddress,
+            'device_fingerprint' => $deviceFingerprint,
+            'user_agent' => $userAgent,
+            'is_suspicious' => $fraudCheck['is_suspicious'],
+            'fraud_notes' => $fraudCheck['is_suspicious'] ? implode('; ', $fraudCheck['reasons']) : null,
         ]);
 
-        BusinessReferralCreditTransaction::create([
-            'business_id' => $referrerBusiness->id,
-            'business_referral_id' => $businessReferral->id,
-            'amount' => $credits,
-            'type' => BusinessReferralCreditTransaction::TYPE_EARNED,
-            'balance_after' => $referrerBusiness->referral_credits,
-            'description' => "Referral credit for {$referredBusiness->business_name} sign-up",
-            'reference_type' => BusinessReferral::class,
-            'reference_id' => $businessReferral->id,
-        ]);
+        // Only create transaction if credits were awarded
+        if (!$fraudCheck['is_suspicious']) {
+            BusinessReferralCreditTransaction::create([
+                'business_id' => $referrerBusiness->id,
+                'business_referral_id' => $businessReferral->id,
+                'amount' => $credits,
+                'type' => BusinessReferralCreditTransaction::TYPE_EARNED,
+                'balance_after' => $referrerBusiness->referral_credits,
+                'description' => "Referral credit for {$referredBusiness->business_name} sign-up",
+                'reference_type' => BusinessReferral::class,
+                'reference_id' => $businessReferral->id,
+            ]);
+        }
+        
+        // Record metrics for fraud tracking
+        $this->fraudDetection->recordReferralMetrics($ipAddress, $deviceFingerprint, $referrerBusiness);
 
-        Log::info('ReferralSignupService: BusinessReferral created and credits awarded', [
+        Log::info('ReferralSignupService: BusinessReferral created', [
             'referrer_business_id' => $referrerBusiness->id,
             'referred_business_id' => $referredBusiness->id,
-            'credits' => $credits,
+            'credits' => $creditsAwarded,
+            'is_suspicious' => $fraudCheck['is_suspicious'],
+            'status' => $status,
         ]);
     }
 }

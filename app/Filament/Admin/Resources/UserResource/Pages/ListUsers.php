@@ -6,6 +6,8 @@
 namespace App\Filament\Admin\Resources\UserResource\Pages;
 
 use App\Filament\Admin\Resources\UserResource;
+use App\Models\User;
+use App\Services\ExportService;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Resources\Components\Tab;
@@ -19,6 +21,37 @@ class ListUsers extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('export_all')
+                ->label('Export CSV')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->color('gray')
+                ->visible(fn () => auth()->user()?->can('export-data'))
+                ->action(function () {
+                    return ExportService::streamCsvFromQuery(
+                        'users-all-' . now()->format('Ymd-His') . '.csv',
+                        [
+                            'ID',
+                            'Name',
+                            'Email',
+                            'Phone',
+                            'Role',
+                            'Active',
+                            'Banned',
+                            'Created At',
+                        ],
+                        User::query(),
+                        fn (User $record) => [
+                            $record->id,
+                            $record->name,
+                            $record->email,
+                            $record->phone,
+                            $record->role?->value ?? $record->role,
+                            $record->is_active ? 'yes' : 'no',
+                            $record->is_banned ? 'yes' : 'no',
+                            optional($record->created_at)->toDateTimeString(),
+                        ]
+                    );
+                }),
             Actions\CreateAction::make(),
         ];
     }

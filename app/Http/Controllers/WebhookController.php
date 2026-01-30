@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\ProcessWebhookJob;
 use App\Models\PaymentGateway;
 use App\Models\Transaction;
+use App\Models\WebhookEvent;
 use App\Services\ActivationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class WebhookController extends Controller
@@ -59,10 +62,34 @@ class WebhookController extends Controller
             return response()->json(['error' => 'Invalid event'], 400);
         }
 
-        // Handle event based on type
-        $this->handleWebhookEvent($webhookData, $gateway);
+        // Extract event ID for idempotency checking
+        $eventId = $this->extractEventId($webhookData, $gateway);
+        
+        if (!$eventId) {
+            Log::error("Webhook [{$gateway}]: Missing event ID");
+            return response()->json(['error' => 'Missing event ID'], 400);
+        }
 
-        return response()->json(['status' => 'success'], 200);
+        // Idempotency check - prevent processing same webhook twice
+        if (WebhookEvent::isProcessed($gateway, $eventId)) {
+            Log::info("Webhook [{$gateway}]: Already processed (idempotency)", [
+                'event_id' => $eventId,
+            ]);
+            return response()->json(['status' => 'already_processed'], 200);
+        }
+
+        // Create webhook event record
+        $webhookEvent = WebhookEvent::createOrGet($gateway, $eventId, [
+            'event_type' => $webhookData['event'],
+            'reference' => $this->extractReference($webhookData['data'], $gateway),
+            'payload' => $webhookData,
+        ]);
+
+        // Dispatch to queue for async processing (prevents webhook timeout)
+        ProcessWebhookJob::dispatch($gateway, $webhookData, $webhookData['event'])
+            ->onQueue('webhooks');
+
+        return response()->json(['status' => 'accepted'], 200);
     }
 
     protected function verifyWebhookSignature(Request $request, string $gateway, string $secret): bool
@@ -127,6 +154,15 @@ class WebhookController extends Controller
             'event' => $payload['event'] ?? null,
             'data' => $payload['data'] ?? [],
         ];
+    }
+
+    protected function extractEventId(array $webhookData, string $gateway): ?string
+    {
+        return match ($gateway) {
+            'paystack' => $webhookData['data']['id'] ?? $webhookData['data']['reference'] ?? null,
+            'flutterwave' => $webhookData['data']['id'] ?? $webhookData['data']['flw_ref'] ?? null,
+            default => null,
+        };
     }
 
     protected function handleWebhookEvent(array $webhookData, string $gateway): void
@@ -199,18 +235,21 @@ class WebhookController extends Controller
             'reference' => $reference,
         ]);
 
-        // Update transaction
-        $transaction->update([
-            'payment_gateway_ref' => $reference,
-            'gateway_response' => $data,
-        ]);
+        // Wrap in database transaction to ensure atomicity
+        DB::transaction(function () use ($transaction, $reference, $data, $gateway) {
+            // Update transaction
+            $transaction->update([
+                'payment_gateway_ref' => $reference,
+                'gateway_response' => $data,
+            ]);
 
-        $this->activationService->completeAndActivate($transaction);
+            $this->activationService->completeAndActivate($transaction);
 
-        Log::info("Webhook [{$gateway}]: Payment processed successfully", [
-            'reference' => $reference,
-            'transaction_id' => $transaction->id,
-        ]);
+            Log::info("Webhook [{$gateway}]: Payment processed successfully", [
+                'reference' => $reference,
+                'transaction_id' => $transaction->id,
+            ]);
+        });
     }
 
     protected function handleFailedPayment(array $data, string $gateway): void
@@ -227,17 +266,20 @@ class WebhookController extends Controller
             })
             ->where('payment_method', $gateway)
             ->where('status', 'pending')
-            ->first();
+            // Wrap in database transaction
+            DB::transaction(function () use ($transaction, $reference, $data, $gateway) {
+                if (!$transaction->payment_gateway_ref) {
+                    $transaction->update(['payment_gateway_ref' => $reference]);
+                }
+                
+                $transaction->markAsFailed();
+                $transaction->update(['gateway_response' => $data]);
 
-        if ($transaction) {
-            if (!$transaction->payment_gateway_ref) {
-                $transaction->update(['payment_gateway_ref' => $reference]);
-            }
-            
-            $transaction->markAsFailed();
-            $transaction->update(['gateway_response' => $data]);
-
-            Log::info("Webhook [{$gateway}]: Payment failed", [
+                Log::info("Webhook [{$gateway}]: Payment failed", [
+                    'reference' => $reference,
+                    'transaction_id' => $transaction->id,
+                ]);
+            }og::info("Webhook [{$gateway}]: Payment failed", [
                 'reference' => $reference,
                 'transaction_id' => $transaction->id,
             ]);

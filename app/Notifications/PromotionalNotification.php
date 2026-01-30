@@ -49,7 +49,11 @@ class PromotionalNotification extends Notification implements ShouldQueue
         
         $mail->line('This is a promotional message from YellowBooks Nigeria.')
             ->line('You can manage your notification preferences in your account settings.');
-        
+        // Add unsubscribe link for promotions
+        $email = base64_encode($notifiable->email ?? '');
+        $unsubscribeUrl = url('/unsubscribe?e=' . $email . '&t=promotions');
+        $mail->action('Unsubscribe from promotions', $unsubscribeUrl);
+
         return $mail;
     }
 

@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Spatie\Sluggable\HasSlug;
+use Laravel\Scout\Searchable;
 use Spatie\Sluggable\SlugOptions;
 use App\Enums\ReferralSource;
 use App\Enums\PageType;
@@ -19,7 +20,7 @@ use App\Enums\InteractionType;
 
 class Business extends Model
 {
-    use HasFactory, SoftDeletes, HasSlug;
+    use HasFactory, SoftDeletes, HasSlug, Searchable;
 
     protected $fillable = [
         'user_id',
@@ -649,6 +650,39 @@ class Business extends Model
     }
 
     /**
+     * Prepare the model array for search indexing (Meilisearch expects a `_geo` field)
+     *
+     * @return array
+     */
+    public function toSearchableArray(): array
+    {
+        $categories = [];
+        try {
+            $categories = $this->categories()->pluck('name')->toArray();
+        } catch (\Throwable $e) {
+            // ignore if relation not available during some operations
+        }
+
+        return [
+            'id' => $this->id,
+            'business_name' => $this->business_name,
+            'description' => $this->description,
+            'city' => $this->city,
+            'state' => $this->state,
+            'area' => $this->area,
+            'categories' => $categories,
+            'is_verified' => (bool) $this->is_verified,
+            'is_premium' => (bool) $this->is_premium,
+            'avg_rating' => $this->avg_rating,
+            // Meilisearch geo field
+            '_geo' => [
+                'lat' => $this->latitude ? (float) $this->latitude : 0.0,
+                'lng' => $this->longitude ? (float) $this->longitude : 0.0,
+            ],
+        ];
+    }
+
+    /**
      * Get content quality score (0-100)
      */
     public function getContentQualityScore()
@@ -976,6 +1010,72 @@ class Business extends Model
     }
 
     /**
+     * Scope to filter businesses within a latitude/longitude bounding box.
+     *
+     * Accepts min/max latitude and longitude and returns the matching query.
+     * This is useful as a cheap prefilter before calculating Haversine distance.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param float $minLat
+     * @param float $maxLat
+     * @param float $minLng
+     * @param float $maxLng
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeWithinBoundingBox($query, float $minLat, float $maxLat, float $minLng, float $maxLng)
+    {
+        return $query->whereBetween('latitude', [$minLat, $maxLat])
+                     ->whereBetween('longitude', [$minLng, $maxLng]);
+    }
+
+    /**
+     * Scope to find nearby businesses given a lat/lng and radius (km).
+     * Uses MySQL spatial `location` column when available, otherwise falls back
+     * to bounding-box prefilter + Haversine calculation.
+     */
+    public function scopeNearby($query, float $lat, float $lng, float $radiusKm = 10, int $limit = 100)
+    {
+        $earthRadius = 6371; // km
+
+        // Compute bounding box
+        $deltaLat = rad2deg($radiusKm / $earthRadius);
+        $deltaLng = rad2deg($radiusKm / $earthRadius / max(cos(deg2rad($lat)), 0.00001));
+
+        $minLat = $lat - $deltaLat;
+        $maxLat = $lat + $deltaLat;
+        $minLng = $lng - $deltaLng;
+        $maxLng = $lng + $deltaLng;
+
+        $query = $query->withinBoundingBox($minLat, $maxLat, $minLng, $maxLng);
+
+        // If MySQL and `location` column exists, use spatial distance function
+        try {
+            $driver = \Illuminate\Support\Facades\DB::getDriverName();
+        } catch (\Throwable $e) {
+            $driver = null;
+        }
+
+        if ($driver === 'mysql' && \Illuminate\Support\Facades\Schema::hasColumn('businesses', 'location')) {
+            // ST_Distance_Sphere returns meters in some MySQL variants; divide by 1000 for km
+            $query->selectRaw("*, (ST_Distance_Sphere(location, ST_GeomFromText(?)) / 1000) AS distance_km", ["POINT({$lng} {$lat})"])
+                  ->whereRaw("ST_Distance_Sphere(location, ST_GeomFromText(?)) <= ?", ["POINT({$lng} {$lat})", $radiusKm * 1000])
+                  ->orderBy('distance_km', 'asc')
+                  ->limit($limit);
+        } else {
+            // Fallback Haversine calculation (km)
+            $query->selectRaw(
+                "*, ({$earthRadius} * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))) AS distance_km",
+                [$lat, $lng, $lat]
+            )
+            ->orderBy('distance_km', 'asc')
+            ->having('distance_km', '<=', $radiusKm)
+            ->limit($limit);
+        }
+
+        return $query;
+    }
+
+    /**
      * Scope for claimed businesses
      */
     public function scopeClaimed($query)
@@ -1028,6 +1128,30 @@ class Business extends Model
         static::creating(function ($business) {
             if (empty($business->slug)) {
                 $business->slug = \Illuminate\Support\Str::slug($business->business_name);
+            }
+        });
+        
+        // Keep MySQL POINT location in sync when latitude/longitude are present
+        static::saved(function ($business) {
+            try {
+                $connection = \Illuminate\Support\Facades\DB::getDriverName();
+            } catch (\Throwable $e) {
+                $connection = null;
+            }
+
+            if ($connection !== 'mysql') {
+                return;
+            }
+
+            if ($business->latitude !== null && $business->longitude !== null) {
+                try {
+                    \Illuminate\Support\Facades\DB::statement(
+                        'UPDATE `businesses` SET `location` = ST_GeomFromText(?) WHERE `id` = ?',
+                        ["POINT({$business->longitude} {$business->latitude})", $business->id]
+                    );
+                } catch (\Throwable $e) {
+                    logger()->warning('Failed to update businesses.location for id ' . $business->id . ': ' . $e->getMessage());
+                }
             }
         });
     }

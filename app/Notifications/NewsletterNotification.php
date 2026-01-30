@@ -53,7 +53,11 @@ class NewsletterNotification extends Notification implements ShouldQueue
         
         $mail->line('Thank you for being part of the YellowBooks community!')
             ->line('You can manage your newsletter preferences in your account settings.');
-        
+        // Add one-click unsubscribe link for this newsletter
+        $email = base64_encode($notifiable->email ?? '');
+        $unsubscribeUrl = url('/unsubscribe?e=' . $email . '&t=newsletter');
+        $mail->action('Unsubscribe from this newsletter', $unsubscribeUrl);
+
         return $mail;
     }
 

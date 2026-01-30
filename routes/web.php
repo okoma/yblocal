@@ -1,6 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Webhook\EmailWebhookController;
+use App\Http\Controllers\Notification\UnsubscribeController;
 use App\Http\Controllers\ManagerInvitationController;
 use App\Http\Controllers\BusinessController;
 use App\Http\Controllers\DiscoveryController;
@@ -18,6 +20,14 @@ use App\Http\Controllers\CustomerSocialAuthController;
 Route::get('/', function () {
     return view('welcome');
 });
+// Redirect default login to customer login
+Route::get('/login', function () {
+    return redirect()->route('filament.customer.auth.login');
+})->name('login');
+
+// Mailer webhooks (bounces/unsubscribes)
+Route::post('/webhooks/mailer/bounce', [EmailWebhookController::class, 'bounce']);
+Route::get('/unsubscribe', [UnsubscribeController::class, 'handle'])->name('unsubscribe');
 
 // ============================================
 // CUSTOMER SOCIAL AUTH (MUST BE ABOVE CLEAN URL ROUTES)
@@ -29,14 +39,15 @@ Route::prefix('customer/auth')->name('customer.auth.')->group(function () {
 
 // ============================================
 // DISCOVERY & SEARCH ROUTES
-// Unified discovery for all listing pages
+// Unified discovery for all listing pages  
+// Apply rate limiting to prevent scraping
 // ============================================
-Route::prefix('discover')->name('discover.')->group(function () {
+Route::middleware('throttle:discovery')->prefix('discover')->name('discover.')->group(function () {
     Route::get('/', [DiscoveryController::class, 'index'])->name('index');
 });
 
-// Public Business Routes (with tracking)
-Route::prefix('businesses')->name('businesses.')->group(function () {
+// Public Business Routes (with tracking and rate limiting)
+Route::middleware('throttle:discovery')->prefix('businesses')->name('businesses.')->group(function () {
     // Business listing (redirects to discover)
     Route::get('/', [DiscoveryController::class, 'index'])->name('index');
     
@@ -62,14 +73,14 @@ Route::name('businesses.')->group(function () {
     Route::delete('/{businessType}/{slug}/photos/{photoPath}', [PhotoController::class, 'destroy'])->name('photos.destroy'); // Optional
 });
 
-// Filter Routes (AJAX endpoints for filter metadata)
-Route::prefix('api/filters')->name('filters.')->group(function () {
+// Filter Routes (AJAX endpoints for filter metadata) with rate limiting
+Route::middleware('throttle:api')->prefix('api/filters')->name('filters.')->group(function () {
     Route::get('/', [FilterController::class, 'index'])->name('index');
     Route::get('/states/{stateSlug}/cities', [FilterController::class, 'getCitiesByState'])->name('cities.by-state');
 });
 
-// API Routes for Locations (keep prefix to avoid conflicts)
-Route::prefix('api')->name('api.')->group(function () {
+// API Routes for Locations (keep prefix to avoid conflicts) with rate limiting
+Route::middleware('throttle:api')->prefix('api')->name('api.')->group(function () {
     Route::get('locations/states', [LocationController::class, 'getStates'])->name('locations.states');
     Route::get('locations/states/{stateSlug}/cities', [LocationController::class, 'getCitiesByState'])->name('locations.cities');
 });
@@ -84,6 +95,7 @@ Route::prefix('map')->name('map.')->group(function () {
     Route::get('/businesses', [MapController::class, 'index'])->name('businesses.index');
     Route::get('/businesses/{slug}', [MapController::class, 'show'])->name('businesses.show');
     Route::get('/nearby', [MapController::class, 'nearby'])->name('nearby');
+    Route::get('/cluster', [MapController::class, 'cluster'])->name('cluster');
 });
 
 

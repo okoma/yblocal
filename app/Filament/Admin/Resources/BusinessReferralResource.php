@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources;
 
 use App\Filament\Admin\Resources\BusinessReferralResource\Pages;
 use App\Models\BusinessReferral;
+use App\Services\ExportService;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -64,7 +65,43 @@ class BusinessReferralResource extends Resource
             ->actions([
                 Tables\Actions\ViewAction::make(),
             ])
-            ->bulkActions([]);
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\BulkAction::make('export')
+                        ->label('Export Selected')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('gray')
+                        ->visible(fn () => auth()->user()?->can('export-data'))
+                        ->action(function ($records) {
+                            $records->loadMissing(['referrerBusiness', 'referredBusiness']);
+
+                            return ExportService::streamCsvFromCollection(
+                                'business-referrals-' . now()->format('Ymd-His') . '.csv',
+                                [
+                                    'Referral Code',
+                                    'Referrer Business',
+                                    'Referred Business',
+                                    'Credits Awarded',
+                                    'Status',
+                                    'Suspicious',
+                                    'IP Address',
+                                    'Created At',
+                                ],
+                                $records,
+                                fn (BusinessReferral $record) => [
+                                    $record->referral_code,
+                                    $record->referrerBusiness?->business_name,
+                                    $record->referredBusiness?->business_name,
+                                    $record->referral_credits_awarded,
+                                    $record->status,
+                                    $record->is_suspicious ? 'yes' : 'no',
+                                    $record->ip_address,
+                                    optional($record->created_at)->toDateTimeString(),
+                                ]
+                            );
+                        }),
+                ]),
+            ]);
     }
 
     public static function getRelations(): array

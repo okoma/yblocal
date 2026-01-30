@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources;
 
 use App\Filament\Admin\Resources\CustomerReferralResource\Pages;
 use App\Models\CustomerReferral;
+use App\Services\ExportService;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -61,7 +62,43 @@ class CustomerReferralResource extends Resource
             ->actions([
                 Tables\Actions\ViewAction::make(),
             ])
-            ->bulkActions([]);
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\BulkAction::make('export')
+                        ->label('Export Selected')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('gray')
+                        ->visible(fn () => auth()->user()?->can('export-data'))
+                        ->action(function ($records) {
+                            $records->loadMissing(['referrer', 'referredBusiness']);
+
+                            return ExportService::streamCsvFromCollection(
+                                'customer-referrals-' . now()->format('Ymd-His') . '.csv',
+                                [
+                                    'Referral Code',
+                                    'Referrer Name',
+                                    'Referrer Email',
+                                    'Referred Business',
+                                    'Status',
+                                    'Suspicious',
+                                    'IP Address',
+                                    'Created At',
+                                ],
+                                $records,
+                                fn (CustomerReferral $record) => [
+                                    $record->referral_code,
+                                    $record->referrer?->name,
+                                    $record->referrer?->email,
+                                    $record->referredBusiness?->business_name,
+                                    $record->status,
+                                    $record->is_suspicious ? 'yes' : 'no',
+                                    $record->ip_address,
+                                    optional($record->created_at)->toDateTimeString(),
+                                ]
+                            );
+                        }),
+                ]),
+            ]);
     }
 
     public static function getRelations(): array

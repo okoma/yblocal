@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources;
 use App\Filament\Admin\Resources\TransactionResource\Pages;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\ExportService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -338,6 +339,43 @@ class TransactionResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\BulkAction::make('export')
+                        ->label('Export Selected')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('gray')
+                        ->visible(fn () => auth()->user()?->can('export-data'))
+                        ->action(function ($records) {
+                            $records->loadMissing(['user', 'business']);
+
+                            return ExportService::streamCsvFromCollection(
+                                'transactions-' . now()->format('Ymd-His') . '.csv',
+                                [
+                                    'Transaction Ref',
+                                    'User',
+                                    'User Email',
+                                    'Business',
+                                    'Amount',
+                                    'Currency',
+                                    'Payment Method',
+                                    'Status',
+                                    'Created At',
+                                    'Paid At',
+                                ],
+                                $records,
+                                fn (Transaction $record) => [
+                                    $record->transaction_ref,
+                                    $record->user?->name,
+                                    $record->user?->email,
+                                    $record->business?->business_name,
+                                    $record->amount,
+                                    $record->currency,
+                                    $record->payment_method,
+                                    $record->status,
+                                    optional($record->created_at)->toDateTimeString(),
+                                    optional($record->paid_at)->toDateTimeString(),
+                                ]
+                            );
+                        }),
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])

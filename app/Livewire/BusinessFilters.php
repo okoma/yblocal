@@ -221,16 +221,39 @@ class BusinessFilters extends Component
             $query->where('is_open_now', true);
         }
 
-        // Search
-  if ($this->search) {
-    $query->where(function ($q) {
-        $q->where('business_name', 'like', '%' . $this->search . '%')
-            ->orWhere('description', 'like', '%' . $this->search . '%')
-            ->orWhere('city', 'like', '%' . $this->search . '%')
-            ->orWhere('state', 'like', '%' . $this->search . '%')
-            ->orWhere('area', 'like', '%' . $this->search . '%');
-    });
-}
+        // Search: prefer Scout/Meilisearch for full-text relevance when available,
+        // then intersect with DB filters (allows spatial prefilter via bbox).
+        if ($this->search) {
+            try {
+                $searchResults = Business::search($this->search)
+                    ->take(1000)
+                    ->get()
+                    ->pluck('id')
+                    ->toArray();
+            } catch (\Throwable $e) {
+                // If Scout/Meili not available or fails, fall back to DB LIKE.
+                $searchResults = [];
+            }
+
+            if (!empty($searchResults)) {
+                $query->whereIn('id', $searchResults);
+
+                // Preserve relevance ordering when user requested 'relevance' sort
+                if ($this->sort === 'relevance') {
+                    $idsList = implode(',', $searchResults);
+                    $query->orderByRaw("FIELD(id, $idsList)");
+                }
+            } else {
+                // Fallback to DB LIKE search when Scout returned nothing or failed
+                $query->where(function ($q) {
+                    $q->where('business_name', 'like', '%' . $this->search . '%')
+                        ->orWhere('description', 'like', '%' . $this->search . '%')
+                        ->orWhere('city', 'like', '%' . $this->search . '%')
+                        ->orWhere('state', 'like', '%' . $this->search . '%')
+                        ->orWhere('area', 'like', '%' . $this->search . '%');
+                });
+            }
+        }
 
         // Sorting
         switch ($this->sort) {

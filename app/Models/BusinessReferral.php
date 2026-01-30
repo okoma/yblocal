@@ -21,10 +21,18 @@ class BusinessReferral extends Model
         'referral_code',
         'referral_credits_awarded',
         'status',
+        'ip_address',
+        'device_fingerprint',
+        'user_agent',
+        'is_suspicious',
+        'fraud_notes',
+        'verified_at',
     ];
 
     protected $casts = [
         'referral_credits_awarded' => 'integer',
+        'is_suspicious' => 'boolean',
+        'verified_at' => 'datetime',
     ];
 
     public function scopePending(Builder $query): Builder

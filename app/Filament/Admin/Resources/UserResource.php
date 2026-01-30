@@ -10,6 +10,7 @@ namespace App\Filament\Admin\Resources;
 use App\Filament\Admin\Resources\UserResource\Pages;
 use App\Models\User;
 use App\Enums\UserRole;
+use App\Services\ExportService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -270,6 +271,37 @@ class UserResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\BulkAction::make('export')
+                        ->label('Export Selected')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('gray')
+                        ->visible(fn () => auth()->user()?->can('export-data'))
+                        ->action(function ($records) {
+                            return ExportService::streamCsvFromCollection(
+                                'users-' . now()->format('Ymd-His') . '.csv',
+                                [
+                                    'ID',
+                                    'Name',
+                                    'Email',
+                                    'Phone',
+                                    'Role',
+                                    'Active',
+                                    'Banned',
+                                    'Created At',
+                                ],
+                                $records,
+                                fn (User $record) => [
+                                    $record->id,
+                                    $record->name,
+                                    $record->email,
+                                    $record->phone,
+                                    $record->role?->value ?? $record->role,
+                                    $record->is_active ? 'yes' : 'no',
+                                    $record->is_banned ? 'yes' : 'no',
+                                    optional($record->created_at)->toDateTimeString(),
+                                ]
+                            );
+                        }),
                     Tables\Actions\DeleteBulkAction::make(),
                     
                     Tables\Actions\BulkAction::make('activate')

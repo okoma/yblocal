@@ -372,7 +372,29 @@ class ViewBusiness extends ViewRecord
                         
                         Components\TextEntry::make('longitude')
                             ->visible(fn ($state) => !empty($state)),
-                        
+
+                        Components\ImageEntry::make('map_preview')
+                            ->label('Map Preview')
+                            ->defaultImageUrl(function ($record) {
+                                $lat = $record->latitude;
+                                $lng = $record->longitude;
+                                if (empty($lat) || empty($lng)) {
+                                    return null;
+                                }
+                                $key = env('GOOGLE_MAPS_STATIC_KEY');
+                                if ($key) {
+                                    $size = '800x300';
+                                    $zoom = 15;
+                                    $marker = rawurlencode("color:red|{$lat},{$lng}");
+                                    return "https://maps.googleapis.com/maps/api/staticmap?center={$lat},{$lng}&zoom={$zoom}&size={$size}&markers={$marker}&key={$key}";
+                                }
+                                return null;
+                            })
+                            ->visible(fn ($state) => !empty($state))
+                            ->description(fn ($record) => isset($record->latitude, $record->longitude) ? 'Click image to open in Google Maps' : null)
+                            ->url(fn ($record) => isset($record->latitude, $record->longitude) ? "https://www.google.com/maps/search/?api=1&query={$record->latitude},{$record->longitude}" : null)
+                            ->openUrlInNewTab(),
+
                         Components\TextEntry::make('phone')
                             ->icon('heroicon-o-phone')
                             ->copyable(),

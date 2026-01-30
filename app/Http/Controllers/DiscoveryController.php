@@ -214,19 +214,27 @@ class DiscoveryController extends Controller
             case 'distance':
                 // Distance-based (requires lat/lng in request)
                 if ($request->filled(['lat', 'lng'])) {
-                    $lat = $request->lat;
-                    $lng = $request->lng;
-                    
-                    // Calculate distance using Haversine formula
-                    $query->selectRaw("
-                        *,
-                        (6371 * acos(cos(radians(?)) 
-                        * cos(radians(latitude)) 
-                        * cos(radians(longitude) - radians(?)) 
-                        + sin(radians(?)) 
-                        * sin(radians(latitude)))) AS distance
-                    ", [$lat, $lng, $lat])
-                    ->orderBy('distance', 'asc');
+                    $lat = (float) $request->lat;
+                    $lng = (float) $request->lng;
+                    $radius = (float) $request->get('radius', 50); // km default radius for bounding box
+                    $earthRadius = 6371; // Earth's radius in km
+
+                    // Calculate an approximate bounding box around the point (cheap prefilter)
+                    $deltaLat = rad2deg($radius / $earthRadius);
+                    $deltaLng = rad2deg($radius / $earthRadius / max(cos(deg2rad($lat)), 0.00001));
+
+                    $minLat = $lat - $deltaLat;
+                    $maxLat = $lat + $deltaLat;
+                    $minLng = $lng - $deltaLng;
+                    $maxLng = $lng + $deltaLng;
+
+                    // Apply bounding-box prefilter, then compute exact Haversine distance and order by it
+                    $query->withinBoundingBox($minLat, $maxLat, $minLng, $maxLng)
+                          ->selectRaw(
+                              "*, ({$earthRadius} * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))) AS distance",
+                              [$lat, $lng, $lat]
+                          )
+                          ->orderBy('distance', 'asc');
                 } else {
                     // Fallback to relevance if no coordinates
                     $query->latest('created_at');

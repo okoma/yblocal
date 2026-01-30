@@ -5,6 +5,8 @@
 namespace App\Filament\Admin\Resources\BusinessResource\Pages;
 
 use App\Filament\Admin\Resources\BusinessResource;
+use App\Models\Business;
+use App\Services\ExportService;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Resources\Components\Tab;
@@ -17,6 +19,43 @@ class ListBusinesses extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('export_all')
+                ->label('Export CSV')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->color('gray')
+                ->visible(fn () => auth()->user()?->can('export-data'))
+                ->action(function () {
+                    return ExportService::streamCsvFromQuery(
+                        'businesses-all-' . now()->format('Ymd-His') . '.csv',
+                        [
+                            'ID',
+                            'Name',
+                            'Owner',
+                            'Owner Email',
+                            'Type',
+                            'Status',
+                            'Verified',
+                            'Premium',
+                            'State',
+                            'City',
+                            'Created At',
+                        ],
+                        Business::query()->with(['owner', 'businessType']),
+                        fn (Business $record) => [
+                            $record->id,
+                            $record->business_name,
+                            $record->owner?->name,
+                            $record->owner?->email,
+                            $record->businessType?->name,
+                            $record->status,
+                            $record->is_verified ? 'yes' : 'no',
+                            $record->is_premium ? 'yes' : 'no',
+                            $record->state,
+                            $record->city,
+                            optional($record->created_at)->toDateTimeString(),
+                        ]
+                    );
+                }),
             Actions\CreateAction::make(),
         ];
     }

@@ -19,6 +19,17 @@ class CustomerReferral extends Model
         'referred_business_id',
         'referral_code',
         'status',
+        'ip_address',
+        'device_fingerprint',
+        'user_agent',
+        'is_suspicious',
+        'fraud_notes',
+        'verified_at',
+    ];
+
+    protected $casts = [
+        'is_suspicious' => 'boolean',
+        'verified_at' => 'datetime',
     ];
 
     // Scopes

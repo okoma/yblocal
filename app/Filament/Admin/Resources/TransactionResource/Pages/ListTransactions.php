@@ -3,6 +3,8 @@
 namespace App\Filament\Admin\Resources\TransactionResource\Pages;
 
 use App\Filament\Admin\Resources\TransactionResource;
+use App\Models\Transaction;
+use App\Services\ExportService;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Resources\Components\Tab;
@@ -15,6 +17,41 @@ class ListTransactions extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('export_all')
+                ->label('Export CSV')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->color('gray')
+                ->visible(fn () => auth()->user()?->can('export-data'))
+                ->action(function () {
+                    return ExportService::streamCsvFromQuery(
+                        'transactions-all-' . now()->format('Ymd-His') . '.csv',
+                        [
+                            'Transaction Ref',
+                            'User',
+                            'User Email',
+                            'Business',
+                            'Amount',
+                            'Currency',
+                            'Payment Method',
+                            'Status',
+                            'Created At',
+                            'Paid At',
+                        ],
+                        Transaction::query()->with(['user', 'business']),
+                        fn (Transaction $record) => [
+                            $record->transaction_ref,
+                            $record->user?->name,
+                            $record->user?->email,
+                            $record->business?->business_name,
+                            $record->amount,
+                            $record->currency,
+                            $record->payment_method,
+                            $record->status,
+                            optional($record->created_at)->toDateTimeString(),
+                            optional($record->paid_at)->toDateTimeString(),
+                        ]
+                    );
+                }),
             Actions\CreateAction::make(),
         ];
     }
