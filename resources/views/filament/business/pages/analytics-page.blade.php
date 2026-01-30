@@ -701,10 +701,40 @@
                     </div>
                 @else
                     <div class="space-y-3">
+                        @php
+                            $totalViews = array_sum($geographic['views_by_country']);
+                        @endphp
                         @foreach($geographic['views_by_country'] as $country => $count)
-                            <div class="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3">
-                                <span class="font-medium text-gray-900 dark:text-white">{{ $country }}</span>
-                                <span class="text-sm text-gray-600 dark:text-gray-400">{{ number_format($count) }} views</span>
+                            @php
+                                // Extract country code if format is "Country (CODE)"
+                                $countryCode = null;
+                                if (preg_match('/\(([A-Z]{2})\)/', $country, $matches)) {
+                                    $countryCode = $matches[1];
+                                    $countryName = trim(str_replace("({$countryCode})", '', $country));
+                                } else {
+                                    $countryName = $country;
+                                    // Try to get country code from database if available
+                                    $countryCode = \App\Models\BusinessView::where('country', $country)
+                                        ->whereNotNull('country_code')
+                                        ->value('country_code');
+                                }
+                                $flag = \App\Services\GeolocationService::getCountryFlag($countryCode);
+                                $percentage = $totalViews > 0 ? round(($count / $totalViews) * 100, 1) : 0;
+                            @endphp
+                            <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-2xl">{{ $flag }}</span>
+                                        <span class="font-medium text-gray-900 dark:text-white">{{ $countryName }}</span>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ number_format($count) }}</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">{{ $percentage }}%</div>
+                                    </div>
+                                </div>
+                                <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                                    <div class="h-full bg-blue-500 transition-all" style="width: {{ $percentage }}%"></div>
+                                </div>
                             </div>
                         @endforeach
                     </div>
@@ -729,10 +759,32 @@
                     </div>
                 @else
                     <div class="space-y-3">
+                        @php
+                            $totalCityViews = array_sum($geographic['views_by_city']);
+                        @endphp
                         @foreach($geographic['views_by_city'] as $city => $count)
-                            <div class="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3">
-                                <span class="font-medium text-gray-900 dark:text-white">{{ $city }}</span>
-                                <span class="text-sm text-gray-600 dark:text-gray-400">{{ number_format($count) }} views</span>
+                            @php
+                                $percentage = $totalCityViews > 0 ? round(($count / $totalCityViews) * 100, 1) : 0;
+                                // Get country for this city
+                                $cityCountryCode = \App\Models\BusinessView::where('city', $city)
+                                    ->whereNotNull('country_code')
+                                    ->value('country_code');
+                                $flag = \App\Services\GeolocationService::getCountryFlag($cityCountryCode);
+                            @endphp
+                            <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-2xl">{{ $flag }}</span>
+                                        <span class="font-medium text-gray-900 dark:text-white">{{ $city }}</span>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ number_format($count) }}</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">{{ $percentage }}%</div>
+                                    </div>
+                                </div>
+                                <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                                    <div class="h-full bg-indigo-500 transition-all" style="width: {{ $percentage }}%"></div>
+                                </div>
                             </div>
                         @endforeach
                     </div>

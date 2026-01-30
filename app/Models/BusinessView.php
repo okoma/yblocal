@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Carbon\Carbon;
 use App\Enums\ReferralSource;
 use App\Enums\DeviceType;
+use App\Services\GeolocationService;
 
 class BusinessView extends Model
 {
@@ -95,13 +96,16 @@ class BusinessView extends Model
 
         $referralSource = $referralSource ?? ReferralSource::DIRECT;
 
+        // Get geolocation data
+        $location = GeolocationService::getLocationData(request()->ip());
+
         return static::create([
             'business_id' => $businessId,
             'referral_source' => $referralSource,
-            'country' => 'Unknown', // TODO: IP geolocation
-            'country_code' => null,
-            'region' => 'Unknown',
-            'city' => 'Unknown',
+            'country' => $location['country'],
+            'country_code' => $location['country_code'],
+            'region' => $location['region'],
+            'city' => $location['city'],
             'ip_address' => request()->ip(),
             'user_agent' => request()->userAgent(),
             'device_type' => DeviceType::detect(request()->userAgent()),

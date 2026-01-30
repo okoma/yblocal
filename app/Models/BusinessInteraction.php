@@ -5,6 +5,7 @@ namespace App\Models;
 
 use App\Enums\DeviceType;
 use App\Enums\ReferralSource;
+use App\Services\GeolocationService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -112,15 +113,18 @@ class BusinessInteraction extends Model
         $now = now();
         $deviceType = DeviceType::detect(request()->userAgent());
 
+        // Get geolocation data
+        $location = GeolocationService::getLocationData(request()->ip());
+
         return static::create([
             'business_id' => $businessId,
             'user_id' => $userId,
             'interaction_type' => $type,
             'referral_source' => $referralSource,
-            'country' => 'Unknown',
-            'country_code' => null,
-            'region' => 'Unknown',
-            'city' => 'Unknown',
+            'country' => $location['country'],
+            'country_code' => $location['country_code'],
+            'region' => $location['region'],
+            'city' => $location['city'],
             'ip_address' => request()->ip(),
             'user_agent' => request()->userAgent(),
             'device_type' => $deviceType,

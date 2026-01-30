@@ -13,6 +13,7 @@ use Carbon\Carbon;
 use App\Enums\ReferralSource;
 use App\Enums\PageType;
 use App\Enums\DeviceType;
+use App\Services\GeolocationService;
 
 class BusinessImpression extends Model
 {
@@ -103,14 +104,17 @@ class BusinessImpression extends Model
 
         $referralSource = $referralSource ?? ReferralSource::DIRECT;
 
+        // Get geolocation data
+        $location = GeolocationService::getLocationData(request()->ip());
+
         return static::create([
             'business_id' => $businessId,
             'page_type' => $pageType,
             'referral_source' => $referralSource,
-            'country' => 'Unknown', // TODO: IP geolocation
-            'country_code' => null,
-            'region' => 'Unknown',
-            'city' => 'Unknown',
+            'country' => $location['country'],
+            'country_code' => $location['country_code'],
+            'region' => $location['region'],
+            'city' => $location['city'],
             'ip_address' => request()->ip(),
             'user_agent' => request()->userAgent(),
             'device_type' => DeviceType::detect(request()->userAgent()),
@@ -134,6 +138,10 @@ class BusinessImpression extends Model
 
         $referralSource = $referralSource ?? ReferralSource::DIRECT;
         $now = now();
+        
+        // Get geolocation data once for all impressions
+        $location = GeolocationService::getLocationData(request()->ip());
+        
         $impressions = [];
         
         foreach ($businessIds as $businessId) {
@@ -141,9 +149,10 @@ class BusinessImpression extends Model
                 'business_id' => $businessId,
                 'page_type' => $pageType->value,
                 'referral_source' => $referralSource->value,
-                'country' => 'Unknown',
-                'region' => 'Unknown',
-                'city' => 'Unknown',
+                'country' => $location['country'],
+                'country_code' => $location['country_code'],
+                'region' => $location['region'],
+                'city' => $location['city'],
                 'ip_address' => request()->ip(),
                 'user_agent' => request()->userAgent(),
                 'device_type' => DeviceType::detect(request()->userAgent())->value,

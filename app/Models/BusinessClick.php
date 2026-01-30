@@ -15,6 +15,7 @@ use Carbon\Carbon;
 use App\Enums\ReferralSource;
 use App\Enums\PageType;
 use App\Enums\DeviceType;
+use App\Services\GeolocationService;
 
 class BusinessClick extends Model
 {
@@ -133,15 +134,18 @@ class BusinessClick extends Model
         $referralSource = $referralSource ?? static::detectReferralSource();
         $sourcePageType = $sourcePageType ?? static::detectSourcePageType();
 
+        // Get geolocation data
+        $location = GeolocationService::getLocationData(request()->ip());
+
         return static::create([
             'business_id' => $businessId,
             'cookie_id' => $cookieId,
             'referral_source' => $referralSource,
             'source_page_type' => $sourcePageType,
-            'country' => 'Unknown', // TODO: IP geolocation
-            'country_code' => null,
-            'region' => 'Unknown',
-            'city' => 'Unknown',
+            'country' => $location['country'],
+            'country_code' => $location['country_code'],
+            'region' => $location['region'],
+            'city' => $location['city'],
             'ip_address' => request()->ip(),
             'user_agent' => request()->userAgent(),
             'device_type' => DeviceType::detect(request()->userAgent()),
