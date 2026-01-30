@@ -2,77 +2,117 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class GeolocationService
 {
     /**
-     * Get geolocation data for an IP address
-     * Uses free ip-api.com service with caching
+     * Get geolocation data from Cloudflare headers
+     * Cloudflare automatically adds geo headers when traffic passes through their network
      * 
-     * @param string|null $ipAddress
+     * @param string|null $ipAddress (unused, kept for backward compatibility)
      * @return array
      */
     public static function getLocationData(?string $ipAddress = null): array
     {
-        $ipAddress = $ipAddress ?? request()->ip();
+        // Check if Cloudflare headers are present
+        $countryCode = request()->header('CF-IPCountry');
         
-        // Return default for localhost/internal IPs
-        if (self::isLocalIp($ipAddress)) {
-            return self::getDefaultLocation();
+        if ($countryCode && $countryCode !== 'XX') {
+            return [
+                'country' => self::getCountryName($countryCode),
+                'country_code' => $countryCode,
+                'region' => request()->header('CF-Region') ?: 'Unknown',
+                'city' => self::decodeCloudflareCity(request()->header('CF-IPCity')) ?: 'Unknown',
+                'latitude' => request()->header('CF-Latitude') ?: null,
+                'longitude' => request()->header('CF-Longitude') ?: null,
+                'timezone' => request()->header('CF-Timezone') ?: null,
+            ];
         }
         
-        // Check cache first (cache for 24 hours)
-        $cacheKey = "geolocation:{$ipAddress}";
+        // Fallback if Cloudflare headers not available
+        Log::info('Cloudflare headers not found, using default location', [
+            'ip' => $ipAddress ?? request()->ip()
+        ]);
         
-        return Cache::remember($cacheKey, 86400, function () use ($ipAddress) {
-            try {
-                // Using ip-api.com (free, no API key required, 45 requests/minute)
-                $response = Http::timeout(3)->get("http://ip-api.com/json/{$ipAddress}", [
-                    'fields' => 'status,country,countryCode,region,regionName,city,lat,lon,timezone'
-                ]);
-                
-                if ($response->successful() && $response->json('status') === 'success') {
-                    $data = $response->json();
-                    
-                    return [
-                        'country' => $data['country'] ?? 'Unknown',
-                        'country_code' => $data['countryCode'] ?? null,
-                        'region' => $data['regionName'] ?? 'Unknown',
-                        'city' => $data['city'] ?? 'Unknown',
-                        'latitude' => $data['lat'] ?? null,
-                        'longitude' => $data['lon'] ?? null,
-                        'timezone' => $data['timezone'] ?? null,
-                    ];
-                }
-            } catch (\Exception $e) {
-                Log::warning('Geolocation API failed', [
-                    'ip' => $ipAddress,
-                    'error' => $e->getMessage()
-                ]);
-            }
-            
-            return self::getDefaultLocation();
-        });
+        return self::getDefaultLocation();
     }
     
     /**
-     * Check if IP is local/internal
+     * Decode Cloudflare city name (URL encoded)
      */
-    private static function isLocalIp(string $ip): bool
+    private static function decodeCloudflareCity(?string $city): ?string
     {
-        if (in_array($ip, ['127.0.0.1', '::1', 'localhost'])) {
-            return true;
+        if (!$city) {
+            return null;
         }
         
-        // Check private IP ranges
-        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
-            return true;
-        }
+        return urldecode($city);
+    }
+    
+    /**
+     * Get country name from country code
+     * Using common countries first, extend as needed
+     */
+    private static function getCountryName(string $countryCode): string
+    {
+        $countries = [
+            'NG' => 'Nigeria',
+            'US' => 'United States',
+            'GB' => 'United Kingdom',
+            'CA' => 'Canada',
+            'AU' => 'Australia',
+            'ZA' => 'South Africa',
+            'KE' => 'Kenya',
+            'GH' => 'Ghana',
+            'IN' => 'India',
+            'DE' => 'Germany',
+            'FR' => 'France',
+            'BR' => 'Brazil',
+            'AE' => 'United Arab Emirates',
+            'SA' => 'Saudi Arabia',
+            'EG' => 'Egypt',
+            'CN' => 'China',
+            'JP' => 'Japan',
+            'SG' => 'Singapore',
+            'NL' => 'Netherlands',
+            'IT' => 'Italy',
+            'ES' => 'Spain',
+            'MX' => 'Mexico',
+            'AR' => 'Argentina',
+            'CO' => 'Colombia',
+            'PH' => 'Philippines',
+            'TH' => 'Thailand',
+            'MY' => 'Malaysia',
+            'ID' => 'Indonesia',
+            'PK' => 'Pakistan',
+            'BD' => 'Bangladesh',
+            'VN' => 'Vietnam',
+            'TR' => 'Turkey',
+            'PL' => 'Poland',
+            'UA' => 'Ukraine',
+            'RO' => 'Romania',
+            'BE' => 'Belgium',
+            'SE' => 'Sweden',
+            'CH' => 'Switzerland',
+            'AT' => 'Austria',
+            'NO' => 'Norway',
+            'DK' => 'Denmark',
+            'FI' => 'Finland',
+            'IE' => 'Ireland',
+            'PT' => 'Portugal',
+            'GR' => 'Greece',
+            'CZ' => 'Czech Republic',
+            'HU' => 'Hungary',
+            'NZ' => 'New Zealand',
+            'IL' => 'Israel',
+            'CL' => 'Chile',
+            'PE' => 'Peru',
+            'VE' => 'Venezuela',
+            'UY' => 'Uruguay',
+        ];
         
-        return false;
+        return $countries[$countryCode] ?? $countryCode;
     }
     
     /**
