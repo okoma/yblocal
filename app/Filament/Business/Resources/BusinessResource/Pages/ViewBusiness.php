@@ -1,7 +1,7 @@
 <?php
 // ============================================
 // app/Filament/Business/Resources/BusinessResource/Pages/ViewBusiness.php
-// View business details with inline claim/verification workflow
+// View business details with profile-style layout
 // ============================================
 
 namespace App\Filament\Business\Resources\BusinessResource\Pages;
@@ -328,290 +328,389 @@ class ViewBusiness extends ViewRecord
     {
         return $infolist
             ->schema([
-                Components\Section::make('Business Overview')
+                // Profile Header Section (Cover + Logo + Name)
+                Components\Section::make()
                     ->schema([
-                        Components\ImageEntry::make('logo')
-                            ->circular()
-                            ->defaultImageUrl(fn ($record) => 'https://ui-avatars.com/api/?name=' . urlencode($record->business_name)),
-                        
-                        Components\TextEntry::make('business_name')
-                            ->size('lg')
-                            ->weight('bold'),
-                        
-                        Components\TextEntry::make('businessType.name')
-                            ->label('Business Type')
-                            ->badge()
-                            ->color('info'),
-                        
-                        Components\TextEntry::make('categories.name')
-                            ->badge()
-                            ->separator(',')
-                            ->color('success'),
-                        
-                        Components\TextEntry::make('description')
-                            ->columnSpanFull(),
-                    ])
-                    ->columns(3),
-                
-                Components\Section::make('Location & Contact')
-                    ->schema([
-                        Components\TextEntry::make('address')
-                            ->icon('heroicon-o-map-pin'),
-                        
-                        Components\TextEntry::make('city')
-                            ->icon('heroicon-o-building-office'),
-                        
-                        Components\TextEntry::make('area')
-                            ->visible(fn ($state) => !empty($state)),
-                        
-                        Components\TextEntry::make('state')
-                            ->icon('heroicon-o-globe-alt'),
-                        
-                        Components\TextEntry::make('latitude')
-                            ->visible(fn ($state) => !empty($state)),
-                        
-                        Components\TextEntry::make('longitude')
-                            ->visible(fn ($state) => !empty($state)),
-
-                        Components\ImageEntry::make('map_preview')
-                            ->label('Map Preview')
-                            ->defaultImageUrl(function ($record) {
-                                $lat = $record->latitude;
-                                $lng = $record->longitude;
-                                if (empty($lat) || empty($lng)) {
-                                    return null;
-                                }
-                                $key = env('GOOGLE_MAPS_STATIC_KEY');
-                                if ($key) {
-                                    $size = '800x300';
-                                    $zoom = 15;
-                                    $marker = rawurlencode("color:red|{$lat},{$lng}");
-                                    return "https://maps.googleapis.com/maps/api/staticmap?center={$lat},{$lng}&zoom={$zoom}&size={$size}&markers={$marker}&key={$key}";
-                                }
-                                return null;
-                            })
-                            ->visible(fn ($state) => !empty($state))
-                            ->helperText(fn ($record) => isset($record->latitude, $record->longitude) ? 'Click image to open in Google Maps' : null)
-                            ->url(fn ($record) => isset($record->latitude, $record->longitude) ? "https://www.google.com/maps/search/?api=1&query={$record->latitude},{$record->longitude}" : null)
-                            ->openUrlInNewTab(),
-
-                        Components\TextEntry::make('phone')
-                            ->icon('heroicon-o-phone')
-                            ->copyable(),
-                        
-                        Components\TextEntry::make('email')
-                            ->icon('heroicon-o-envelope')
-                            ->copyable(),
-                        
-                        Components\TextEntry::make('whatsapp')
-                            ->icon('heroicon-o-chat-bubble-left-right')
-                            ->copyable(),
-                        
-                        Components\TextEntry::make('website')
-                            ->icon('heroicon-o-globe-alt')
-                            ->url(fn ($state) => $state)
-                            ->openUrlInNewTab(),
-                        
-                        Components\TextEntry::make('nearby_landmarks')
-                            ->columnSpanFull()
-                            ->visible(fn ($state) => !empty($state)),
-                    ])
-                    ->columns(3),
-                
-                Components\Section::make('Business Hours')
-                    ->schema([
-                        Components\ViewEntry::make('business_hours')
+                        Components\ImageEntry::make('cover_photo')
                             ->label('')
-                            ->view('filament.infolists.business-hours')
-                            ->viewData(fn ($record) => [
-                                'businessHours' => $record->business_hours ?? [],
+                            ->height(200)
+                            ->defaultImageUrl('https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&h=400&fit=crop')
+                            ->extraAttributes([
+                                'class' => 'w-full object-cover rounded-t-xl'
                             ])
                             ->columnSpanFull(),
+                        
+                        Components\Group::make([
+                            Components\ImageEntry::make('logo')
+                                ->circular()
+                                ->size(120)
+                                ->defaultImageUrl(fn ($record) => 'https://ui-avatars.com/api/?name=' . urlencode($record->business_name) . '&size=200&bold=true')
+                                ->extraAttributes([
+                                    'class' => '-mt-16 border-4 border-white shadow-lg'
+                                ]),
+                            
+                            Components\Group::make([
+                                Components\TextEntry::make('business_name')
+                                    ->size('2xl')
+                                    ->weight('bold')
+                                    ->extraAttributes(['class' => 'text-gray-900']),
+                                
+                                Components\Group::make([
+                                    Components\TextEntry::make('is_verified')
+                                        ->badge()
+                                        ->formatStateUsing(fn ($state) => $state ? 'Verified' : null)
+                                        ->color('success')
+                                        ->icon('heroicon-o-check-badge')
+                                        ->visible(fn ($state) => $state),
+                                    
+                                    Components\TextEntry::make('is_premium')
+                                        ->badge()
+                                        ->formatStateUsing(fn ($state) => $state ? 'Premium' : null)
+                                        ->color('warning')
+                                        ->icon('heroicon-o-star')
+                                        ->visible(fn ($state) => $state),
+                                ])
+                                ->extraAttributes(['class' => 'flex gap-2']),
+                                
+                                Components\TextEntry::make('website')
+                                    ->icon('heroicon-o-link')
+                                    ->url(fn ($state) => $state)
+                                    ->openUrlInNewTab()
+                                    ->color('primary')
+                                    ->visible(fn ($state) => !empty($state)),
+                            ])
+                            ->columnStart(2),
+                        ])
+                        ->columns(3)
+                        ->columnSpanFull(),
                     ])
-                    ->visible(fn ($record) => !empty($record->business_hours))
-                    ->collapsible(),
-                
-                Components\Section::make('Business Status')
-                    ->schema([
-                        Components\TextEntry::make('status')
-                            ->badge()
-                            ->color(fn ($state) => match($state) {
-                                'active' => 'success',
-                                'pending_review' => 'warning',
-                                'draft' => 'secondary',
-                                'suspended' => 'danger',
-                                default => 'gray',
-                            }),
-                        
-                        Components\IconEntry::make('is_verified')
-                            ->boolean()
-                            ->label('Verified'),
-                        
-                        Components\TextEntry::make('verification_level')
-                            ->badge()
-                            ->color(fn ($state) => match($state) {
-                                'premium' => 'success',
-                                'standard' => 'info',
-                                'basic' => 'warning',
-                                default => 'gray',
-                            }),
-                        
-                        Components\IconEntry::make('is_premium')
-                            ->boolean()
-                            ->label('Premium'),
-                        
-                        Components\IconEntry::make('is_claimed')
-                            ->boolean()
-                            ->label('Claimed'),
-                        
-                        Components\TextEntry::make('claimed_at')
-                            ->dateTime()
-                            ->label('Claimed On'),
-                    ])
-                    ->columns(3),
-                
-                Components\Section::make('Performance Statistics')
+                    ->columnSpanFull()
+                    ->extraAttributes([
+                        'class' => 'bg-white rounded-xl shadow-sm mb-6'
+                    ]),
+
+                // Quick Stats Bar
+                Components\Section::make()
                     ->schema([
                         Components\TextEntry::make('avg_rating')
-                            ->label('Average Rating')
-                            ->formatStateUsing(fn ($state) => number_format($state, 1) . ' ⭐')
+                            ->label('Rating')
+                            ->formatStateUsing(fn ($state) => $state ? number_format($state, 1) . ' ⭐' : 'No ratings')
                             ->size('lg')
-                            ->weight('bold'),
+                            ->weight('bold')
+                            ->color('warning'),
                         
                         Components\TextEntry::make('total_reviews')
-                            ->label('Total Reviews')
-                            ->badge()
+                            ->label('Reviews')
+                            ->formatStateUsing(fn ($state) => number_format($state))
+                            ->size('lg')
+                            ->weight('bold')
                             ->color('info'),
                         
                         Components\TextEntry::make('total_views')
-                            ->label('Total Views')
-                            ->badge()
+                            ->label('Views')
+                            ->formatStateUsing(fn ($state) => number_format($state))
+                            ->size('lg')
+                            ->weight('bold')
                             ->color('success'),
                         
-                        Components\TextEntry::make('total_leads')
-                            ->label('Total Leads')
-                            ->badge()
-                            ->color('warning'),
-                        
                         Components\TextEntry::make('total_saves')
-                            ->label('Total Saves')
-                            ->badge()
+                            ->label('Saves')
+                            ->formatStateUsing(fn ($state) => number_format($state))
+                            ->size('lg')
+                            ->weight('bold')
                             ->color('primary'),
-                        
                     ])
-                    ->columns(3),
-                
-                Components\Section::make('Features & Amenities')
-                    ->schema([
-                        Components\TextEntry::make('unique_features')
-                            ->badge()
-                            ->formatStateUsing(function ($state) {
-                                if (empty($state)) {
-                                    return null;
-                                }
-                                return is_array($state) ? $state : null;
-                            })
-                            ->separator(',')
-                            ->visible(fn ($state) => !empty($state)),
+                    ->columns(4)
+                    ->columnSpanFull()
+                    ->extraAttributes([
+                        'class' => 'bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl shadow-sm mb-6'
+                    ]),
+
+                // Main Content in Tabs/Sections
+                Components\Tabs::make('Business Details')
+                    ->tabs([
+                        // Overview Tab
+                        Components\Tabs\Tab::make('Overview')
+                            ->icon('heroicon-o-information-circle')
+                            ->schema([
+                                Components\Section::make('About')
+                                    ->schema([
+                                        Components\TextEntry::make('businessType.name')
+                                            ->label('Business Type')
+                                            ->badge()
+                                            ->color('info'),
+                                        
+                                        Components\TextEntry::make('categories.name')
+                                            ->label('Categories')
+                                            ->badge()
+                                            ->separator(',')
+                                            ->color('success'),
+                                        
+                                        Components\TextEntry::make('description')
+                                            ->label('Description')
+                                            ->columnSpanFull()
+                                            ->prose(),
+                                    ])
+                                    ->columns(2),
+                                
+                                Components\Section::make('Business Hours')
+                                    ->schema([
+                                        Components\ViewEntry::make('business_hours')
+                                            ->label('')
+                                            ->view('filament.infolists.business-hours')
+                                            ->viewData(fn ($record) => [
+                                                'businessHours' => $record->business_hours ?? [],
+                                            ])
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->visible(fn ($record) => !empty($record->business_hours))
+                                    ->collapsible(),
+                            ]),
                         
-                        Components\TextEntry::make('amenities.name')
-                            ->label('Amenities')
-                            ->badge()
-                            ->separator(',')
-                            ->color('success')
-                            ->visible(fn ($record) => $record->amenities()->exists()),
+                        // Contact Tab
+                        Components\Tabs\Tab::make('Contact')
+                            ->icon('heroicon-o-phone')
+                            ->schema([
+                                Components\Section::make('Contact Information')
+                                    ->schema([
+                                        Components\TextEntry::make('phone')
+                                            ->icon('heroicon-o-phone')
+                                            ->copyable()
+                                            ->placeholder('Not provided'),
+                                        
+                                        Components\TextEntry::make('email')
+                                            ->icon('heroicon-o-envelope')
+                                            ->copyable()
+                                            ->placeholder('Not provided'),
+                                        
+                                        Components\TextEntry::make('whatsapp')
+                                            ->icon('heroicon-o-chat-bubble-left-right')
+                                            ->copyable()
+                                            ->placeholder('Not provided'),
+                                        
+                                        Components\TextEntry::make('website')
+                                            ->icon('heroicon-o-globe-alt')
+                                            ->url(fn ($state) => $state)
+                                            ->openUrlInNewTab()
+                                            ->placeholder('Not provided'),
+                                    ])
+                                    ->columns(2),
+                            ]),
                         
-                        Components\TextEntry::make('paymentMethods.name')
-                            ->label('Payment Methods')
-                            ->badge()
-                            ->separator(',')
-                            ->color('info')
-                            ->visible(fn ($record) => $record->paymentMethods()->exists()),
+                        // Location Tab
+                        Components\Tabs\Tab::make('Location')
+                            ->icon('heroicon-o-map-pin')
+                            ->schema([
+                                Components\Section::make('Address')
+                                    ->schema([
+                                        Components\TextEntry::make('address')
+                                            ->icon('heroicon-o-map-pin')
+                                            ->columnSpanFull(),
+                                        
+                                        Components\TextEntry::make('city')
+                                            ->icon('heroicon-o-building-office'),
+                                        
+                                        Components\TextEntry::make('area')
+                                            ->visible(fn ($state) => !empty($state)),
+                                        
+                                        Components\TextEntry::make('state')
+                                            ->icon('heroicon-o-globe-alt'),
+                                        
+                                        Components\TextEntry::make('nearby_landmarks')
+                                            ->label('Nearby Landmarks')
+                                            ->columnSpanFull()
+                                            ->visible(fn ($state) => !empty($state)),
+                                    ])
+                                    ->columns(3),
+                                
+                                Components\Section::make('Map')
+                                    ->schema([
+                                        Components\ImageEntry::make('map_preview')
+                                            ->label('')
+                                            ->defaultImageUrl(function ($record) {
+                                                $lat = $record->latitude;
+                                                $lng = $record->longitude;
+                                                if (empty($lat) || empty($lng)) {
+                                                    return null;
+                                                }
+                                                $key = env('GOOGLE_MAPS_STATIC_KEY');
+                                                if ($key) {
+                                                    $size = '800x400';
+                                                    $zoom = 15;
+                                                    $marker = rawurlencode("color:red|{$lat},{$lng}");
+                                                    return "https://maps.googleapis.com/maps/api/staticmap?center={$lat},{$lng}&zoom={$zoom}&size={$size}&markers={$marker}&key={$key}";
+                                                }
+                                                return null;
+                                            })
+                                            ->visible(fn ($record) => !empty($record->latitude) && !empty($record->longitude))
+                                            ->helperText('Click image to open in Google Maps')
+                                            ->url(fn ($record) => isset($record->latitude, $record->longitude) ? "https://www.google.com/maps/search/?api=1&query={$record->latitude},{$record->longitude}" : null)
+                                            ->openUrlInNewTab()
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->visible(fn ($record) => !empty($record->latitude) && !empty($record->longitude)),
+                            ]),
+                        
+                        // Features Tab
+                        Components\Tabs\Tab::make('Features')
+                            ->icon('heroicon-o-sparkles')
+                            ->schema([
+                                Components\Section::make('Amenities & Features')
+                                    ->schema([
+                                        Components\TextEntry::make('unique_features')
+                                            ->label('Unique Features')
+                                            ->badge()
+                                            ->formatStateUsing(function ($state) {
+                                                if (empty($state)) {
+                                                    return null;
+                                                }
+                                                return is_array($state) ? $state : null;
+                                            })
+                                            ->separator(',')
+                                            ->visible(fn ($state) => !empty($state))
+                                            ->columnSpanFull(),
+                                        
+                                        Components\TextEntry::make('amenities.name')
+                                            ->label('Amenities')
+                                            ->badge()
+                                            ->separator(',')
+                                            ->color('success')
+                                            ->visible(fn ($record) => $record->amenities()->exists())
+                                            ->columnSpanFull(),
+                                        
+                                        Components\TextEntry::make('paymentMethods.name')
+                                            ->label('Payment Methods')
+                                            ->badge()
+                                            ->separator(',')
+                                            ->color('info')
+                                            ->visible(fn ($record) => $record->paymentMethods()->exists())
+                                            ->columnSpanFull(),
+                                    ]),
+                            ])
+                            ->visible(fn ($record) => 
+                                !empty($record->unique_features) || 
+                                $record->amenities()->exists() || 
+                                $record->paymentMethods()->exists()
+                            ),
+                        
+                        // Media Tab
+                        Components\Tabs\Tab::make('Media')
+                            ->icon('heroicon-o-photo')
+                            ->schema([
+                                Components\Section::make('Gallery')
+                                    ->schema([
+                                        Components\ImageEntry::make('gallery')
+                                            ->label('')
+                                            ->columnSpanFull()
+                                            ->limit(20)
+                                            ->visible(fn ($state) => !empty($state)),
+                                    ])
+                                    ->visible(fn ($record) => !empty($record->gallery)),
+                            ])
+                            ->visible(fn ($record) => !empty($record->gallery)),
+                        
+                        // More Info Tab
+                        Components\Tabs\Tab::make('More Info')
+                            ->icon('heroicon-o-document-text')
+                            ->schema([
+                                Components\Section::make('Business Status')
+                                    ->schema([
+                                        Components\TextEntry::make('status')
+                                            ->badge()
+                                            ->color(fn ($state) => match($state) {
+                                                'active' => 'success',
+                                                'pending_review' => 'warning',
+                                                'draft' => 'secondary',
+                                                'suspended' => 'danger',
+                                                default => 'gray',
+                                            }),
+                                        
+                                        Components\TextEntry::make('verification_level')
+                                            ->badge()
+                                            ->color(fn ($state) => match($state) {
+                                                'premium' => 'success',
+                                                'standard' => 'info',
+                                                'basic' => 'warning',
+                                                default => 'gray',
+                                            }),
+                                        
+                                        Components\IconEntry::make('is_claimed')
+                                            ->boolean()
+                                            ->label('Claimed'),
+                                        
+                                        Components\TextEntry::make('claimed_at')
+                                            ->dateTime()
+                                            ->label('Claimed On')
+                                            ->visible(fn ($state) => !empty($state)),
+                                    ])
+                                    ->columns(2),
+                                
+                                Components\Section::make('Legal Information')
+                                    ->schema([
+                                        Components\TextEntry::make('registration_number')
+                                            ->label('CAC/RC Number')
+                                            ->placeholder('Not provided'),
+                                        
+                                        Components\TextEntry::make('entity_type')
+                                            ->placeholder('Not provided'),
+                                        
+                                        Components\TextEntry::make('years_in_business')
+                                            ->suffix(' years')
+                                            ->visible(fn ($state) => !empty($state)),
+                                    ])
+                                    ->columns(3)
+                                    ->collapsible(),
+                                
+                                Components\Section::make('SEO Settings')
+                                    ->schema([
+                                        Components\TextEntry::make('canonical_strategy')
+                                            ->badge()
+                                            ->color(fn ($state) => $state === 'self' ? 'success' : 'info'),
+                                        
+                                        Components\TextEntry::make('canonical_url')
+                                            ->visible(fn ($state) => !empty($state))
+                                            ->url(fn ($state) => $state)
+                                            ->openUrlInNewTab(),
+                                        
+                                        Components\TextEntry::make('meta_title')
+                                            ->visible(fn ($state) => !empty($state)),
+                                        
+                                        Components\TextEntry::make('meta_description')
+                                            ->visible(fn ($state) => !empty($state))
+                                            ->columnSpanFull(),
+                                        
+                                        Components\IconEntry::make('has_unique_content')
+                                            ->boolean()
+                                            ->label('Has Unique Content'),
+                                        
+                                        Components\TextEntry::make('content_similarity_score')
+                                            ->suffix('%')
+                                            ->visible(fn ($state) => !empty($state)),
+                                    ])
+                                    ->columns(3)
+                                    ->collapsible()
+                                    ->collapsed(),
+                                
+                                Components\Section::make('System Information')
+                                    ->schema([
+                                        Components\TextEntry::make('created_at')
+                                            ->dateTime()
+                                            ->label('Created'),
+                                        
+                                        Components\TextEntry::make('updated_at')
+                                            ->dateTime()
+                                            ->label('Last Updated'),
+                                        
+                                        Components\TextEntry::make('slug')
+                                            ->copyable(),
+                                    ])
+                                    ->columns(3)
+                                    ->collapsible()
+                                    ->collapsed(),
+                            ]),
                     ])
-                    ->columns(1)
-                    ->visible(fn ($record) => 
-                        !empty($record->unique_features) || 
-                        $record->amenities()->exists() || 
-                        $record->paymentMethods()->exists()
-                    )
-                    ->collapsible()
-                    ->collapsed(),
-                
-                Components\Section::make('SEO Settings')
-                    ->schema([
-                        Components\TextEntry::make('canonical_strategy')
-                            ->badge()
-                            ->color(fn ($state) => $state === 'self' ? 'success' : 'info'),
-                        
-                        Components\TextEntry::make('canonical_url')
-                            ->visible(fn ($state) => !empty($state))
-                            ->url(fn ($state) => $state)
-                            ->openUrlInNewTab(),
-                        
-                        Components\TextEntry::make('meta_title')
-                            ->visible(fn ($state) => !empty($state)),
-                        
-                        Components\TextEntry::make('meta_description')
-                            ->visible(fn ($state) => !empty($state))
-                            ->columnSpanFull(),
-                        
-                        Components\IconEntry::make('has_unique_content')
-                            ->boolean()
-                            ->label('Has Unique Content'),
-                        
-                        Components\TextEntry::make('content_similarity_score')
-                            ->suffix('%')
-                            ->visible(fn ($state) => !empty($state)),
-                    ])
-                    ->columns(3)
-                    ->collapsible()
-                    ->collapsed(),
-                
-                Components\Section::make('Legal Information')
-                    ->schema([
-                        Components\TextEntry::make('registration_number')
-                            ->label('CAC/RC Number'),
-                        
-                        Components\TextEntry::make('entity_type'),
-                        
-                        Components\TextEntry::make('years_in_business')
-                            ->suffix(' years'),
-                    ])
-                    ->columns(3)
-                    ->collapsible()
-                    ->collapsed(),
-                
-                Components\Section::make('Media')
-                    ->schema([
-                        Components\ImageEntry::make('cover_photo')
-                            ->columnSpanFull()
-                            ->visible(fn ($state) => !empty($state)),
-                        
-                        Components\ImageEntry::make('gallery')
-                            ->columnSpanFull()
-                            ->limit(10)
-                            ->visible(fn ($state) => !empty($state)),
-                    ])
-                    ->visible(fn ($record) => !empty($record->cover_photo) || !empty($record->gallery))
-                    ->collapsible()
-                    ->collapsed(),
-                
-                Components\Section::make('System Information')
-                    ->schema([
-                        Components\TextEntry::make('created_at')
-                            ->dateTime()
-                            ->label('Created'),
-                        
-                        Components\TextEntry::make('updated_at')
-                            ->dateTime()
-                            ->label('Last Updated'),
-                        
-                        Components\TextEntry::make('slug')
-                            ->copyable(),
-                    ])
-                    ->columns(3)
-                    ->collapsible()
-                    ->collapsed(),
+                    ->columnSpanFull()
+                    ->contained(false),
             ]);
     }
 }
