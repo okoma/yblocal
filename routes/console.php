@@ -204,3 +204,159 @@ Schedule::command('quotes:check-expired')
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+// --------------------------------------------------
+// Diagnose Business Summaries (closure command)
+// --------------------------------------------------
+Artisan::command('diagnose:business-summaries {business_id} {--period-type=daily} {--period-key=} {--run-aggregate}', function () {
+    $businessId = (int) $this->argument('business_id');
+    $periodType = $this->option('period-type') ?: 'daily';
+    $periodKey = $this->option('period-key') ?: now()->subDay()->format('Y-m-d');
+
+    $this->info("Diagnosing business {$businessId} for {$periodType} => {$periodKey}");
+
+    $viewsQuery = \DB::table('business_views')->where('business_id', $businessId);
+    if ($periodType === 'daily') {
+        $viewsQuery->where('view_date', $periodKey);
+    } elseif ($periodType === 'hourly') {
+        $viewsQuery->where('view_date', substr($periodKey, 0, 10))->where('view_hour', substr($periodKey, -2));
+    }
+    $viewsCount = $viewsQuery->count();
+
+    $this->line("business_views rows for business_id={$businessId}: {$viewsCount}");
+
+    $samples = \DB::table('business_views')->where('business_id', $businessId)->limit(5)->get();
+    if ($samples->isEmpty()) {
+        $this->warn('No sample rows found in business_views for this business.');
+    } else {
+        $this->line('Sample business_views rows:');
+        $this->table(array_keys((array) $samples->first()), $samples->map(fn($r) => (array) $r)->toArray());
+    }
+
+    $summary = \DB::table('business_view_summaries')
+        ->where('business_id', $businessId)
+        ->where('period_type', $periodType)
+        ->where('period_key', $periodKey)
+        ->first();
+
+    if ($summary) {
+        $this->info('Existing summary found:');
+        $this->line(json_encode($summary));
+    } else {
+        $this->warn('No existing summary found for that period.');
+    }
+
+    if ($this->option('run-aggregate')) {
+        $this->info('Attempting to run aggregation now...');
+        try {
+            $res = \App\Models\BusinessViewSummary::aggregateFor($businessId, $periodType, $periodKey);
+            $this->info('aggregateFor() completed. Summary id: ' . $res->id);
+        } catch (\Exception $e) {
+            $this->error('aggregateFor() threw exception: ' . $e->getMessage());
+            $this->error($e->getTraceAsString());
+            return 2;
+        }
+
+        $newSummary = \DB::table('business_view_summaries')
+            ->where('business_id', $businessId)
+            ->where('period_type', $periodType)
+            ->where('period_key', $periodKey)
+            ->first();
+
+        if ($newSummary) {
+            $this->info('New/updated summary:');
+            $this->line(json_encode($newSummary));
+        } else {
+            $this->warn('After aggregateFor(), no summary row exists — check logs and DB constraints.');
+        }
+    }
+})->describe('Diagnose business views and summaries for a business');
+
+
+// --------------------------------------------------
+// Backfill Business Summaries (closure command)
+// --------------------------------------------------
+Artisan::command('backfill:business-summaries {--period-type=daily} {--start=} {--end=} {--business-id=}', function () {
+    $periodType = $this->option('period-type') ?: 'daily';
+    $start = $this->option('start');
+    $end = $this->option('end');
+
+    $startDate = $start ? \Carbon\Carbon::parse($start) : now()->subDay();
+    $endDate = $end ? \Carbon\Carbon::parse($end) : $startDate;
+
+    if ($endDate->lessThan($startDate)) {
+        $this->error('End date must be >= start date');
+        return 2;
+    }
+
+    // Build period keys
+    $keys = [];
+    $cursor = $startDate->copy();
+    switch ($periodType) {
+        case 'hourly':
+            while ($cursor->lessThanOrEqualTo($endDate)) {
+                $keys[] = $cursor->format('Y-m-d-H');
+                $cursor->addHour();
+            }
+            break;
+        case 'monthly':
+            while ($cursor->lessThanOrEqualTo($endDate)) {
+                $keys[] = $cursor->format('Y-m');
+                $cursor->addMonth();
+            }
+            break;
+        case 'yearly':
+            while ($cursor->lessThanOrEqualTo($endDate)) {
+                $keys[] = $cursor->format('Y');
+                $cursor->addYear();
+            }
+            break;
+        case 'daily':
+        default:
+            while ($cursor->lessThanOrEqualTo($endDate)) {
+                $keys[] = $cursor->format('Y-m-d');
+                $cursor->addDay();
+            }
+            break;
+    }
+
+    $businessIdOption = $this->option('business-id');
+    if ($businessIdOption) {
+        $businessIds = [ (int) $businessIdOption ];
+    } else {
+        $query = \DB::table('business_views');
+        if ($periodType === 'daily') {
+            $query->whereBetween('view_date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]);
+        }
+        $businessIds = $query->distinct()->pluck('business_id')->filter()->values()->toArray();
+    }
+
+    if (empty($businessIds)) {
+        $this->warn('No businesses found to process.');
+        return 0;
+    }
+
+    $this->info('Processing ' . count($businessIds) . ' businesses over ' . count($keys) . ' period keys.');
+
+    $errors = [];
+    foreach ($businessIds as $bid) {
+        foreach ($keys as $pkey) {
+            $this->line("Aggregating business {$bid} => {$periodType}:{$pkey}");
+            try {
+                \App\Models\BusinessViewSummary::aggregateFor((int) $bid, $periodType, $pkey);
+            } catch (\Exception $e) {
+                $errors[] = "{$bid}:{$pkey} => " . $e->getMessage();
+                $this->error("Error for {$bid} {$pkey}: " . $e->getMessage());
+            }
+        }
+    }
+
+    if (!empty($errors)) {
+        $this->error('Completed with errors:');
+        foreach ($errors as $err) {
+            $this->error($err);
+        }
+        return 3;
+    }
+
+    $this->info('Backfill complete.');
+})->describe('Backfill business view summaries from business_views');

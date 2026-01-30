@@ -1,4 +1,31 @@
 <?php
+namespace Tests\Feature;
+
+use Tests\TestCase;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Models\User;
+use Illuminate\Support\Facades\Notification;
+use App\Notifications\QuoteRequestCreated;
+
+class QuoteRequestTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_authenticated_user_can_create_quote_and_admin_notified()
+    {
+        Notification::fake();
+
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->post('/quotes', [
+            'title' => 'Need catering',
+            'description' => 'Need catering for 50 people',
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('quote_requests', ['title' => 'Need catering']);
+    }
+}
+<?php
 
 namespace Tests\Feature;
 

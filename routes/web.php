@@ -71,7 +71,28 @@ Route::name('businesses.')->group(function () {
     Route::get('/{businessType}/{slug}/photos', [PhotoController::class, 'index'])->name('photos.index');
     Route::post('/{businessType}/{slug}/photos', [PhotoController::class, 'store'])->name('photos.store'); // Optional: for user submissions
     Route::delete('/{businessType}/{slug}/photos/{photoPath}', [PhotoController::class, 'destroy'])->name('photos.destroy'); // Optional
+
+    // Business Claim & Report (auth required)
+    Route::middleware('auth')->group(function () {
+        Route::post('/{businessType}/{slug}/claim', [\App\Http\Controllers\BusinessClaimController::class, 'store'])
+            ->name('claim.store');
+
+        Route::post('/{businessType}/{slug}/report', [\App\Http\Controllers\BusinessReportController::class, 'store'])
+            ->name('report.store');
+    });
+
+    // Saved Businesses (requires auth)
+    Route::middleware('auth')->group(function () {
+        Route::post('/{businessType}/{slug}/save', [\App\Http\Controllers\SavedBusinessController::class, 'store'])
+            ->name('save.store');
+
+        Route::delete('/{businessType}/{slug}/save', [\App\Http\Controllers\SavedBusinessController::class, 'destroy'])
+            ->name('save.destroy');
+    });
 });
+
+// Quote requests (customers)
+Route::middleware('auth')->post('/quotes', [\App\Http\Controllers\QuoteRequestController::class, 'store'])->name('quotes.store');
 
 // Filter Routes (AJAX endpoints for filter metadata) with rate limiting
 Route::middleware('throttle:api')->prefix('api/filters')->name('filters.')->group(function () {
