@@ -13,6 +13,7 @@ use App\Services\ActiveBusiness;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
+use Illuminate\Support\Facades\Auth;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Notifications\Notification;
@@ -274,5 +275,13 @@ class SubscriptionResource extends Resource
     public static function canCreate(): bool
     {
         return false; // Subscriptions created through plan purchase
+    }
+
+      public static function canViewAny(): bool
+    {
+        return Auth::user()->isAdmin() 
+            || Auth::user()->isModerator() 
+            || Auth::user()->isBusinessOwner()
+            || Auth::user()->isBusinessManager();
     }
 }
