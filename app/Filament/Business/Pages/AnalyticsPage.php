@@ -235,13 +235,13 @@ class AnalyticsPage extends Page
             ->mapWithKeys(fn($item) => [$item->referral_source->value => $item->total])
             ->toArray();
         
-        // Impressions by Page Type (Current Period)
+        // Impressions by Page Type (Current Period) - FIXED: Handle enum properly
         $impressionsByPageType = BusinessImpression::whereIn('business_id', $businessIds)
             ->whereBetween('impression_date', [$dates['current_start'], $dates['current_end']])
             ->select('page_type', DB::raw('count(*) as total'))
             ->groupBy('page_type')
             ->get()
-            ->pluck('total', 'page_type')
+            ->mapWithKeys(fn($item) => [$item->page_type->value => $item->total])
             ->toArray();
         
         return [
@@ -280,13 +280,13 @@ class AnalyticsPage extends Page
             ->mapWithKeys(fn($item) => [$item->referral_source->value => $item->total])
             ->toArray();
         
-        // Clicks by Page Type (Current Period)
+        // Clicks by Page Type (Current Period) - FIXED: Handle enum properly
         $clicksByPageType = BusinessClick::whereIn('business_id', $businessIds)
             ->whereBetween('click_date', [$dates['current_start'], $dates['current_end']])
             ->select('source_page_type', DB::raw('count(*) as total'))
             ->groupBy('source_page_type')
             ->get()
-            ->pluck('total', 'source_page_type')
+            ->mapWithKeys(fn($item) => [$item->source_page_type->value => $item->total])
             ->toArray();
         
         return [
