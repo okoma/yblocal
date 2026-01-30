@@ -30,16 +30,8 @@ class SubscriptionResource extends Resource
     protected static ?string $navigationGroup = 'Billing & Marketing';
 
     protected static ?int $navigationSort = 3;
-
-    public static function getNavigationUrl(): string
-    {
-        $active = app(ActiveBusiness::class);
-        $businessId = $active->getActiveBusinessId();
-        
-        if ($businessId === null) {
-            return static::getUrl('index');
-        }
-            public static function canViewAny(): bool
+    
+    public static function canViewAny(): bool
 {
     // Override Filament's default policy check for navigation
     // Business owners should see the navigation item
@@ -48,6 +40,15 @@ class SubscriptionResource extends Resource
         || Auth::user()->isBusinessOwner()
         || Auth::user()->isBusinessManager();
 }
+    public static function getNavigationUrl(): string
+    {
+        $active = app(ActiveBusiness::class);
+        $businessId = $active->getActiveBusinessId();
+        
+        if ($businessId === null) {
+            return static::getUrl('index');
+        }
+        
         // Get active subscription for current business
         $subscription = static::getModel()::where('user_id', auth()->id())
             ->where('business_id', $businessId)
