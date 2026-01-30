@@ -39,6 +39,16 @@ class BusinessResource extends Resource
         return $form->schema([]); // Wizard handled in CreateBusiness page
     }
 
+    public static function canViewAny(): bool
+{
+    // Override Filament's default policy check for navigation
+    // Business owners should see the navigation item
+    return Auth::user()->isAdmin() 
+        || Auth::user()->isModerator() 
+        || Auth::user()->isBusinessOwner()
+        || Auth::user()->isBusinessManager();
+}
+
     public static function table(Table $table): Table
     {
         $user = Auth::user();
@@ -139,20 +149,13 @@ class BusinessResource extends Resource
      * Nav links to view of active business (dropdown = business list).
      * No active business → select-business page.
      */
-public static function getNavigationUrl(): string
-{
-    $active = app(ActiveBusiness::class);
-    $id = $active->getActiveBusinessId();
-    
-    if ($id && $active->isValid($id)) {
-        $business = Business::find($id);
-        
-        // Check if user can access this business
-        if ($business && Auth::user()->can('view', $business)) {
+    public static function getNavigationUrl(): string
+    {
+        $active = app(ActiveBusiness::class);
+        $id = $active->getActiveBusinessId();
+        if ($id && $active->isValid($id)) {
             return static::getUrl('view', ['record' => $id]);
         }
+        return route('filament.business.pages.select-business');
     }
-    
-    return route('filament.business.pages.select-business');
-}
 }
