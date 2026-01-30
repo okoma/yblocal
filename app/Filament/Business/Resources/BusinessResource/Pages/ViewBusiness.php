@@ -391,7 +391,7 @@ class ViewBusiness extends ViewRecord
                                 return null;
                             })
                             ->visible(fn ($state) => !empty($state))
-                            ->description(fn ($record) => isset($record->latitude, $record->longitude) ? 'Click image to open in Google Maps' : null)
+                            ->helperText(fn ($record) => isset($record->latitude, $record->longitude) ? 'Click image to open in Google Maps' : null)
                             ->url(fn ($record) => isset($record->latitude, $record->longitude) ? "https://www.google.com/maps/search/?api=1&query={$record->latitude},{$record->longitude}" : null)
                             ->openUrlInNewTab(),
 
