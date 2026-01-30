@@ -86,13 +86,13 @@ class AnalyticsPage extends Page
             ->whereBetween('view_date', [$dates['previous_start'], $dates['previous_end']])
             ->count();
         
-        // Views by Source (Current Period)
+        // Views by Source (Current Period) - FIXED: Handle enum properly
         $viewsBySource = BusinessView::whereIn('business_id', $businessIds)
             ->whereBetween('view_date', [$dates['current_start'], $dates['current_end']])
             ->select('referral_source', DB::raw('count(*) as total'))
             ->groupBy('referral_source')
             ->get()
-            ->pluck('total', 'referral_source')
+            ->mapWithKeys(fn($item) => [$item->referral_source->value => $item->total])
             ->toArray();
         
         // Views by Date (Current Period)
@@ -226,13 +226,13 @@ class AnalyticsPage extends Page
             ->whereBetween('impression_date', [$dates['previous_start'], $dates['previous_end']])
             ->count();
         
-        // Impressions by Source (Current Period)
+        // Impressions by Source (Current Period) - FIXED: Handle enum properly
         $impressionsBySource = BusinessImpression::whereIn('business_id', $businessIds)
             ->whereBetween('impression_date', [$dates['current_start'], $dates['current_end']])
             ->select('referral_source', DB::raw('count(*) as total'))
             ->groupBy('referral_source')
             ->get()
-            ->pluck('total', 'referral_source')
+            ->mapWithKeys(fn($item) => [$item->referral_source->value => $item->total])
             ->toArray();
         
         // Impressions by Page Type (Current Period)
@@ -271,13 +271,13 @@ class AnalyticsPage extends Page
             ->whereBetween('click_date', [$dates['previous_start'], $dates['previous_end']])
             ->count();
         
-        // Clicks by Source (Current Period)
+        // Clicks by Source (Current Period) - FIXED: Handle enum properly
         $clicksBySource = BusinessClick::whereIn('business_id', $businessIds)
             ->whereBetween('click_date', [$dates['current_start'], $dates['current_end']])
             ->select('referral_source', DB::raw('count(*) as total'))
             ->groupBy('referral_source')
             ->get()
-            ->pluck('total', 'referral_source')
+            ->mapWithKeys(fn($item) => [$item->referral_source->value => $item->total])
             ->toArray();
         
         // Clicks by Page Type (Current Period)

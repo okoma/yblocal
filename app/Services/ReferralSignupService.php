@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Business;
+use App\Services\ReferralConfig;
 use App\Models\BusinessReferral;
 use App\Models\BusinessReferralCreditTransaction;
 use App\Models\CustomerReferral;
@@ -138,7 +139,7 @@ class ReferralSignupService
             return;
         }
 
-        $credits = (int) config('referral.business_credits_per_signup', 100);
+        $credits = ReferralConfig::businessCreditsPerSignup();
         if ($credits <= 0) {
             return;
         }

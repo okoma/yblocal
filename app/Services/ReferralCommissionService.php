@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Services\ReferralConfig;
 use App\Models\Transaction;
 use App\Models\CustomerReferral;
 use App\Models\CustomerReferralTransaction;
@@ -39,7 +40,8 @@ class ReferralCommissionService
             return;
         }
 
-        $rate = (float) config('referral.customer_commission_rate', 0.10);
+        $rate = ReferralConfig::customerCommissionRate();
+
         $commission = round((float) $transaction->amount * $rate, 2);
         if ($commission <= 0) {
             return;
