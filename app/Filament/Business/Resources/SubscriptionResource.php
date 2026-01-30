@@ -39,7 +39,15 @@ class SubscriptionResource extends Resource
         if ($businessId === null) {
             return static::getUrl('index');
         }
-        
+            public static function canViewAny(): bool
+{
+    // Override Filament's default policy check for navigation
+    // Business owners should see the navigation item
+    return Auth::user()->isAdmin() 
+        || Auth::user()->isModerator() 
+        || Auth::user()->isBusinessOwner()
+        || Auth::user()->isBusinessManager();
+}
         // Get active subscription for current business
         $subscription = static::getModel()::where('user_id', auth()->id())
             ->where('business_id', $businessId)

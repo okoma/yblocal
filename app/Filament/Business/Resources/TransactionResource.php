@@ -41,7 +41,15 @@ class TransactionResource extends Resource
         // Filter by business_id directly (now that transactions are business-scoped)
         return $query->where('business_id', $id);
     }
-
+    public static function canViewAny(): bool
+{
+    // Override Filament's default policy check for navigation
+    // Business owners should see the navigation item
+    return Auth::user()->isAdmin() 
+        || Auth::user()->isModerator() 
+        || Auth::user()->isBusinessOwner()
+        || Auth::user()->isBusinessManager();
+}
     public static function form(Form $form): Form
     {
         return $form
