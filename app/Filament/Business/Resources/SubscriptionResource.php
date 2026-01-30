@@ -18,6 +18,7 @@ use Filament\Tables\Table;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Facades\Auth;
 
 class SubscriptionResource extends Resource
 {
@@ -30,7 +31,7 @@ class SubscriptionResource extends Resource
     protected static ?string $navigationGroup = 'Billing & Marketing';
 
     protected static ?int $navigationSort = 3;
-    
+
     public static function canViewAny(): bool
 {
     // Override Filament's default policy check for navigation
