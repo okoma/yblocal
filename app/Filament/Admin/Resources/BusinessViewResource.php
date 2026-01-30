@@ -45,7 +45,7 @@ class BusinessViewResource extends Resource
                         'warning' => 'social',
                         'gray' => 'direct',
                     ])
-                    ->formatStateUsing(fn ($state) => ucfirst($state))
+                    ->formatStateUsing(fn ($state) => $state ? ucfirst($state->value) : '')
                     ->sortable()
                     ->searchable(),
                 
@@ -57,7 +57,7 @@ class BusinessViewResource extends Resource
                         'success' => 'mobile',
                         'info' => 'tablet',
                     ])
-                    ->formatStateUsing(fn ($state) => ucfirst($state))
+                    ->formatStateUsing(fn ($state) => $state ? ucfirst($state->value) : '')
                     ->sortable(),
                 
                 Tables\Columns\TextColumn::make('country')
@@ -209,7 +209,7 @@ class BusinessViewResource extends Resource
                         Components\TextEntry::make('referral_source')
                             ->label('Traffic Source')
                             ->badge()
-                            ->color(fn ($state) => match($state) {
+                            ->color(fn ($state) => match($state->value ?? '') {
                                 'yellowbooks' => 'success',
                                 'google' => 'info',
                                 'social' => 'warning',
@@ -219,7 +219,7 @@ class BusinessViewResource extends Resource
                         Components\TextEntry::make('device_type')
                             ->label('Device Type')
                             ->badge()
-                            ->formatStateUsing(fn ($state) => ucfirst($state)),
+                            ->formatStateUsing(fn ($state) => $state ? ucfirst($state->value) : ''),
                         
                         Components\TextEntry::make('viewed_at')
                             ->dateTime()

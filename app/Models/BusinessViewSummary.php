@@ -24,28 +24,50 @@ class BusinessViewSummary extends Model
         'total_views',
         'views_by_source',       // JSON: {'yellowbooks': 100, 'google': 50, ...}
         'views_by_country',      // JSON: {'NG': 200, 'US': 50, ...}
+        'views_by_city',         // JSON: {'Lagos': 100, 'Abuja': 50, ...}
         'views_by_device',       // JSON: {'mobile': 150, 'desktop': 100, 'tablet': 50}
         'total_impressions',     // Total impressions (listings visible)
         'impressions_by_source', // JSON: {'yellowbooks': 500, 'google': 200, ...}
         'impressions_by_page_type', // JSON: {'archive': 400, 'category': 200, 'search': 100}
+        'impressions_by_country', // JSON: {'NG': 500, 'US': 100, ...}
+        'impressions_by_city',    // JSON: {'Lagos': 300, 'Abuja': 200, ...}
+        'impressions_by_device',  // JSON: {'mobile': 400, 'desktop': 300, 'tablet': 100}
         'total_clicks',          // Total clicks (cookie-based, one per person)
         'clicks_by_source',      // JSON: {'yellowbooks': 50, 'google': 30, ...}
         'clicks_by_page_type',   // JSON: {'archive': 40, 'category': 20, 'search': 20}
+        'clicks_by_country',     // JSON: {'NG': 60, 'US': 20, ...}
+        'clicks_by_city',        // JSON: {'Lagos': 40, 'Abuja': 20, ...}
+        'clicks_by_device',      // JSON: {'mobile': 50, 'desktop': 30, 'tablet': 10}
+        'unique_visitors',       // Count of unique cookie_ids
         'total_calls',
         'total_whatsapp',
         'total_emails',
         'total_website_clicks',
         'total_map_clicks',
+        'interactions_by_source', // JSON: {'yellowbooks': 80, 'google': 40, ...}
+        'interactions_by_device', // JSON: {'mobile': 70, 'desktop': 50, ...}
+        'total_leads',           // Total leads generated
+        'leads_by_status',       // JSON: {'new': 10, 'contacted': 5, 'converted': 2, ...}
     ];
 
     protected $casts = [
         'views_by_source' => 'array',
         'views_by_country' => 'array',
+        'views_by_city' => 'array',
         'views_by_device' => 'array',
         'impressions_by_source' => 'array',
         'impressions_by_page_type' => 'array',
+        'impressions_by_country' => 'array',
+        'impressions_by_city' => 'array',
+        'impressions_by_device' => 'array',
         'clicks_by_source' => 'array',
         'clicks_by_page_type' => 'array',
+        'clicks_by_country' => 'array',
+        'clicks_by_city' => 'array',
+        'clicks_by_device' => 'array',
+        'interactions_by_source' => 'array',
+        'interactions_by_device' => 'array',
+        'leads_by_status' => 'array',
     ];
 
     // ============================================
@@ -131,6 +153,22 @@ class BusinessViewSummary extends Model
             $interactions = $interactionsQuery->get();
         }
 
+        // Build leads query
+        $leads = collect();
+        if (class_exists('App\Models\Lead')) {
+            $leadsQuery = \App\Models\Lead::where('business_id', $businessId);
+            $leadsQuery = static::applyPeriodFilter(
+                $leadsQuery,
+                $periodType,
+                $periodKey,
+                'created_at',
+                null,
+                null,
+                null
+            );
+            $leads = $leadsQuery->get();
+        }
+
         return static::updateOrCreate(
             [
                 'business_id' => $businessId,
@@ -141,18 +179,30 @@ class BusinessViewSummary extends Model
                 'total_views' => $views->count(),
                 'views_by_source' => static::groupByEnum($views, 'referral_source'),
                 'views_by_country' => $views->groupBy('country')->map->count()->toArray(),
+                'views_by_city' => $views->groupBy('city')->map->count()->toArray(),
                 'views_by_device' => static::groupByEnum($views, 'device_type'),
                 'total_impressions' => $impressions->count(),
                 'impressions_by_source' => static::groupByEnum($impressions, 'referral_source'),
                 'impressions_by_page_type' => static::groupByEnum($impressions, 'page_type'),
+                'impressions_by_country' => $impressions->groupBy('country')->map->count()->toArray(),
+                'impressions_by_city' => $impressions->groupBy('city')->map->count()->toArray(),
+                'impressions_by_device' => static::groupByEnum($impressions, 'device_type'),
                 'total_clicks' => $clicks->count(),
                 'clicks_by_source' => static::groupByEnum($clicks, 'referral_source'),
                 'clicks_by_page_type' => static::groupByEnum($clicks, 'source_page_type'),
+                'clicks_by_country' => $clicks->groupBy('country')->map->count()->toArray(),
+                'clicks_by_city' => $clicks->groupBy('city')->map->count()->toArray(),
+                'clicks_by_device' => static::groupByEnum($clicks, 'device_type'),
+                'unique_visitors' => $clicks->pluck('cookie_id')->unique()->count(),
                 'total_calls' => $interactions->where('interaction_type', 'call')->count(),
                 'total_whatsapp' => $interactions->where('interaction_type', 'whatsapp')->count(),
                 'total_emails' => $interactions->where('interaction_type', 'email')->count(),
                 'total_website_clicks' => $interactions->where('interaction_type', 'website')->count(),
                 'total_map_clicks' => $interactions->whereIn('interaction_type', ['map', 'directions'])->count(),
+                'interactions_by_source' => static::groupByEnum($interactions, 'referral_source'),
+                'interactions_by_device' => static::groupByEnum($interactions, 'device_type'),
+                'total_leads' => $leads->count(),
+                'leads_by_status' => $leads->groupBy('status')->map->count()->toArray(),
             ]
         );
     }
@@ -177,10 +227,21 @@ class BusinessViewSummary extends Model
         string $periodType, 
         string $periodKey, 
         string $dateField = 'view_date', 
-        string $hourField = 'view_hour', 
-        string $monthField = 'view_month', 
-        string $yearField = 'view_year'
+        ?string $hourField = 'view_hour', 
+        ?string $monthField = 'view_month', 
+        ?string $yearField = 'view_year'
     ) {
+        // For created_at timestamps (leads), extract date parts directly
+        if ($dateField === 'created_at') {
+            return match($periodType) {
+                'hourly' => $query->whereRaw("DATE_FORMAT({$dateField}, '%Y-%m-%d-%H') = ?", [$periodKey]),
+                'daily' => $query->whereDate($dateField, $periodKey),
+                'monthly' => $query->whereRaw("DATE_FORMAT({$dateField}, '%Y-%m') = ?", [$periodKey]),
+                'yearly' => $query->whereYear($dateField, $periodKey),
+                default => throw new \InvalidArgumentException("Invalid period type: {$periodType}")
+            };
+        }
+
         return match($periodType) {
             'hourly' => $query->where($dateField, substr($periodKey, 0, 10))
                              ->where($hourField, substr($periodKey, -2)),

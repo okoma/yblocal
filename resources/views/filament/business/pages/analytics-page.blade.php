@@ -129,6 +129,10 @@
             $clicks = $this->getClicksData();
             $impressions = $this->getImpressionsData();
             $ctr = $this->getCTRData();
+            $geographic = $this->getGeographicData();
+            $device = $this->getDeviceData();
+            $interactionBreakdown = $this->getInteractionBreakdownData();
+            $uniqueVisitors = $this->getUniqueVisitorsData();
             
             // Calculate trends with proper handling
             $viewsTrend = 0;
@@ -217,6 +221,19 @@
             if (isset($ctr['previous_total'])) {
                 $ctrTrend = round($ctr['total'] - $ctr['previous_total'], 1);
                 $ctrTrendDirection = $ctrTrend > 0 ? 'up' : ($ctrTrend < 0 ? 'down' : 'neutral');
+            }
+
+            // Unique Visitors trend
+            $uniqueVisitorsTrend = 0;
+            $uniqueVisitorsTrendDirection = 'neutral';
+            if (isset($uniqueVisitors['previous_total'])) {
+                if ($uniqueVisitors['previous_total'] > 0) {
+                    $uniqueVisitorsTrend = round((($uniqueVisitors['total'] - $uniqueVisitors['previous_total']) / $uniqueVisitors['previous_total']) * 100, 1);
+                    $uniqueVisitorsTrendDirection = $uniqueVisitorsTrend > 0 ? 'up' : ($uniqueVisitorsTrend < 0 ? 'down' : 'neutral');
+                } elseif ($uniqueVisitors['total'] > 0) {
+                    $uniqueVisitorsTrend = 100;
+                    $uniqueVisitorsTrendDirection = 'up';
+                }
             }
         @endphp
                                                                                                
@@ -517,6 +534,48 @@
             </div>
         </div>
     </div>
+
+    <!-- Unique Visitors Card -->
+    <div class="metric-card relative overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm">
+        <div class="flex items-start justify-between">
+            <div class="flex-1">
+                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Unique Visitors</p>
+                <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
+                    {{ number_format($uniqueVisitors['total']) }}
+                </p>
+                <div class="mt-3 flex items-center gap-2">
+                    @if($uniqueVisitorsTrendDirection === 'up')
+                        <span class="up-trend inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold">
+                            <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            {{ abs($uniqueVisitorsTrend) }}%
+                        </span>
+                    @elseif($uniqueVisitorsTrendDirection === 'down')
+                        <span class="down-trend inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold">
+                            <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            {{ abs($uniqueVisitorsTrend) }}%
+                        </span>
+                    @else
+                        <span class="neutral-trend inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold">
+                            <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/>
+                            </svg>
+                            0%
+                        </span>
+                    @endif
+                    <span class="text-xs text-gray-500 dark:text-gray-400">vs previous period</span>
+                </div>
+            </div>
+            <div class="rounded-full bg-teal-100 dark:bg-teal-900/20 p-3">
+                <svg class="h-6 w-6 text-teal-600 dark:text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                </svg>
+            </div>
+        </div>
+    </div>
 </div>      
       
       <!-- Views by Source -->
@@ -621,6 +680,157 @@
                     </div>
                 </div>
             </div>
+        </x-filament::section>
+
+        <!-- Geographic Distribution -->
+        <div class="grid gap-6 lg:grid-cols-2">
+            <!-- Views by Country -->
+            <x-filament::section>
+                <x-slot name="heading">
+                    <div class="flex items-center gap-2">
+                        <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span class="text-base font-semibold">Top Countries by Views</span>
+                    </div>
+                </x-slot>
+                
+                @if(empty($geographic['views_by_country']))
+                    <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-6 text-center">
+                        <p class="text-sm text-gray-500 dark:text-gray-400">No geographic data available yet</p>
+                    </div>
+                @else
+                    <div class="space-y-3">
+                        @foreach($geographic['views_by_country'] as $country => $count)
+                            <div class="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3">
+                                <span class="font-medium text-gray-900 dark:text-white">{{ $country }}</span>
+                                <span class="text-sm text-gray-600 dark:text-gray-400">{{ number_format($count) }} views</span>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </x-filament::section>
+
+            <!-- Views by City -->
+            <x-filament::section>
+                <x-slot name="heading">
+                    <div class="flex items-center gap-2">
+                        <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                        <span class="text-base font-semibold">Top Cities by Views</span>
+                    </div>
+                </x-slot>
+                
+                @if(empty($geographic['views_by_city']))
+                    <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-6 text-center">
+                        <p class="text-sm text-gray-500 dark:text-gray-400">No city data available yet</p>
+                    </div>
+                @else
+                    <div class="space-y-3">
+                        @foreach($geographic['views_by_city'] as $city => $count)
+                            <div class="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3">
+                                <span class="font-medium text-gray-900 dark:text-white">{{ $city }}</span>
+                                <span class="text-sm text-gray-600 dark:text-gray-400">{{ number_format($count) }} views</span>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </x-filament::section>
+        </div>
+
+        <!-- Device Distribution -->
+        <x-filament::section>
+            <x-slot name="heading">
+                <div class="flex items-center gap-2">
+                    <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                    </svg>
+                    <span class="text-base font-semibold">Traffic by Device Type</span>
+                </div>
+            </x-slot>
+            
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <!-- Views by Device -->
+                <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/10 dark:to-blue-800/10 p-4">
+                    <h4 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-300">Views</h4>
+                    <div class="space-y-2">
+                        @foreach($device['views_by_device'] as $deviceType => $count)
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-gray-600 dark:text-gray-400">{{ ucfirst($deviceType) }}</span>
+                                <span class="font-semibold text-gray-900 dark:text-white">{{ number_format($count) }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+
+                <!-- Impressions by Device -->
+                <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/10 dark:to-indigo-800/10 p-4">
+                    <h4 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-300">Impressions</h4>
+                    <div class="space-y-2">
+                        @foreach($device['impressions_by_device'] as $deviceType => $count)
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-gray-600 dark:text-gray-400">{{ ucfirst($deviceType) }}</span>
+                                <span class="font-semibold text-gray-900 dark:text-white">{{ number_format($count) }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+
+                <!-- Clicks by Device -->
+                <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-cyan-900/10 dark:to-cyan-800/10 p-4">
+                    <h4 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-300">Clicks</h4>
+                    <div class="space-y-2">
+                        @foreach($device['clicks_by_device'] as $deviceType => $count)
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-gray-600 dark:text-gray-400">{{ ucfirst($deviceType) }}</span>
+                                <span class="font-semibold text-gray-900 dark:text-white">{{ number_format($count) }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+
+                <!-- Interactions by Device -->
+                <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/10 dark:to-green-800/10 p-4">
+                    <h4 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-300">Interactions</h4>
+                    <div class="space-y-2">
+                        @foreach($device['interactions_by_device'] as $deviceType => $count)
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-gray-600 dark:text-gray-400">{{ ucfirst($deviceType) }}</span>
+                                <span class="font-semibold text-gray-900 dark:text-white">{{ number_format($count) }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        </x-filament::section>
+
+        <!-- Interaction Sources -->
+        <x-filament::section>
+            <x-slot name="heading">
+                <div class="flex items-center gap-2">
+                    <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                    </svg>
+                    <span class="text-base font-semibold">Interactions by Traffic Source</span>
+                </div>
+            </x-slot>
+            
+            @if(empty($interactionBreakdown['by_source']))
+                <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-8 text-center">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">No interaction source data available yet</p>
+                </div>
+            @else
+                <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                    @foreach($interactionBreakdown['by_source'] as $source => $count)
+                        <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-4 transition hover:shadow-md">
+                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">{{ ucfirst($source) }}</p>
+                            <p class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{{ number_format($count) }}</p>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
         </x-filament::section>
 
     </div>

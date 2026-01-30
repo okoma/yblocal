@@ -322,6 +322,185 @@ class AnalyticsPage extends Page
         ];
     }
     
+    /**
+     * Get Geographic Distribution Data (Views, Impressions, Clicks)
+     */
+    public function getGeographicData()
+    {
+        $businessIds = $this->getFilteredBusinessIds();
+        $dates = $this->getDateRanges();
+        
+        // Views by Country
+        $viewsByCountry = BusinessView::whereIn('business_id', $businessIds)
+            ->whereBetween('view_date', [$dates['current_start'], $dates['current_end']])
+            ->select('country', DB::raw('count(*) as total'))
+            ->groupBy('country')
+            ->orderByDesc('total')
+            ->limit(10)
+            ->get()
+            ->mapWithKeys(fn($item) => [$item->country => $item->total])
+            ->toArray();
+        
+        // Views by City
+        $viewsByCity = BusinessView::whereIn('business_id', $businessIds)
+            ->whereBetween('view_date', [$dates['current_start'], $dates['current_end']])
+            ->select('city', DB::raw('count(*) as total'))
+            ->groupBy('city')
+            ->orderByDesc('total')
+            ->limit(10)
+            ->get()
+            ->mapWithKeys(fn($item) => [$item->city => $item->total])
+            ->toArray();
+        
+        // Impressions by Country
+        $impressionsByCountry = BusinessImpression::whereIn('business_id', $businessIds)
+            ->whereBetween('impression_date', [$dates['current_start'], $dates['current_end']])
+            ->select('country', DB::raw('count(*) as total'))
+            ->groupBy('country')
+            ->orderByDesc('total')
+            ->limit(10)
+            ->get()
+            ->mapWithKeys(fn($item) => [$item->country => $item->total])
+            ->toArray();
+        
+        // Clicks by Country
+        $clicksByCountry = BusinessClick::whereIn('business_id', $businessIds)
+            ->whereBetween('click_date', [$dates['current_start'], $dates['current_end']])
+            ->select('country', DB::raw('count(*) as total'))
+            ->groupBy('country')
+            ->orderByDesc('total')
+            ->limit(10)
+            ->get()
+            ->mapWithKeys(fn($item) => [$item->country => $item->total])
+            ->toArray();
+        
+        return [
+            'views_by_country' => $viewsByCountry,
+            'views_by_city' => $viewsByCity,
+            'impressions_by_country' => $impressionsByCountry,
+            'clicks_by_country' => $clicksByCountry,
+        ];
+    }
+    
+    /**
+     * Get Device Distribution Data (Views, Impressions, Clicks, Interactions)
+     */
+    public function getDeviceData()
+    {
+        $businessIds = $this->getFilteredBusinessIds();
+        $dates = $this->getDateRanges();
+        
+        // Impressions by Device
+        $impressionsByDevice = BusinessImpression::whereIn('business_id', $businessIds)
+            ->whereBetween('impression_date', [$dates['current_start'], $dates['current_end']])
+            ->select('device_type', DB::raw('count(*) as total'))
+            ->groupBy('device_type')
+            ->get()
+            ->mapWithKeys(fn($item) => [$item->device_type->value => $item->total])
+            ->toArray();
+        
+        // Clicks by Device
+        $clicksByDevice = BusinessClick::whereIn('business_id', $businessIds)
+            ->whereBetween('click_date', [$dates['current_start'], $dates['current_end']])
+            ->select('device_type', DB::raw('count(*) as total'))
+            ->groupBy('device_type')
+            ->get()
+            ->mapWithKeys(fn($item) => [$item->device_type->value => $item->total])
+            ->toArray();
+        
+        // Interactions by Device
+        $interactionsByDevice = BusinessInteraction::whereIn('business_id', $businessIds)
+            ->whereBetween('interaction_date', [$dates['current_start'], $dates['current_end']])
+            ->select('device_type', DB::raw('count(*) as total'))
+            ->groupBy('device_type')
+            ->get()
+            ->mapWithKeys(fn($item) => [$item->device_type->value => $item->total])
+            ->toArray();
+        
+        // Views by Device (already in getViewsData, but adding here for consistency)
+        $viewsByDevice = BusinessView::whereIn('business_id', $businessIds)
+            ->whereBetween('view_date', [$dates['current_start'], $dates['current_end']])
+            ->select('device_type', DB::raw('count(*) as total'))
+            ->groupBy('device_type')
+            ->get()
+            ->mapWithKeys(fn($item) => [$item->device_type->value => $item->total])
+            ->toArray();
+        
+        return [
+            'views_by_device' => $viewsByDevice,
+            'impressions_by_device' => $impressionsByDevice,
+            'clicks_by_device' => $clicksByDevice,
+            'interactions_by_device' => $interactionsByDevice,
+        ];
+    }
+    
+    /**
+     * Get Interaction Source & Device Breakdown
+     */
+    public function getInteractionBreakdownData()
+    {
+        $businessIds = $this->getFilteredBusinessIds();
+        $dates = $this->getDateRanges();
+        
+        // Interactions by Source (Current Period)
+        $interactionsBySource = BusinessInteraction::whereIn('business_id', $businessIds)
+            ->whereBetween('interaction_date', [$dates['current_start'], $dates['current_end']])
+            ->select('referral_source', DB::raw('count(*) as total'))
+            ->groupBy('referral_source')
+            ->get()
+            ->mapWithKeys(fn($item) => [$item->referral_source->value => $item->total])
+            ->toArray();
+        
+        // Previous Period
+        $previousInteractionsBySource = BusinessInteraction::whereIn('business_id', $businessIds)
+            ->whereBetween('interaction_date', [$dates['previous_start'], $dates['previous_end']])
+            ->select('referral_source', DB::raw('count(*) as total'))
+            ->groupBy('referral_source')
+            ->get()
+            ->mapWithKeys(fn($item) => [$item->referral_source->value => $item->total])
+            ->toArray();
+        
+        return [
+            'by_source' => $interactionsBySource,
+            'previous_by_source' => $previousInteractionsBySource,
+        ];
+    }
+    
+    /**
+     * Get Unique Visitors Data
+     */
+    public function getUniqueVisitorsData()
+    {
+        $businessIds = $this->getFilteredBusinessIds();
+        $dates = $this->getDateRanges();
+        
+        // Current Period Unique Visitors
+        $totalUniqueVisitors = BusinessClick::whereIn('business_id', $businessIds)
+            ->whereBetween('click_date', [$dates['current_start'], $dates['current_end']])
+            ->distinct('cookie_id')
+            ->count('cookie_id');
+        
+        // Previous Period Unique Visitors
+        $previousTotalUniqueVisitors = BusinessClick::whereIn('business_id', $businessIds)
+            ->whereBetween('click_date', [$dates['previous_start'], $dates['previous_end']])
+            ->distinct('cookie_id')
+            ->count('cookie_id');
+        
+        // Unique visitors by date (for trend chart)
+        $uniqueVisitorsByDate = BusinessClick::whereIn('business_id', $businessIds)
+            ->whereBetween('click_date', [$dates['current_start'], $dates['current_end']])
+            ->select('click_date', DB::raw('COUNT(DISTINCT cookie_id) as total'))
+            ->groupBy('click_date')
+            ->orderBy('click_date')
+            ->get();
+        
+        return [
+            'total' => $totalUniqueVisitors,
+            'previous_total' => $previousTotalUniqueVisitors,
+            'by_date' => $uniqueVisitorsByDate,
+        ];
+    }
+    
     public function updatedDateRange(): void
     {
         // Data auto-refreshes via Livewire reactivity
