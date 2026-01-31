@@ -89,7 +89,11 @@ class CreateGuestBusiness extends Component implements HasForms
                                         ->required()
                                         ->searchable()
                                         ->preload()
-                                        ->relationship('businessType', 'name')
+                                        ->options(function () {
+                                            return BusinessType::where('is_active', true)
+                                                ->orderBy('name')
+                                                ->pluck('name', 'id');
+                                        })
                                         ->live()
                                         ->afterStateUpdated(fn (Forms\Set $set) => $set('categories', [])),
                                     
