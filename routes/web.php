@@ -190,3 +190,12 @@ Route::prefix('payment')->name('payment.')->group(function () {
     Route::get('/paystack/callback', [\App\Http\Controllers\PaymentController::class, 'paystackCallback'])->name('paystack.callback');
     Route::get('/flutterwave/callback', [\App\Http\Controllers\PaymentController::class, 'flutterwaveCallback'])->name('flutterwave.callback');
 });
+
+Route::get('/test-mail', function () {
+    Mail::raw('Mail system is working 🚀', function ($message) {
+        $message->to('okoma078@gmail.com')
+                ->subject('Laravel Test Mail');
+    });
+
+    return 'Mail sent (check inbox or logs)';
+});
