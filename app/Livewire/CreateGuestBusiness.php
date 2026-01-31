@@ -20,11 +20,13 @@ use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
+#[Layout('layouts.business')]
 class CreateGuestBusiness extends Component implements HasForms
 {
     use InteractsWithForms;

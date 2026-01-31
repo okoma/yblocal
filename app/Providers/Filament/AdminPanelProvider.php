@@ -25,7 +25,7 @@ class AdminPanelProvider extends PanelProvider
     {
         return $panel
             ->id('admin')
-            ->domain('back.yellowbooks.ng')
+            ->domain(config('app.admin_domain'))
             ->path('admin')
             ->login()
             ->brandName('YellowBooks')

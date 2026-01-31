@@ -119,6 +119,27 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Multi-Domain Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure domain names for different application sections:
+    | - APP_DOMAIN: Main customer site (yellow.com)
+    | - BUSINESS_DOMAIN: Business portal (business.yellow.com)
+    | - ADMIN_DOMAIN: Admin panel (back.yellow.com)
+    |
+    */
+
+    'domain' => env('APP_DOMAIN', 'localhost'),
+    'business_domain' => env('BUSINESS_DOMAIN', 'localhost'),
+    'admin_domain' => env('ADMIN_DOMAIN', 'localhost'),
+
+    // Filament panel URLs (used in layouts for cross-domain navigation)
+    'filament_business_url' => env('BUSINESS_DOMAIN') ? 'http://'.env('BUSINESS_DOMAIN').'/dashboard' : '/dashboard',
+    'filament_admin_url' => env('ADMIN_DOMAIN') ? 'http://'.env('ADMIN_DOMAIN').'/admin' : '/admin',
+    'filament_customer_url' => env('APP_DOMAIN') ? 'http://'.env('APP_DOMAIN').'/customer' : '/customer',
+
+    /*
+    |--------------------------------------------------------------------------
     | Maintenance Mode Driver
     |--------------------------------------------------------------------------
     |
