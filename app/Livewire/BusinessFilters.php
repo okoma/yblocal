@@ -6,6 +6,7 @@ use App\Models\Business;
 use App\Models\BusinessType;
 use App\Models\Category;
 use App\Models\Location;
+use App\Models\Amenity;
 use App\Enums\PriceTier;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -34,6 +35,9 @@ class BusinessFilters extends Component
 
     #[Url(as: 'price_tier', history: true)]
     public $priceTier = '';
+
+    #[Url(as: 'amenities', history: true)]
+    public $amenities = [];
 
     #[Url(as: 'verified', history: true)]
     public $verified = false;
@@ -114,6 +118,11 @@ class BusinessFilters extends Component
     }
 
     public function updatedPriceTier()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedAmenities()
     {
         $this->resetPage();
     }
@@ -247,6 +256,15 @@ class BusinessFilters extends Component
             $query->where('price_tier', $this->priceTier);
         }
 
+        if (!empty($this->amenities)) {
+            // Filter by businesses that have ALL selected amenities
+            foreach ($this->amenities as $amenityId) {
+                $query->whereHas('amenities', function ($q) use ($amenityId) {
+                    $q->where('amenity_id', $amenityId);
+                });
+            }
+        }
+
         if ($this->verified) {
             $query->where('is_verified', true);
         }
@@ -341,6 +359,14 @@ class BusinessFilters extends Component
     }
 
     #[Computed]
+    public function amenities()
+    {
+        return Amenity::where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'icon']);
+    }
+
+    #[Computed]
     public function states()
     {
         return Location::where('type', 'state')
@@ -381,6 +407,7 @@ class BusinessFilters extends Component
         if ($this->city) $count++;
         if ($this->rating) $count++;
         if ($this->priceTier) $count++;
+        if (!empty($this->amenities)) $count++;
         if ($this->verified) $count++;
         if ($this->premium) $count++;
         if ($this->openNow) $count++;
