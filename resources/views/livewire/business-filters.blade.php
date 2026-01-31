@@ -138,7 +138,7 @@
                 </div>
 
                 <!-- Loading Overlay -->
-                <div wire:loading.delay wire:target="search,sort,businessType,category,state,city,rating,verified,premium,openNow" class="fixed inset-0 bg-black bg-opacity-20 z-40 flex items-center justify-center lg:left-0 lg:right-1/2">
+                <div wire:loading.delay wire:target="search,sort,businessType,category,state,city,rating,verified,premium,openNow" class="fixed inset-0 bg-black bg-opacity-20 z-30 flex items-center justify-center lg:left-0 lg:right-1/2">
                     <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-xl">
                         <svg class="animate-spin h-8 w-8 text-blue-600 mx-auto" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -204,7 +204,7 @@
         x-show="show"
         x-effect="document.body.style.overflow = show ? 'hidden' : ''"
         x-cloak
-        class="fixed inset-0 z-50"
+        class="fixed inset-0 z-60"
     >
         <!-- Backdrop -->
         <div 
@@ -216,7 +216,7 @@
             x-transition:leave-start="opacity-100"
             x-transition:leave-end="opacity-0"
             @click="show = false"
-            class="fixed inset-0 bg-black bg-opacity-50"
+            class="fixed inset-0 bg-black bg-opacity-50 z-50"
         ></div>
 
         <!-- Drawer -->
@@ -228,7 +228,7 @@
             x-transition:leave="transform transition ease-in-out duration-300"
             x-transition:leave-start="translate-x-0"
             x-transition:leave-end="translate-x-full"
-            class="fixed right-0 top-0 h-full w-full sm:w-96 bg-white dark:bg-gray-800 shadow-xl overflow-y-auto"
+            class="fixed right-0 top-0 h-full w-full sm:w-96 bg-white dark:bg-gray-800 shadow-xl overflow-y-auto z-60"
         >
             <!-- Header -->
             <div class="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between z-10">
