@@ -384,36 +384,47 @@
 
                     <!-- Price Range Filter -->
                     <div class="mb-6 pb-6 border-b border-gray-200 dark:border-gray-700">
-                        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Price Range</h3>
-                        <div class="space-y-3">
-                            <div>
-                                <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Minimum Price</label>
-                                <div class="relative">
-                                    <span class="absolute left-3 top-2.5 text-gray-500 dark:text-gray-400">₦</span>
-                                    <input 
-                                        type="number" 
-                                        wire:model.live.debounce.500ms="minPrice"
-                                        placeholder="Any"
-                                        min="0"
-                                        step="1000"
-                                        class="w-full pl-8 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500"
-                                    >
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Maximum Price</label>
-                                <div class="relative">
-                                    <span class="absolute left-3 top-2.5 text-gray-500 dark:text-gray-400">₦</span>
-                                    <input 
-                                        type="number" 
-                                        wire:model.live.debounce.500ms="maxPrice"
-                                        placeholder="Any"
-                                        min="0"
-                                        step="1000"
-                                        class="w-full pl-8 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500"
-                                    >
-                                </div>
-                            </div>
+                        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Price Tier</h3>
+                        <div class="space-y-2">
+                            <label class="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded-md transition-colors">
+                                <input 
+                                    type="radio" 
+                                    wire:model.live="priceTier"
+                                    value="budget"
+                                    class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                >
+                                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">₦ Budget</span>
+                            </label>
+                            
+                            <label class="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded-md transition-colors">
+                                <input 
+                                    type="radio" 
+                                    wire:model.live="priceTier"
+                                    value="affordable"
+                                    class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                >
+                                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">₦₦ Affordable</span>
+                            </label>
+                            
+                            <label class="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded-md transition-colors">
+                                <input 
+                                    type="radio" 
+                                    wire:model.live="priceTier"
+                                    value="premium"
+                                    class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                >
+                                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">₦₦₦ Premium</span>
+                            </label>
+                            
+                            <label class="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded-md transition-colors">
+                                <input 
+                                    type="radio" 
+                                    wire:model.live="priceTier"
+                                    value="luxury"
+                                    class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                >
+                                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">₦₦₦₦ Luxury</span>
+                            </label>
                         </div>
                     </div>
 

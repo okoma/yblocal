@@ -20,6 +20,7 @@ use App\Models\SocialAccount;
 use App\Models\Official;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
+use App\Enums\PriceTier;
 use Filament\Forms;
 use Filament\Forms\Components\Wizard;
 use Filament\Forms\Form;
@@ -289,38 +290,16 @@ class CreateBusiness extends CreateRecord
                         ->columns(2),
                     
                     Forms\Components\Section::make('Pricing')
-                        ->description('Set your price range for services or products')
+                        ->description('Set your service price tier')
                         ->schema([
-                            Forms\Components\TextInput::make('min_price')
-                                ->label('Minimum Price')
-                                ->numeric()
-                                ->step(0.01)
-                                ->minValue(0)
-                                ->placeholder('e.g., 1000')
-                                ->helperText('Lowest price for your services/products')
-                                ->prefix('₦'),
-                            
-                            Forms\Components\TextInput::make('max_price')
-                                ->label('Maximum Price')
-                                ->numeric()
-                                ->step(0.01)
-                                ->minValue(0)
-                                ->placeholder('e.g., 50000')
-                                ->helperText('Highest price for your services/products')
-                                ->prefix('₦'),
-                            
-                            Forms\Components\Select::make('price_currency')
-                                ->label('Currency')
-                                ->options([
-                                    'NGN' => 'Nigerian Naira (₦)',
-                                    'USD' => 'US Dollar ($)',
-                                    'GBP' => 'British Pound (£)',
-                                    'EUR' => 'Euro (€)',
-                                ])
-                                ->default('NGN')
-                                ->helperText('Currency for your pricing'),
+                            Forms\Components\Select::make('price_tier')
+                                ->label('Price Tier')
+                                ->options(PriceTier::options())
+                                ->native(false)
+                                ->helperText('Select the price tier that best represents your services/products')
+                                ->placeholder('Select a price tier'),
                         ])
-                        ->columns(2),
+                        ->columns(1),
                 ])
                 ->columns(1),
             

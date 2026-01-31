@@ -17,6 +17,7 @@ use Spatie\Sluggable\SlugOptions;
 use App\Enums\ReferralSource;
 use App\Enums\PageType;
 use App\Enums\InteractionType;
+use App\Enums\PriceTier;
 
 class Business extends Model
 {
@@ -58,9 +59,7 @@ class Business extends Model
         'business_hours',
         
         // Pricing
-        'min_price',
-        'max_price',
-        'price_currency',
+        'price_tier',
         
         // Verification & Status
         'is_claimed',
@@ -98,8 +97,7 @@ class Business extends Model
         'total_views' => 'integer',
         'total_leads' => 'integer',
         'total_saves' => 'integer',
-        'min_price' => 'decimal:2',
-        'max_price' => 'decimal:2',
+        'price_tier' => PriceTier::class,
         'referral_credits' => 'integer',
     ];
 
