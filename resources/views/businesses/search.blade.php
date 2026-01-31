@@ -1,4 +1,3 @@
-
 @extends('layouts.app')
 
 @section('title', 'Search Results for "' . request('q') . '" - ' . config('app.name'))
@@ -76,11 +75,11 @@
                         <option value="name" {{ request('sort') === 'name' ? 'selected' : '' }}>Alphabetical</option>
                     </select>
                     
-                    <!-- Mobile Filters Toggle -->
+                    <!-- Filters Toggle Button -->
                     <button 
                         type="button" 
-                        onclick="toggleMobileFilters()"
-                        class="lg:hidden px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+                        onclick="toggleFilters()"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
                     >
                         Filters
                     </button>
@@ -136,11 +135,10 @@
         </div>
         <div class="p-6">
             <x-filters-sidebar 
-                :businessTypes="$businessTypes" 
-                :categories="$categories" 
-                :states="$states"
-                :cities="$cities ?? []"
-                :activeFilters="$activeFilters ?? []"
+                :businessTypes="$businessTypes ?? collect()" 
+                :categories="$categories ?? collect()" 
+                :states="$states ?? collect()"
+                :cities="$cities ?? collect()"
             />
         </div>
     </div>
@@ -151,6 +149,13 @@
     function toggleFilters() {
         const canvas = document.getElementById('filters-canvas');
         canvas.classList.toggle('hidden');
+        
+        // Prevent body scroll when drawer is open
+        if (!canvas.classList.contains('hidden')) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
     }
     
     // Close on backdrop click
@@ -158,6 +163,13 @@
         const canvas = document.getElementById('filters-canvas');
         canvas.addEventListener('click', function(e) {
             if (e.target === canvas) {
+                toggleFilters();
+            }
+        });
+        
+        // Close on ESC key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && !canvas.classList.contains('hidden')) {
                 toggleFilters();
             }
         });
