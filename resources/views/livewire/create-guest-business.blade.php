@@ -309,21 +309,29 @@
                         </div>
 
                         <!-- Categories -->
-                        @if ($business_type_id && count($availableCategories) > 0)
+                        @if ($business_type_id)
                             <div wire:ignore>
                                 <label for="categories" class="block text-sm font-medium text-gray-700 mb-2">
                                     Categories <span class="text-red-500">*</span>
                                 </label>
-                                <select id="categories"
-                                        multiple
-                                        class="w-full">
-                                    @foreach ($availableCategories as $category)
-                                        <option value="{{ $category->id }}" 
-                                                @if(in_array($category->id, $categories ?? [])) selected @endif>
-                                            {{ $category->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
+                                <div class="relative">
+                                    <select id="categories"
+                                            multiple
+                                            class="w-full">
+                                        @foreach ($availableCategories as $category)
+                                            <option value="{{ $category->id }}" 
+                                                    @if(in_array($category->id, $categories ?? [])) selected @endif>
+                                                {{ $category->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <div wire:loading wire:target="updatedBusinessTypeId" class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                        <svg class="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    </div>
+                                </div>
                                 @error('categories') 
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
@@ -467,15 +475,23 @@
                             <label for="city_location_id" class="block text-sm font-medium text-gray-700 mb-2">
                                 City <span class="text-red-500">*</span>
                             </label>
-                            <select wire:model.live="city_location_id"
-                                    id="city_location_id"
-                                    {{ !$state_location_id ? 'disabled' : '' }}
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition {{ !$state_location_id ? 'bg-gray-50 cursor-not-allowed' : '' }}">
-                                <option value="">{{ $state_location_id ? 'Select your city...' : 'Select state first' }}</option>
-                                @foreach ($cities as $city)
-                                    <option value="{{ $city->id }}">{{ $city->name }}</option>
-                                @endforeach
-                            </select>
+                            <div class="relative">
+                                <select wire:model.live="city_location_id"
+                                        id="city_location_id"
+                                        {{ !$state_location_id ? 'disabled' : '' }}
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition {{ !$state_location_id ? 'bg-gray-50 cursor-not-allowed' : '' }}">
+                                    <option value="">{{ $state_location_id ? 'Select your city...' : 'Select state first' }}</option>
+                                    @foreach ($cities as $city)
+                                        <option value="{{ $city->id }}">{{ $city->name }}</option>
+                                    @endforeach
+                                </select>
+                                <div wire:loading wire:target="updatedStateLocationId" class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                    <svg class="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                </div>
+                            </div>
                             @error('city_location_id') 
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -744,8 +760,16 @@
                     @if ($currentStep > 1)
                         <button type="button"
                                 wire:click="previousStep"
-                                class="hover:cursor-pointer px-6 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition">
-                            ← Previous
+                                wire:loading.attr="disabled"
+                                class="hover:cursor-pointer px-6 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                            <span wire:loading.remove>← Previous</span>
+                            <span wire:loading>
+                                <svg class="animate-spin h-4 w-4 inline mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Loading...
+                            </span>
                         </button>
                     @else
                         <div></div>
@@ -754,14 +778,30 @@
                     @if ($currentStep < $totalSteps)
                         <button type="button"
                                 wire:click="nextStep"
-                                class="hover:cursor-pointer px-6 py-3 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition shadow-lg">
-                            Continue →
+                                wire:loading.attr="disabled"
+                                class="hover:cursor-pointer px-6 py-3 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                            <span wire:loading.remove>Continue →</span>
+                            <span wire:loading>
+                                <svg class="animate-spin h-4 w-4 inline mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Processing...
+                            </span>
                         </button>
                     @else
                         <button type="button"
                                 wire:click="submit"
-                                class="hover:cursor-pointer px-8 py-3 text-sm font-medium text-white bg-gradient-to-r from-green-600 to-blue-600 rounded-lg hover:from-green-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition shadow-lg">
-                            🚀 Create Business
+                                wire:loading.attr="disabled"
+                                class="hover:cursor-pointer px-8 py-3 text-sm font-medium text-white bg-gradient-to-r from-green-600 to-blue-600 rounded-lg hover:from-green-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                            <span wire:loading.remove>🚀 Create Business</span>
+                            <span wire:loading>
+                                <svg class="animate-spin h-4 w-4 inline mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Creating...
+                            </span>
                         </button>
                     @endif
                 </div>

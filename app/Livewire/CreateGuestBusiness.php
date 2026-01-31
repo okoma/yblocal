@@ -186,6 +186,7 @@ class CreateGuestBusiness extends Component
     {
         if ($this->currentStep > 1) {
             $this->currentStep--;
+            $this->reloadDependentData();
         }
     }
     
@@ -193,6 +194,20 @@ class CreateGuestBusiness extends Component
     {
         if ($step >= 1 && $step <= $this->currentStep) {
             $this->currentStep = $step;
+            $this->reloadDependentData();
+        }
+    }
+    
+    private function reloadDependentData()
+    {
+        // Reload categories if on step 1 and business type is selected
+        if ($this->currentStep === 1 && $this->business_type_id) {
+            $this->updatedBusinessTypeId($this->business_type_id);
+        }
+        
+        // Reload cities if on step 2 and state is selected
+        if ($this->currentStep === 2 && $this->state_location_id) {
+            $this->updatedStateLocationId($this->state_location_id);
         }
     }
     
