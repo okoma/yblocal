@@ -260,136 +260,7 @@
             <!-- Form Content -->
             <div class="px-6 py-8 md:px-10 md:py-10">
                 
-                <!-- Authentication Section (Shown only on final review step) -->
-                @if($currentStep === $totalSteps)
-                <div class="mb-8 pb-8 border-b-2 border-gray-200">
-                    <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-lg font-semibold text-gray-900">Account Authentication</h3>
-                        <div class="flex space-x-2">
-                            <button type="button"
-                                    wire:click="$set('has_account', false)"
-                                    class="px-4 py-2 rounded-lg font-medium transition {{ !$has_account ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
-                                Create Account
-                            </button>
-                            <button type="button"
-                                    wire:click="$set('has_account', true)"
-                                    class="px-4 py-2 rounded-lg font-medium transition {{ $has_account ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
-                                I Have Account
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Create Account Mode -->
-                    @if (!$has_account)
-                        <div class="space-y-4">
-                            <!-- Full Name -->
-                            <div>
-                                <label for="full_name" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Full Name <span class="text-red-500">*</span>
-                                </label>
-                                <input type="text"
-                                       id="full_name"
-                                       wire:model="full_name"
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                                       placeholder="Your full name">
-                                @error('full_name')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            <!-- Email -->
-                            <div>
-                                <label for="auth_email" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Email <span class="text-red-500">*</span>
-                                </label>
-                                <input type="email"
-                                       id="auth_email"
-                                       wire:model="auth_email"
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                                       placeholder="your@email.com">
-                                @error('auth_email')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            <!-- Email Verification -->
-                            @if (!$code_verified)
-                                <div>
-                                    <button type="button"
-                                            wire:click="sendVerificationCode"
-                                            wire:loading.attr="disabled"
-                                            class="w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50">
-                                        <span wire:loading.remove>Send Verification Code</span>
-                                        <span wire:loading>
-                                            <svg class="animate-spin h-4 w-4 inline mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                            Sending...
-                                        </span>
-                                    </button>
-                                </div>
-
-                                @if ($code_sent)
-                                    <div class="flex space-x-2">
-                                        <input type="text"
-                                               wire:model="verification_code"
-                                               maxlength="6"
-                                               placeholder="000000"
-                                               class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-center font-mono text-lg"
-                                               inputmode="numeric">
-                                        <button type="button"
-                                                wire:click="verifyCode"
-                                                class="px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition">
-                                            Verify
-                                        </button>
-                                    </div>
-                                @endif
-                            @else
-                                <div class="flex items-center space-x-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                                    <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                    </svg>
-                                    <span class="text-green-800 font-medium">Email verified!</span>
-                                </div>
-                            @endif
-                        </div>
-                    @else
-                        <!-- Login Mode -->
-                        <div class="space-y-4">
-                            <!-- Email -->
-                            <div>
-                                <label for="auth_email" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Email <span class="text-red-500">*</span>
-                                </label>
-                                <input type="email"
-                                       id="auth_email"
-                                       wire:model="auth_email"
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                                       placeholder="your@email.com">
-                                @error('auth_email')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            <!-- Password -->
-                            <div>
-                                <label for="auth_password" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Password <span class="text-red-500">*</span>
-                                </label>
-                                <input type="password"
-                                       id="auth_password"
-                                       wire:model="auth_password"
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                                       placeholder="••••••••">
-                                @error('auth_password')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
-                        </div>
-                    @endif
-                </div>
-                @endif
+                <!-- Authentication Section moved into Step 4 -->
                 
                 <!-- Step 1: Basic Information -->
                 @if ($currentStep === 1)
@@ -877,6 +748,135 @@
                                     <p class="font-medium text-gray-900">{{ $phone }}</p>
                                 </div>
                             </div>
+                        </div>
+
+                        <!-- Authentication Section (moved here) -->
+                        <div class="mb-8 pb-8 border-b-2 border-gray-200">
+                            <div class="flex items-center justify-between mb-6">
+                                <h3 class="text-lg font-semibold text-gray-900">Account Authentication</h3>
+                                <div class="flex space-x-2">
+                                    <button type="button"
+                                            wire:click="$set('has_account', false)"
+                                            class="px-4 py-2 rounded-lg font-medium transition {{ !$has_account ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+                                        Create Account
+                                    </button>
+                                    <button type="button"
+                                            wire:click="$set('has_account', true)"
+                                            class="px-4 py-2 rounded-lg font-medium transition {{ $has_account ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+                                        I Have Account
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Create Account Mode -->
+                            @if (!$has_account)
+                                <div class="space-y-4">
+                                    <!-- Full Name -->
+                                    <div>
+                                        <label for="full_name" class="block text-sm font-medium text-gray-700 mb-2">
+                                            Full Name <span class="text-red-500">*</span>
+                                        </label>
+                                        <input type="text"
+                                               id="full_name"
+                                               wire:model="full_name"
+                                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                               placeholder="Your full name">
+                                        @error('full_name')
+                                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                        @enderror
+                                    </div>
+
+                                    <!-- Email -->
+                                    <div>
+                                        <label for="auth_email" class="block text-sm font-medium text-gray-700 mb-2">
+                                            Email <span class="text-red-500">*</span>
+                                        </label>
+                                        <input type="email"
+                                               id="auth_email"
+                                               wire:model="auth_email"
+                                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                               placeholder="your@email.com">
+                                        @error('auth_email')
+                                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                        @enderror
+                                    </div>
+
+                                    <!-- Email Verification -->
+                                    @if (!$code_verified)
+                                        <div>
+                                            <button type="button"
+                                                    wire:click="sendVerificationCode"
+                                                    wire:loading.attr="disabled"
+                                                    class="w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50">
+                                                <span wire:loading.remove>Send Verification Code</span>
+                                                <span wire:loading>
+                                                    <svg class="animate-spin h-4 w-4 inline mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                    Sending...
+                                                </span>
+                                            </button>
+                                        </div>
+
+                                        @if ($code_sent)
+                                            <div class="flex space-x-2">
+                                                <input type="text"
+                                                       wire:model="verification_code"
+                                                       maxlength="6"
+                                                       placeholder="000000"
+                                                       class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-center font-mono text-lg"
+                                                       inputmode="numeric">
+                                                <button type="button"
+                                                        wire:click="verifyCode"
+                                                        class="px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition">
+                                                    Verify
+                                                </button>
+                                            </div>
+                                        @endif
+                                    @else
+                                        <div class="flex items-center space-x-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                            <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                            </svg>
+                                            <span class="text-green-800 font-medium">Email verified!</span>
+                                        </div>
+                                    @endif
+                                </div>
+                            @else
+                                <!-- Login Mode -->
+                                <div class="space-y-4">
+                                    <!-- Email -->
+                                    <div>
+                                        <label for="auth_email" class="block text-sm font-medium text-gray-700 mb-2">
+                                            Email <span class="text-red-500">*</span>
+                                        </label>
+                                        <input type="email"
+                                               id="auth_email"
+                                               wire:model="auth_email"
+                                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                               placeholder="your@email.com">
+                                        @error('auth_email')
+                                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                        @enderror
+                                    </div>
+
+                                    <!-- Password -->
+                                    <div>
+                                        <label for="auth_password" class="block text-sm font-medium text-gray-700 mb-2">
+                                            Password <span class="text-red-500">*</span>
+                                        </label>
+                                        <input type="password"
+                                               id="auth_password"
+                                               wire:model="auth_password"
+                                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                               placeholder="••••••••">
+                                        @error('auth_password')
+                                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                        @enderror
+                                    </div>
+                                </div>
+                            @endif
                         </div>
 
                         <!-- Terms & Conditions -->
