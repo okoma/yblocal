@@ -87,6 +87,16 @@ class CreateGuestBusiness extends Component
     public ?int $draftId = null;
     public $guestEmail = null;
     
+    // Authentication fields
+    public bool $has_account = false;
+    public $full_name = '';
+    public $auth_email = '';
+    public $auth_password = '';
+    public $verification_code = '';
+    public bool $code_sent = false;
+    public bool $code_verified = false;
+    public ?string $generated_password = null;
+    
     // Data for dropdowns
     public $businessTypes = [];
     public $availableCategories = [];
@@ -383,13 +393,125 @@ class CreateGuestBusiness extends Component
         ];
     }
     
+    public function sendVerificationCode()
+    {
+        $this->validate([
+            'auth_email' => 'required|email|max:255',
+        ]);
+
+        // Generate 6-digit code
+        $code = rand(100000, 999999);
+        session()->put("verification_code_{$this->auth_email}", $code);
+        session()->put("verification_code_time_{$this->auth_email}", now());
+
+        // Send email with code (using Mail::send or notification)
+        try {
+            \Mail::send('emails.verification-code', ['code' => $code], function ($message) {
+                $message->to($this->auth_email)
+                    ->subject('Your Email Verification Code');
+            });
+            
+            $this->code_sent = true;
+            session()->flash('message', "Verification code sent to {$this->auth_email}");
+        } catch (\Exception $e) {
+            \Log::error('Failed to send verification code: ' . $e->getMessage());
+            session()->flash('error', 'Failed to send verification code. Please try again.');
+        }
+    }
+
+    public function verifyCode()
+    {
+        $this->validate([
+            'verification_code' => 'required|numeric|digits:6',
+        ]);
+
+        $storedCode = session()->get("verification_code_{$this->auth_email}");
+        $codeTime = session()->get("verification_code_time_{$this->auth_email}");
+
+        if (!$storedCode) {
+            session()->flash('error', 'No verification code sent. Please try again.');
+            return;
+        }
+
+        // Check if code expired (15 minutes)
+        if (now()->diffInMinutes($codeTime) > 15) {
+            session()->forget("verification_code_{$this->auth_email}");
+            session()->forget("verification_code_time_{$this->auth_email}");
+            session()->flash('error', 'Verification code expired. Please request a new one.');
+            return;
+        }
+
+        if ($this->verification_code != $storedCode) {
+            session()->flash('error', 'Invalid verification code. Please try again.');
+            return;
+        }
+
+        // Mark as verified
+        $this->code_verified = true;
+        session()->flash('message', 'Email verified successfully!');
+        session()->forget("verification_code_{$this->auth_email}");
+        session()->forget("verification_code_time_{$this->auth_email}");
+    }
+
+    private function registerUser()
+    {
+        $this->validate([
+            'full_name' => 'required|string|max:255',
+            'auth_email' => 'required|email|max:255|unique:users,email',
+        ]);
+
+        // Generate a temporary password
+        $this->generated_password = Str::random(16);
+
+        $user = \App\Models\User::create([
+            'name' => $this->full_name,
+            'email' => $this->auth_email,
+            'password' => bcrypt($this->generated_password),
+            'email_verified_at' => now(), // Verified via OTP
+        ]);
+
+        return $user;
+    }
+
+    private function loginExistingUser()
+    {
+        $this->validate([
+            'auth_email' => 'required|email|max:255',
+            'auth_password' => 'required|string|min:6',
+        ]);
+
+        if (!\Illuminate\Support\Facades\Auth::attempt(['email' => $this->auth_email, 'password' => $this->auth_password])) {
+            throw new \Exception('Invalid email or password');
+        }
+
+        return \Illuminate\Support\Facades\Auth::user();
+    }
+    
     public function submit()
     {
         $this->validateCurrentStep();
-        
+
+        // Validate auth
+        if (!$this->has_account && !$this->code_verified) {
+            session()->flash('error', 'Please verify your email before creating the business.');
+            return;
+        }
+
         try {
             DB::beginTransaction();
-            
+
+            // Handle authentication
+            if (!$this->has_account) {
+                // Register new user
+                $user = $this->registerUser();
+                \Illuminate\Support\Facades\Auth::login($user);
+                $userId = $user->id;
+            } else {
+                // Login existing user
+                $user = $this->loginExistingUser();
+                $userId = $user->id;
+            }
+
             // Prepare business hours
             $businessHours = [];
             $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -402,7 +524,7 @@ class CreateGuestBusiness extends Component
                 ];
             }
             
-            // Create the business as a draft
+            // Create the business
             $business = Business::create([
                 'business_name' => $this->business_name,
                 'slug' => $this->slug,
@@ -426,7 +548,7 @@ class CreateGuestBusiness extends Component
                 'years_in_business' => $this->years_in_business,
                 'business_hours' => $businessHours,
                 'status' => 'draft',
-                'user_id' => null,
+                'user_id' => $userId,  // Now attach to authenticated user
             ]);
             
             // Attach relationships
@@ -453,22 +575,28 @@ class CreateGuestBusiness extends Component
             
             DB::commit();
             
-            // Store business ID in session for login
-            session()->put('pending_business_id', $business->id);
-            session()->put('pending_business_email', $this->email);
+            // Clear session
             session()->forget('guest_draft_id');
+            session()->forget('pending_business_id');
             
-            return redirect()->route('login')->with([
-                'success' => 'Business listing created! Please login or create an account to publish it.',
-                'info' => 'Your business listing has been saved as a draft. Complete registration to publish it and start receiving customers.'
-            ]);
+            // If new user, show them their password
+            if (!$this->has_account) {
+                return redirect()->route('dashboard')->with([
+                    'success' => "Business '{$this->business_name}' created successfully!",
+                    'password_info' => "Your account has been created. Password: {$this->generated_password}. Please change it in settings.",
+                ]);
+            } else {
+                return redirect()->route('dashboard')->with([
+                    'success' => "Business '{$this->business_name}' created and linked to your account!",
+                ]);
+            }
             
         } catch (\Exception $e) {
             DB::rollBack();
             
             \Log::error('Failed to create guest business: ' . $e->getMessage());
             
-            session()->flash('error', 'Failed to create business listing. Please try again.');
+            session()->flash('error', 'Failed to create business listing: ' . $e->getMessage());
             
             return null;
         }
