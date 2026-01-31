@@ -119,6 +119,21 @@ class BusinessFilters extends Component
         $this->resetPage();
     }
 
+    public function updatedVerified()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedPremium()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedOpenNow()
+    {
+        $this->resetPage();
+    }
+
     public function clearFilters()
     {
         $this->reset([
@@ -137,10 +152,18 @@ class BusinessFilters extends Component
 
     public function clearFilter($filter)
     {
-        $this->$filter = '';
+        // Handle boolean filters differently from string filters
+        if (in_array($filter, ['verified', 'premium', 'openNow'])) {
+            $this->$filter = false;
+        } else {
+            $this->$filter = '';
+        }
+        
+        // Reset city when state is cleared
         if ($filter === 'state') {
             $this->city = '';
         }
+        
         $this->resetPage();
     }
 
@@ -264,13 +287,16 @@ class BusinessFilters extends Component
                 $query->orderBy('created_at', 'desc');
                 break;
             case 'name':
-                $query->orderBy('name', 'asc');
+                $query->orderBy('business_name', 'asc');
                 break;
             case 'relevance':
             default:
-                $query->orderBy('is_premium', 'desc')
-                    ->orderBy('is_verified', 'desc')
-                    ->orderBy('avg_rating', 'desc');
+                // Only apply default sorting if we didn't already sort by search relevance
+                if (!$this->search || empty($searchResults)) {
+                    $query->orderBy('is_premium', 'desc')
+                        ->orderBy('is_verified', 'desc')
+                        ->orderBy('avg_rating', 'desc');
+                }
                 break;
         }
 
@@ -347,13 +373,6 @@ class BusinessFilters extends Component
 
     public function render()
     {
-        return view('livewire.business-filters', [
-            'businesses' => $this->businesses,
-            'businessTypes' => $this->businessTypes,
-            'categories' => $this->categories,
-            'states' => $this->states,
-            'cities' => $this->cities,
-            'activeFiltersCount' => $this->activeFiltersCount,
-        ]);
+        return view('livewire.business-filters');
     }
 }
