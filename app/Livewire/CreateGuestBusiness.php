@@ -468,6 +468,7 @@ class CreateGuestBusiness extends Component
             'email' => $this->auth_email,
             'password' => bcrypt($this->generated_password),
             'email_verified_at' => now(), // Verified via OTP
+            'role' => \App\Enums\UserRole::BUSINESS_OWNER->value,
         ]);
 
         return $user;
