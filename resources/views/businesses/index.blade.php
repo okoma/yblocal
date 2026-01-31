@@ -1,3 +1,5 @@
+
+//resources/views/businesses/index.blade.php
 @extends('layouts.app')
 
 @section('title', 'Discover Local Businesses - ' . config('app.name'))

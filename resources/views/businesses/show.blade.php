@@ -1,3 +1,5 @@
+
+//resources/views/businesses/show.blade.php
 @extends('layouts.app')
 
 @section('title', $business->business_name . ' - ' . config('app.name'))

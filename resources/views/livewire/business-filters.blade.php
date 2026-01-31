@@ -1,3 +1,5 @@
+
+//resources/views/livewire/business-filters.blade.php
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
     <!-- Header with Search & Filter Toggle -->
     <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-30">
@@ -202,6 +204,7 @@
     <div 
         x-data="{ show: @entangle('showFilters') }"
         x-show="show"
+        x-effect="document.body.style.overflow = show ? 'hidden' : ''"
         x-cloak
         class="fixed inset-0 z-50"
         style="display: none;"
@@ -404,18 +407,4 @@
     </div>
 </div>
 
-@push('scripts')
-<script>
-    // Initialize Alpine.js for drawer animations
-    document.addEventListener('alpine:init', () => {
-        // Prevent body scroll when drawer is open
-        Alpine.effect(() => {
-            if (Alpine.store('showFilters')) {
-                document.body.style.overflow = 'hidden';
-            } else {
-                document.body.style.overflow = '';
-            }
-        });
-    });
-</script>
-@endpush
+<!-- body overflow is handled via x-effect on the drawer root -->

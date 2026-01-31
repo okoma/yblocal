@@ -1,3 +1,5 @@
+
+//resources/views/categories/show.blade.php
 @extends('layouts.app')
 
 @php
@@ -155,50 +157,4 @@
     </div>
 </div>
 
-<!-- Filters Canvas (Offcanvas Drawer) -->
-<div id="filters-canvas" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50">
-    <div class="absolute right-0 top-0 bottom-0 w-full sm:w-96 bg-white dark:bg-gray-800 shadow-2xl transform transition-transform duration-300 overflow-y-auto">
-        <div class="sticky top-0 bg-white dark:bg-gray-800 p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center z-10">
-            <h2 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
-                </svg>
-                Filters
-            </h2>
-            <button onclick="toggleFilters()" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-            </button>
-        </div>
-        <div class="p-6">
-            <x-filters-sidebar 
-                :businessTypes="$businessTypes" 
-                :categories="$categories" 
-                :states="$states"
-                :cities="$cities ?? []"
-                :activeFilters="$activeFilters ?? []"
-            />
-        </div>
-    </div>
-</div>
-
-@push('scripts')
-<script>
-    function toggleFilters() {
-        const canvas = document.getElementById('filters-canvas');
-        canvas.classList.toggle('hidden');
-    }
-    
-    // Close on backdrop click
-    document.addEventListener('DOMContentLoaded', function() {
-        const canvas = document.getElementById('filters-canvas');
-        canvas.addEventListener('click', function(e) {
-            if (e.target === canvas) {
-                toggleFilters();
-            }
-        });
-    });
-</script>
-@endpush
 @endsection
