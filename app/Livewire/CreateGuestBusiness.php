@@ -19,7 +19,9 @@ use Livewire\WithFileUploads;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Livewire\Attributes\Layout;
 
+#[Layout('layouts.business')]
 class CreateGuestBusiness extends Component
 {
     use WithFileUploads;
