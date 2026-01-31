@@ -1,16 +1,12 @@
 @component('mail::message')
 # Email Verification
+<p>Hello,</p>
 
-Your verification code is:
+<p>Your verification code is: <strong>{{ $code }}</strong></p>
 
-@component('mail::panel')
-# **{{ $code }}**
-@endcomponent
+<p>This code will expire in 15 minutes.</p>
 
-This code will expire in 15 minutes.
+<p>If you didn't request this code, you can safely ignore this email.</p>
 
+<p>Thanks,<br>{{ config('app.name') }}</p>
 If you didn't request this code, you can safely ignore this email.
-
-Thanks,<br>
-{{ config('app.name') }}
-@endcomponent
