@@ -16,6 +16,7 @@ use App\Http\Controllers\FilterController;
 use App\Http\Controllers\PhotoController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\CustomerSocialAuthController;
+use Illuminate\Support\Facades\Mail;
 
 
 // ============================================
