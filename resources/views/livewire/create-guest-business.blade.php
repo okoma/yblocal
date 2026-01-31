@@ -172,20 +172,22 @@
                         <!-- Categories -->
                         @if ($business_type_id && count($availableCategories) > 0)
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Categories
+                                <label for="categories" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Categories <span class="text-red-500">*</span>
                                 </label>
-                                <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                <select wire:model="categories"
+                                        id="categories"
+                                        multiple
+                                        size="5"
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
                                     @foreach ($availableCategories as $category)
-                                        <label class="flex items-center space-x-2 cursor-pointer">
-                                            <input type="checkbox" 
-                                                   wire:model="categories"
-                                                   value="{{ $category->id }}"
-                                                   class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                                            <span class="text-sm text-gray-700">{{ $category->name }}</span>
-                                        </label>
+                                        <option value="{{ $category->id }}">{{ $category->name }}</option>
                                     @endforeach
-                                </div>
+                                </select>
+                                <p class="mt-1 text-xs text-gray-500">Hold Ctrl (Cmd on Mac) to select multiple categories</p>
+                                @error('categories') 
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
                             </div>
                         @endif
 
@@ -211,38 +213,36 @@
 
                         <!-- Payment Methods -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <label for="payment_methods" class="block text-sm font-medium text-gray-700 mb-2">
                                 Payment Methods Accepted
                             </label>
-                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            <select wire:model="payment_methods"
+                                    id="payment_methods"
+                                    multiple
+                                    size="5"
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
                                 @foreach ($availablePaymentMethods as $method)
-                                    <label class="flex items-center space-x-2 cursor-pointer">
-                                        <input type="checkbox" 
-                                               wire:model="payment_methods"
-                                               value="{{ $method->id }}"
-                                               class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                                        <span class="text-sm text-gray-700">{{ $method->name }}</span>
-                                    </label>
+                                    <option value="{{ $method->id }}">{{ $method->name }}</option>
                                 @endforeach
-                            </div>
+                            </select>
+                            <p class="mt-1 text-xs text-gray-500">Hold Ctrl (Cmd on Mac) to select multiple payment methods</p>
                         </div>
 
                         <!-- Amenities -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <label for="amenities" class="block text-sm font-medium text-gray-700 mb-2">
                                 Amenities & Features
                             </label>
-                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            <select wire:model="amenities"
+                                    id="amenities"
+                                    multiple
+                                    size="5"
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
                                 @foreach ($availableAmenities as $amenity)
-                                    <label class="flex items-center space-x-2 cursor-pointer">
-                                        <input type="checkbox" 
-                                               wire:model="amenities"
-                                               value="{{ $amenity->id }}"
-                                               class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                                        <span class="text-sm text-gray-700">{{ $amenity->name }}</span>
-                                    </label>
+                                    <option value="{{ $amenity->id }}">{{ $amenity->name }}</option>
                                 @endforeach
-                            </div>
+                            </select>
+                            <p class="mt-1 text-xs text-gray-500">Hold Ctrl (Cmd on Mac) to select multiple amenities</p>
                         </div>
 
                         <!-- Years in Business -->

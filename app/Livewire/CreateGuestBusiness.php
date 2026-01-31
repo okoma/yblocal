@@ -210,7 +210,7 @@ class CreateGuestBusiness extends Component
                     'business_name' => 'required|string|max:255',
                     'slug' => 'required|string|max:255|unique:businesses,slug',
                     'business_type_id' => 'required|exists:business_types,id',
-                    'categories' => 'nullable|array',
+                    'categories' => 'required|array|min:1',
                     'categories.*' => 'exists:categories,id',
                     'description' => 'required|string|max:1000',
                     'years_in_business' => 'required|integer|min:0|max:100',
