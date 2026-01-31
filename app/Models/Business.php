@@ -57,6 +57,11 @@ class Business extends Model
         // Business Hours
         'business_hours',
         
+        // Pricing
+        'min_price',
+        'max_price',
+        'price_currency',
+        
         // Verification & Status
         'is_claimed',
         'claimed_by',
@@ -93,6 +98,8 @@ class Business extends Model
         'total_views' => 'integer',
         'total_leads' => 'integer',
         'total_saves' => 'integer',
+        'min_price' => 'decimal:2',
+        'max_price' => 'decimal:2',
         'referral_credits' => 'integer',
     ];
 

@@ -31,6 +31,12 @@ class BusinessFilters extends Component
     #[Url(as: 'rating', history: true)]
     public $rating = '';
 
+    #[Url(as: 'min_price', history: true)]
+    public $minPrice = '';
+
+    #[Url(as: 'max_price', history: true)]
+    public $maxPrice = '';
+
     #[Url(as: 'verified', history: true)]
     public $verified = false;
 
@@ -109,6 +115,16 @@ class BusinessFilters extends Component
         $this->resetPage();
     }
 
+    public function updatedMinPrice()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedMaxPrice()
+    {
+        $this->resetPage();
+    }
+
     public function updatedSort()
     {
         $this->resetPage();
@@ -142,6 +158,8 @@ class BusinessFilters extends Component
             'state',
             'city',
             'rating',
+            'minPrice',
+            'maxPrice',
             'verified',
             'premium',
             'openNow',
@@ -230,6 +248,14 @@ class BusinessFilters extends Component
 
         if ($this->rating) {
             $query->where('avg_rating', '>=', $this->rating);
+        }
+
+        if ($this->minPrice) {
+            $query->where('max_price', '>=', $this->minPrice);
+        }
+
+        if ($this->maxPrice) {
+            $query->where('min_price', '<=', $this->maxPrice);
         }
 
         if ($this->verified) {
@@ -365,6 +391,8 @@ class BusinessFilters extends Component
         if ($this->state) $count++;
         if ($this->city) $count++;
         if ($this->rating) $count++;
+        if ($this->minPrice) $count++;
+        if ($this->maxPrice) $count++;
         if ($this->verified) $count++;
         if ($this->premium) $count++;
         if ($this->openNow) $count++;

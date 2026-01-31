@@ -382,6 +382,41 @@
                         </div>
                     </div>
 
+                    <!-- Price Range Filter -->
+                    <div class="mb-6 pb-6 border-b border-gray-200 dark:border-gray-700">
+                        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Price Range</h3>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Minimum Price</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-2.5 text-gray-500 dark:text-gray-400">₦</span>
+                                    <input 
+                                        type="number" 
+                                        wire:model.live.debounce.500ms="minPrice"
+                                        placeholder="Any"
+                                        min="0"
+                                        step="1000"
+                                        class="w-full pl-8 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500"
+                                    >
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Maximum Price</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-2.5 text-gray-500 dark:text-gray-400">₦</span>
+                                    <input 
+                                        type="number" 
+                                        wire:model.live.debounce.500ms="maxPrice"
+                                        placeholder="Any"
+                                        min="0"
+                                        step="1000"
+                                        class="w-full pl-8 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500"
+                                    >
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Special Features -->
                     <div class="mb-6">
                         <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Features</h3>
