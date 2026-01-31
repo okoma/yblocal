@@ -205,7 +205,6 @@
         x-effect="document.body.style.overflow = show ? 'hidden' : ''"
         x-cloak
         class="fixed inset-0 z-50"
-        style="display: none;"
     >
         <!-- Backdrop -->
         <div 
