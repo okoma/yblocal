@@ -15,6 +15,7 @@ use App\Models\Location;
 use App\Models\FAQ;
 use App\Models\SocialAccount;
 use App\Models\Official;
+use App\Enums\PriceTier;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Contracts\View\View;
 use Filament\Actions;
@@ -287,6 +288,18 @@ class EditBusiness extends EditRecord
                                 ->columnSpanFull(),
                         ])
                         ->columns(2),
+                    
+                    Forms\Components\Section::make('Pricing')
+                        ->description('Set your service price tier')
+                        ->schema([
+                            Forms\Components\Select::make('price_tier')
+                                ->label('Price Tier')
+                                ->options(PriceTier::options())
+                                ->native(false)
+                                ->helperText('Select the price tier that best represents your services/products')
+                                ->placeholder('Select a price tier'),
+                        ])
+                        ->columns(1),
                 ])
                 ->columns(1),
             
