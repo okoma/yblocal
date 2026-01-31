@@ -200,6 +200,21 @@ Schedule::command('quotes:check-expired')
         ]);
     });
 
+// Send reminders for abandoned guest business drafts (24h/48h rules)
+Schedule::command('drafts:send-reminders')
+    ->daily()
+    ->withoutOverlapping()
+    ->onSuccess(function () {
+        Log::info('Abandoned draft reminder job completed', [
+            'scheduled_at' => now()->toDateTimeString(),
+        ]);
+    })
+    ->onFailure(function () {
+        Log::error('Abandoned draft reminder job failed', [
+            'scheduled_at' => now()->toDateTimeString(),
+        ]);
+    });
+
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
