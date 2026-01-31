@@ -5,6 +5,7 @@ use App\Http\Controllers\Webhook\EmailWebhookController;
 use App\Http\Controllers\Notification\UnsubscribeController;
 use App\Http\Controllers\ManagerInvitationController;
 use App\Http\Controllers\BusinessController;
+use App\Livewire\CreateGuestBusiness;
 use App\Http\Controllers\DiscoveryController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\LocationController;
@@ -16,6 +17,7 @@ use App\Http\Controllers\PhotoController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\CustomerSocialAuthController;
 
+
 //welcome
 Route::get('/', function () {
     return view('welcome');
@@ -24,6 +26,10 @@ Route::get('/', function () {
 Route::get('/login', function () {
     return redirect()->route('filament.customer.auth.login');
 })->name('login');
+
+// Guest Business Creation Route
+Route::get('/list-your-business', CreateGuestBusiness::class)
+    ->name('guest.business.create');
 
 // Mailer webhooks (bounces/unsubscribes)
 Route::post('/webhooks/mailer/bounce', [EmailWebhookController::class, 'bounce']);

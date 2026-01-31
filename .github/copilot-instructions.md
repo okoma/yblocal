@@ -132,3 +132,8 @@ Three separate Filament panels in `app/Providers/Filament/`:
 - **Customer**: Customer account & preferences
 
 Resources use standard Filament table/form builders. Relations often use nested forms or separate resource links.
+
+## Capability Assumption
+
+The AI assistant is expected to have full read access to the workspace files.
+If file access is unavailable, request it explicitly before analysis.
