@@ -597,9 +597,11 @@ class CreateGuestBusiness extends Component
             
             \Log::error('Failed to create guest business: ' . $e->getMessage());
             
+            // Don't clear session - keep draft so user can retry
             session()->flash('error', 'Failed to create business listing: ' . $e->getMessage());
             
-            return null;
+            // Stay on current step so user can fix the issue
+            return;
         }
     }
     

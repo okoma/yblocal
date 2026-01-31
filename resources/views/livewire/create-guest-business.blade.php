@@ -74,33 +74,46 @@
         function initializeChoices() {
             // Categories
             const categoriesEl = document.getElementById('categories');
-            if (categoriesEl && !categoriesEl.classList.contains('choices__input')) {
-                // Destroy existing instance if any
+            if (categoriesEl) {
+                // Always destroy existing instance to ensure fresh state
                 if (categoriesChoices) {
-                    categoriesChoices.destroy();
+                    try {
+                        categoriesChoices.destroy();
+                        categoriesChoices = null;
+                    } catch (e) {
+                        console.log('Categories Choices cleanup:', e);
+                    }
                 }
                 
-                categoriesChoices = new Choices(categoriesEl, {
-                    removeItemButton: true,
-                    searchEnabled: true,
-                    searchPlaceholderValue: 'Search categories...',
-                    placeholderValue: 'Select categories...',
-                    itemSelectText: 'Click to select',
-                    maxItemCount: -1,
-                    shouldSort: false
-                });
-                
-                categoriesEl.addEventListener('change', function() {
-                    const values = categoriesChoices.getValue(true);
-                    @this.set('categories', Array.isArray(values) ? values : [values]);
-                });
+                // Only initialize if select is not disabled
+                if (!categoriesEl.disabled) {
+                    categoriesChoices = new Choices(categoriesEl, {
+                        removeItemButton: true,
+                        searchEnabled: true,
+                        searchPlaceholderValue: 'Search categories...',
+                        placeholderValue: 'Select categories...',
+                        itemSelectText: 'Click to select',
+                        maxItemCount: -1,
+                        shouldSort: false
+                    });
+                    
+                    categoriesEl.addEventListener('change', function() {
+                        const values = categoriesChoices.getValue(true);
+                        @this.set('categories', Array.isArray(values) ? values : [values]);
+                    });
+                }
             }
             
             // Payment Methods
             const paymentMethodsEl = document.getElementById('payment_methods');
-            if (paymentMethodsEl && !paymentMethodsEl.classList.contains('choices__input')) {
+            if (paymentMethodsEl) {
                 if (paymentMethodsChoices) {
-                    paymentMethodsChoices.destroy();
+                    try {
+                        paymentMethodsChoices.destroy();
+                        paymentMethodsChoices = null;
+                    } catch (e) {
+                        console.log('Payment methods Choices cleanup:', e);
+                    }
                 }
                 
                 paymentMethodsChoices = new Choices(paymentMethodsEl, {
@@ -121,9 +134,14 @@
             
             // Amenities
             const amenitiesEl = document.getElementById('amenities');
-            if (amenitiesEl && !amenitiesEl.classList.contains('choices__input')) {
+            if (amenitiesEl) {
                 if (amenitiesChoices) {
-                    amenitiesChoices.destroy();
+                    try {
+                        amenitiesChoices.destroy();
+                        amenitiesChoices = null;
+                    } catch (e) {
+                        console.log('Amenities Choices cleanup:', e);
+                    }
                 }
                 
                 amenitiesChoices = new Choices(amenitiesEl, {
