@@ -27,7 +27,7 @@
 </head>
 <body class="bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 antialiased min-h-screen">
     <!-- Business Domain Header -->
-    <header class="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-50 border-b-4 border-blue-600">
+    <header class="bg-white dark:bg-gray-800 sticky top-0 z-50 border-b-4 border-blue-600">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center py-4">
                 <!-- Logo & Branding -->
