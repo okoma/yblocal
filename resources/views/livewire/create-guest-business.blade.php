@@ -1,4 +1,143 @@
 <div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12 px-4 sm:px-6 lg:px-8">
+    
+    @push('styles')
+    <!-- Choices.js CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+    <style>
+        /* Custom Choices.js styling to match Tailwind */
+        .choices__inner {
+            border: 1px solid #d1d5db !important;
+            border-radius: 0.5rem !important;
+            padding: 0.5rem !important;
+            min-height: 3rem !important;
+            background-color: white !important;
+        }
+        .choices__input {
+            background-color: transparent !important;
+        }
+        .choices:focus-within .choices__inner,
+        .choices.is-focused .choices__inner {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+        }
+        .choices__list--multiple .choices__item {
+            background-color: #3b82f6 !important;
+            border: none !important;
+            color: white !important;
+            border-radius: 0.375rem !important;
+            padding: 0.25rem 0.5rem !important;
+            margin: 0.25rem !important;
+        }
+        .choices__list--multiple .choices__item.is-highlighted {
+            background-color: #2563eb !important;
+        }
+        .choices__button {
+            border-left: 1px solid rgba(255, 255, 255, 0.3) !important;
+            opacity: 1 !important;
+        }
+        .choices__list--dropdown .choices__item--selectable.is-highlighted {
+            background-color: #dbeafe !important;
+            color: #1e40af !important;
+        }
+        .choices[data-type*=select-multiple] .choices__button,
+        .choices[data-type*=text] .choices__button {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='white'%3E%3Cpath d='M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z'/%3E%3C/svg%3E") !important;
+            background-size: 12px !important;
+        }
+    </style>
+    @endpush
+
+    @push('scripts')
+    <!-- Choices.js -->
+    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+    
+    <script>
+        let categoriesChoices, paymentMethodsChoices, amenitiesChoices;
+        
+        document.addEventListener('livewire:init', () => {
+            // Initialize Choices.js when component loads
+            initializeChoices();
+            
+            // Re-initialize after Livewire updates
+            Livewire.hook('morph.updated', () => {
+                initializeChoices();
+            });
+        });
+        
+        function initializeChoices() {
+            // Categories
+            const categoriesEl = document.getElementById('categories');
+            if (categoriesEl && !categoriesEl.classList.contains('choices__input')) {
+                // Destroy existing instance if any
+                if (categoriesChoices) {
+                    categoriesChoices.destroy();
+                }
+                
+                categoriesChoices = new Choices(categoriesEl, {
+                    removeItemButton: true,
+                    searchEnabled: true,
+                    searchPlaceholderValue: 'Search categories...',
+                    placeholderValue: 'Select categories...',
+                    itemSelectText: 'Click to select',
+                    maxItemCount: -1,
+                    shouldSort: false
+                });
+                
+                categoriesEl.addEventListener('change', function() {
+                    const values = categoriesChoices.getValue(true);
+                    @this.set('categories', Array.isArray(values) ? values : [values]);
+                });
+            }
+            
+            // Payment Methods
+            const paymentMethodsEl = document.getElementById('payment_methods');
+            if (paymentMethodsEl && !paymentMethodsEl.classList.contains('choices__input')) {
+                if (paymentMethodsChoices) {
+                    paymentMethodsChoices.destroy();
+                }
+                
+                paymentMethodsChoices = new Choices(paymentMethodsEl, {
+                    removeItemButton: true,
+                    searchEnabled: true,
+                    searchPlaceholderValue: 'Search payment methods...',
+                    placeholderValue: 'Select payment methods...',
+                    itemSelectText: 'Click to select',
+                    maxItemCount: -1,
+                    shouldSort: false
+                });
+                
+                paymentMethodsEl.addEventListener('change', function() {
+                    const values = paymentMethodsChoices.getValue(true);
+                    @this.set('payment_methods', Array.isArray(values) ? values : [values]);
+                });
+            }
+            
+            // Amenities
+            const amenitiesEl = document.getElementById('amenities');
+            if (amenitiesEl && !amenitiesEl.classList.contains('choices__input')) {
+                if (amenitiesChoices) {
+                    amenitiesChoices.destroy();
+                }
+                
+                amenitiesChoices = new Choices(amenitiesEl, {
+                    removeItemButton: true,
+                    searchEnabled: true,
+                    searchPlaceholderValue: 'Search amenities...',
+                    placeholderValue: 'Select amenities...',
+                    itemSelectText: 'Click to select',
+                    maxItemCount: -1,
+                    shouldSort: false
+                });
+                
+                amenitiesEl.addEventListener('change', function() {
+                    const values = amenitiesChoices.getValue(true);
+                    @this.set('amenities', Array.isArray(values) ? values : [values]);
+                });
+            }
+        }
+    </script>
+    @endpush
+    
     <div class="max-w-4xl mx-auto">
         
         <!-- Header -->
@@ -171,20 +310,20 @@
 
                         <!-- Categories -->
                         @if ($business_type_id && count($availableCategories) > 0)
-                            <div>
+                            <div wire:ignore>
                                 <label for="categories" class="block text-sm font-medium text-gray-700 mb-2">
                                     Categories <span class="text-red-500">*</span>
                                 </label>
-                                <select wire:model="categories"
-                                        id="categories"
+                                <select id="categories"
                                         multiple
-                                        size="5"
-                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                                        class="w-full">
                                     @foreach ($availableCategories as $category)
-                                        <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                        <option value="{{ $category->id }}" 
+                                                @if(in_array($category->id, $categories ?? [])) selected @endif>
+                                            {{ $category->name }}
+                                        </option>
                                     @endforeach
                                 </select>
-                                <p class="mt-1 text-xs text-gray-500">Hold Ctrl (Cmd on Mac) to select multiple categories</p>
                                 @error('categories') 
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
@@ -212,37 +351,37 @@
                         </div>
 
                         <!-- Payment Methods -->
-                        <div>
+                        <div wire:ignore>
                             <label for="payment_methods" class="block text-sm font-medium text-gray-700 mb-2">
                                 Payment Methods Accepted
                             </label>
-                            <select wire:model="payment_methods"
-                                    id="payment_methods"
+                            <select id="payment_methods"
                                     multiple
-                                    size="5"
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                                    class="w-full">
                                 @foreach ($availablePaymentMethods as $method)
-                                    <option value="{{ $method->id }}">{{ $method->name }}</option>
+                                    <option value="{{ $method->id }}"
+                                            @if(in_array($method->id, $payment_methods ?? [])) selected @endif>
+                                        {{ $method->name }}
+                                    </option>
                                 @endforeach
                             </select>
-                            <p class="mt-1 text-xs text-gray-500">Hold Ctrl (Cmd on Mac) to select multiple payment methods</p>
                         </div>
 
                         <!-- Amenities -->
-                        <div>
+                        <div wire:ignore>
                             <label for="amenities" class="block text-sm font-medium text-gray-700 mb-2">
                                 Amenities & Features
                             </label>
-                            <select wire:model="amenities"
-                                    id="amenities"
+                            <select id="amenities"
                                     multiple
-                                    size="5"
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                                    class="w-full">
                                 @foreach ($availableAmenities as $amenity)
-                                    <option value="{{ $amenity->id }}">{{ $amenity->name }}</option>
+                                    <option value="{{ $amenity->id }}"
+                                            @if(in_array($amenity->id, $amenities ?? [])) selected @endif>
+                                        {{ $amenity->name }}
+                                    </option>
                                 @endforeach
                             </select>
-                            <p class="mt-1 text-xs text-gray-500">Hold Ctrl (Cmd on Mac) to select multiple amenities</p>
                         </div>
 
                         <!-- Years in Business -->
@@ -605,7 +744,7 @@
                     @if ($currentStep > 1)
                         <button type="button"
                                 wire:click="previousStep"
-                                class="px-6 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition">
+                                class="hover:cursor-pointer px-6 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition">
                             ← Previous
                         </button>
                     @else
@@ -615,14 +754,14 @@
                     @if ($currentStep < $totalSteps)
                         <button type="button"
                                 wire:click="nextStep"
-                                class="px-6 py-3 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition shadow-lg">
+                                class="hover:cursor-pointer px-6 py-3 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition shadow-lg">
                             Continue →
                         </button>
                     @else
                         <button type="button"
                                 wire:click="submit"
-                                class="px-8 py-3 text-sm font-medium text-white bg-gradient-to-r from-green-600 to-blue-600 rounded-lg hover:from-green-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition shadow-lg">
-                            🚀 Create Business Listing
+                                class="hover:cursor-pointer px-8 py-3 text-sm font-medium text-white bg-gradient-to-r from-green-600 to-blue-600 rounded-lg hover:from-green-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition shadow-lg">
+                            🚀 Create Business
                         </button>
                     @endif
                 </div>
