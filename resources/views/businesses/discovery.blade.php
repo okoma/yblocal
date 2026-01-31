@@ -1,5 +1,3 @@
-
-//resources/views/businesses/discovery.blade.php
 @extends('layouts.app')
 
 @section('title', $pageTitle ?? 'Discover Local Businesses')

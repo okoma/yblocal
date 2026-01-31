@@ -1,4 +1,3 @@
-
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
     <!-- Header with Search & Filter Toggle -->
     <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-30">
@@ -39,7 +38,7 @@
                     <option value="relevance">Most Relevant</option>
                     <option value="rating">Highest Rated</option>
                     <option value="newest">Newest</option>
-                    <option value="name">Name (A-Z)</option>
+                    <option value="business_name">Name (A-Z)</option>
                 </select>
             </div>
 
@@ -134,12 +133,12 @@
                     </h1>
                     <p class="text-gray-600 dark:text-gray-400 mt-1">
                         <span wire:loading.remove>{{ $businesses->total() }} businesses found</span>
-                        <span wire:loading class="text-blue-600">Searching...</span>
+                        <span wire:loading wire:target="search,sort,businessType,category,state,city,rating,verified,premium,openNow" class="text-blue-600">Searching...</span>
                     </p>
                 </div>
 
                 <!-- Loading Overlay -->
-                <div wire:loading.delay class="fixed inset-0 bg-black bg-opacity-20 z-40 flex items-center justify-center lg:left-0 lg:right-1/2">
+                <div wire:loading.delay wire:target="search,sort,businessType,category,state,city,rating,verified,premium,openNow" class="fixed inset-0 bg-black bg-opacity-20 z-40 flex items-center justify-center lg:left-0 lg:right-1/2">
                     <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-xl">
                         <svg class="animate-spin h-8 w-8 text-blue-600 mx-auto" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>

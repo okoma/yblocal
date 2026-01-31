@@ -1,5 +1,3 @@
-
-//resources/views/components/filters-sidebar.blade.php
 @props(['businessTypes', 'categories', 'states', 'cities' => [], 'activeFilters' => []])
 
 <div>

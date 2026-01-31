@@ -1,5 +1,4 @@
 
-//resources/views/businesses/search.blade.php
 @extends('layouts.app')
 
 @section('title', 'Search Results for "' . request('q') . '" - ' . config('app.name'))
