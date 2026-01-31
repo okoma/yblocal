@@ -203,6 +203,7 @@ class CreateGuestBusiness extends Component
         // Reload categories if on step 1 and business type is selected
         if ($this->currentStep === 1 && $this->business_type_id) {
             $this->updatedBusinessTypeId($this->business_type_id);
+            $this->dispatch('reinitialize-choices');
         }
         
         // Reload cities if on step 2 and state is selected
@@ -413,8 +414,8 @@ class CreateGuestBusiness extends Component
                 'city' => $this->city,
                 'area' => $this->area,
                 'address' => $this->address,
-                'latitude' => $this->latitude,
-                'longitude' => $this->longitude,
+                'latitude' => $this->latitude ?: null,
+                'longitude' => $this->longitude ?: null,
                 'phone' => $this->phone,
                 'email' => $this->email,
                 'whatsapp' => $this->whatsapp,

@@ -62,6 +62,13 @@
             Livewire.hook('morph.updated', () => {
                 initializeChoices();
             });
+            
+            // Listen for reinitialize event from Livewire
+            Livewire.on('reinitialize-choices', () => {
+                setTimeout(() => {
+                    initializeChoices();
+                }, 100);
+            });
         });
         
         function initializeChoices() {
@@ -73,6 +80,9 @@
                     categoriesChoices.destroy();
                 }
                 
+                // Get current values from Livewire
+                const currentCategories = @json($categories ?? []);
+                
                 categoriesChoices = new Choices(categoriesEl, {
                     removeItemButton: true,
                     searchEnabled: true,
@@ -82,6 +92,11 @@
                     maxItemCount: -1,
                     shouldSort: false
                 });
+                
+                // Set current values
+                if (currentCategories && currentCategories.length > 0) {
+                    categoriesChoices.setChoiceByValue(currentCategories);
+                }
                 
                 categoriesEl.addEventListener('change', function() {
                     const values = categoriesChoices.getValue(true);
@@ -96,6 +111,8 @@
                     paymentMethodsChoices.destroy();
                 }
                 
+                const currentPaymentMethods = @json($payment_methods ?? []);
+                
                 paymentMethodsChoices = new Choices(paymentMethodsEl, {
                     removeItemButton: true,
                     searchEnabled: true,
@@ -105,6 +122,10 @@
                     maxItemCount: -1,
                     shouldSort: false
                 });
+                
+                if (currentPaymentMethods && currentPaymentMethods.length > 0) {
+                    paymentMethodsChoices.setChoiceByValue(currentPaymentMethods);
+                }
                 
                 paymentMethodsEl.addEventListener('change', function() {
                     const values = paymentMethodsChoices.getValue(true);
@@ -119,6 +140,8 @@
                     amenitiesChoices.destroy();
                 }
                 
+                const currentAmenities = @json($amenities ?? []);
+                
                 amenitiesChoices = new Choices(amenitiesEl, {
                     removeItemButton: true,
                     searchEnabled: true,
@@ -128,6 +151,10 @@
                     maxItemCount: -1,
                     shouldSort: false
                 });
+                
+                if (currentAmenities && currentAmenities.length > 0) {
+                    amenitiesChoices.setChoiceByValue(currentAmenities);
+                }
                 
                 amenitiesEl.addEventListener('change', function() {
                     const values = amenitiesChoices.getValue(true);
