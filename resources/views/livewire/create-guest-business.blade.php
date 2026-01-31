@@ -260,7 +260,8 @@
             <!-- Form Content -->
             <div class="px-6 py-8 md:px-10 md:py-10">
                 
-                <!-- Authentication Section (Always visible) -->
+                <!-- Authentication Section (Shown only on final review step) -->
+                @if($currentStep === $totalSteps)
                 <div class="mb-8 pb-8 border-b-2 border-gray-200">
                     <div class="flex items-center justify-between mb-6">
                         <h3 class="text-lg font-semibold text-gray-900">Account Authentication</h3>
@@ -388,6 +389,7 @@
                         </div>
                     @endif
                 </div>
+                @endif
                 
                 <!-- Step 1: Basic Information -->
                 @if ($currentStep === 1)
