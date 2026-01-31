@@ -1,7 +1,7 @@
 <?php
 // ============================================
-// app/Livewire/CreateGuestBusiness.php
-// Guest Business Creation with Wizard & Abandoned Form Tracking
+// app/Livewire/CreateGuestBusinessCustom.php
+// Custom Form Implementation (No Filament Forms)
 // ============================================
 
 namespace App\Livewire;
@@ -14,28 +14,84 @@ use App\Models\Amenity;
 use App\Models\Location;
 use App\Models\GuestBusinessDraft;
 use App\Services\NewBusinessPlanLimits;
-use Filament\Forms;
-use Filament\Forms\Components\Wizard;
-use Filament\Forms\Concerns\InteractsWithForms;
-use Filament\Forms\Contracts\HasForms;
-use Filament\Forms\Form;
-use Filament\Notifications\Notification;
-use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
-#[Layout('layouts.business')]
-class CreateGuestBusiness extends Component implements HasForms
+class CreateGuestBusiness extends Component
 {
-    use InteractsWithForms;
+    use WithFileUploads;
     
-    public ?array $data = [];
-    public ?string $guestEmail = null;
-    public ?string $guestPhone = null;
-    public ?int $draftId = null;
+    // Step tracking
     public int $currentStep = 1;
+    public int $totalSteps = 4;
+    
+    // Step 1: Basic Information
+    public $business_name = '';
+    public $slug = '';
+    public $business_type_id = '';
+    public $categories = [];
+    public $description = '';
+    public $payment_methods = [];
+    public $amenities = [];
+    public $registration_number = '';
+    public $entity_type = '';
+    public $years_in_business = 0;
+    
+    // Step 2: Location & Contact
+    public $state_location_id = '';
+    public $city_location_id = '';
+    public $state = '';
+    public $city = '';
+    public $area = '';
+    public $address = '';
+    public $latitude = '';
+    public $longitude = '';
+    public $phone = '';
+    public $email = '';
+    public $whatsapp = '';
+    public $website = '';
+    public $whatsapp_message = '';
+    
+    // Step 3: Business Hours
+    public $monday_open = '';
+    public $monday_close = '';
+    public $monday_closed = false;
+    public $tuesday_open = '';
+    public $tuesday_close = '';
+    public $tuesday_closed = false;
+    public $wednesday_open = '';
+    public $wednesday_close = '';
+    public $wednesday_closed = false;
+    public $thursday_open = '';
+    public $thursday_close = '';
+    public $thursday_closed = false;
+    public $friday_open = '';
+    public $friday_close = '';
+    public $friday_closed = false;
+    public $saturday_open = '';
+    public $saturday_close = '';
+    public $saturday_closed = true;
+    public $sunday_open = '';
+    public $sunday_close = '';
+    public $sunday_closed = true;
+    
+    // Step 4: Review & Submit
+    public $terms = false;
+    
+    // Draft tracking
+    public ?int $draftId = null;
+    public $guestEmail = null;
+    
+    // Data for dropdowns
+    public $businessTypes = [];
+    public $availableCategories = [];
+    public $availablePaymentMethods = [];
+    public $availableAmenities = [];
+    public $states = [];
+    public $cities = [];
     
     protected NewBusinessPlanLimits $planLimits;
     
@@ -43,402 +99,162 @@ class CreateGuestBusiness extends Component implements HasForms
     {
         $this->planLimits = app(NewBusinessPlanLimits::class);
         
-        // Support resuming via ?resume={id} (used in reminder emails)
-        $resumeId = request()->query('resume');
-        if ($resumeId) {
-            session()->put('guest_draft_id', (int)$resumeId);
-        }
-
-        // Check if resuming a draft from session
+        // Load dropdown data
+        $this->businessTypes = BusinessType::where('is_active', true)->orderBy('name')->get();
+        $this->availablePaymentMethods = PaymentMethod::where('is_active', true)->orderBy('name')->get();
+        $this->availableAmenities = Amenity::where('is_active', true)->orderBy('name')->get();
+        $this->states = Location::where('type', 'state')->where('is_active', true)->orderBy('name')->get();
+        
+        // Check if resuming a draft
         if (session()->has('guest_draft_id')) {
             $this->loadDraft(session('guest_draft_id'));
+        }
+    }
+    
+    public function updatedBusinessName($value)
+    {
+        $this->slug = Str::slug($value);
+    }
+    
+    public function updatedBusinessTypeId($value)
+    {
+        $this->categories = [];
+        if ($value) {
+            $this->availableCategories = Category::where('business_type_id', $value)
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get();
         } else {
-            $this->form->fill();
+            $this->availableCategories = [];
         }
     }
     
-    public function form(Form $form): Form
+    public function updatedStateLocationId($value)
     {
-        return $form
-            ->schema([
-                Wizard::make([
-                    // Step 1: Basic Information
-                    Wizard\Step::make('Basic Information')
-                        ->description('Enter your business details, amenities, and legal information')
-                        ->schema([
-                            Forms\Components\Section::make('Business Details')
-                                ->schema([
-                                    Forms\Components\TextInput::make('business_name')
-                                        ->required()
-                                        ->maxLength(255)
-                                        ->placeholder('e.g., Okoma Technologies Ltd')
-                                        ->live(onBlur: true)
-                                        ->afterStateUpdated(fn ($state, Forms\Set $set) => 
-                                            $set('slug', Str::slug($state))
-                                        ),
-                                    
-                                    Forms\Components\TextInput::make('slug')
-                                        ->required()
-                                        ->maxLength(255)
-                                        ->unique(Business::class, ignoreRecord: true)
-                                        ->disabled()
-                                        ->dehydrated()
-                                        ->placeholder('auto-generated-from-business-name')
-                                        ->helperText('URL-friendly version of your business name (auto-generated)'),
-                                    
-                                    Forms\Components\Select::make('business_type_id')
-                                        ->label('Business Type')
-                                        ->required()
-                                        ->searchable()
-                                        ->preload()
-                                        ->options(function () {
-                                            return BusinessType::where('is_active', true)
-                                                ->orderBy('name')
-                                                ->pluck('name', 'id');
-                                        })
-                                        ->live()
-                                        ->afterStateUpdated(fn (Forms\Set $set) => $set('categories', [])),
-                                    
-                                    Forms\Components\Select::make('categories')
-                                        ->label('Categories')
-                                        ->multiple()
-                                        ->options(function (Forms\Get $get) {
-                                            $businessTypeId = $get('business_type_id');
-                                            if (!$businessTypeId) return [];
-                                            
-                                            return Category::where('business_type_id', $businessTypeId)
-                                                ->where('is_active', true)
-                                                ->pluck('name', 'id');
-                                        })
-                                        ->searchable()
-                                        ->preload()
-                                        ->disabled(fn (Forms\Get $get): bool => !$get('business_type_id'))
-                                        ->helperText('Select one or more categories for your business (select business type first)'),
-                                    
-                                    Forms\Components\Textarea::make('description')
-                                        ->required()
-                                        ->rows(4)
-                                        ->maxLength(1000)
-                                        ->placeholder('Tell customers about your business, services, and what makes you unique...')
-                                        ->helperText('Describe your business in detail')
-                                        ->columnSpanFull(),
-                                ])
-                                ->columns(2),
-                            
-                            Forms\Components\Section::make('Amenities & Payment')
-                                ->description('What facilities and payment methods do you offer?')
-                                ->schema([
-                                    Forms\Components\Select::make('payment_methods')
-                                        ->label('Payment Methods Accepted')
-                                        ->multiple()
-                                        ->options(PaymentMethod::where('is_active', true)->pluck('name', 'id'))
-                                        ->searchable()
-                                        ->preload()
-                                        ->helperText('Select all payment methods you accept'),
-                                    
-                                    Forms\Components\Select::make('amenities')
-                                        ->label('Amenities & Features')
-                                        ->multiple()
-                                        ->options(Amenity::where('is_active', true)->pluck('name', 'id'))
-                                        ->searchable()
-                                        ->preload()
-                                        ->helperText('Select all amenities available at your business'),
-                                ])
-                                ->columns(2)
-                                ->collapsible(),
-                            
-                            Forms\Components\Section::make('Legal Information')
-                                ->description('Business registration details (optional)')
-                                ->schema([
-                                    Forms\Components\TextInput::make('registration_number')
-                                        ->label('CAC/RC Number')
-                                        ->maxLength(50)
-                                        ->placeholder('e.g., RC123456')
-                                        ->helperText('Business registration number'),
-                                    
-                                    Forms\Components\Select::make('entity_type')
-                                        ->options([
-                                            'Sole Proprietorship' => 'Sole Proprietorship',
-                                            'Partnership' => 'Partnership',
-                                            'Limited Liability Company (LLC)' => 'Limited Liability Company (LLC)',
-                                            'Corporation' => 'Corporation',
-                                            'Non-Profit' => 'Non-Profit',
-                                        ]),
-                                    
-                                    Forms\Components\TextInput::make('years_in_business')
-                                        ->required()
-                                        ->numeric()
-                                        ->minValue(0)
-                                        ->maxValue(100)
-                                        ->default(0)
-                                        ->helperText('How many years have you been operating?'),
-                                ])
-                                ->columns(3)
-                                ->collapsible(),
-                        ])
-                        ->columns(1)
-                        ->afterValidation(function () {
-                            $this->saveDraft(1);
-                        }),
-                    
-                    // Step 2: Location & Contact
-                    Wizard\Step::make('Location & Contact')
-                        ->description('Where is your business located and how can customers reach you?')
-                        ->schema([
-                            Forms\Components\Section::make('Business Location')
-                                ->description('Provide your physical business address')
-                                ->schema([
-                                    Forms\Components\Select::make('state_location_id')
-                                        ->label('State')
-                                        ->required()
-                                        ->searchable()
-                                        ->preload()
-                                        ->placeholder('Select your state')
-                                        ->options(function () {
-                                            return Location::where('type', 'state')
-                                                ->where('is_active', true)
-                                                ->orderBy('name')
-                                                ->pluck('name', 'id');
-                                        })
-                                        ->live()
-                                        ->afterStateUpdated(function (Forms\Set $set, $state) {
-                                            $set('city_location_id', null);
-                                            $stateName = Location::find($state)?->name;
-                                            $set('state', $stateName);
-                                        }),
-                                    
-                                    Forms\Components\Select::make('city_location_id')
-                                        ->label('City')
-                                        ->required()
-                                        ->searchable()
-                                        ->preload()
-                                        ->placeholder('Select your city')
-                                        ->options(function (Forms\Get $get) {
-                                            $stateId = $get('state_location_id');
-                                            if (!$stateId) return [];
-                                            
-                                            return Location::where('type', 'city')
-                                                ->where('parent_id', $stateId)
-                                                ->where('is_active', true)
-                                                ->orderBy('name')
-                                                ->pluck('name', 'id');
-                                        })
-                                        ->disabled(fn (Forms\Get $get): bool => !$get('state_location_id'))
-                                        ->helperText('Select state first')
-                                        ->live()
-                                        ->afterStateUpdated(function (Forms\Set $set, $state) {
-                                            $cityName = Location::find($state)?->name;
-                                            $set('city', $cityName);
-                                        }),
-                                    
-                                    Forms\Components\Hidden::make('state'),
-                                    Forms\Components\Hidden::make('city'),
-                                    
-                                    Forms\Components\TextInput::make('address')
-                                        ->required()
-                                        ->maxLength(255)
-                                        ->placeholder('Start typing an address...')
-                                        ->columnSpanFull()
-                                        ->helperText('Start typing to see address suggestions from Google Maps')
-                                        ->id('address-autocomplete')
-                                        ->extraAttributes(['data-google-autocomplete' => 'true']),
-                                    
-                                    Forms\Components\TextInput::make('area')
-                                        ->label('Area/Neighborhood')
-                                        ->maxLength(100)
-                                        ->placeholder('e.g., Ikeja, Victoria Island')
-                                        ->helperText('Optional: Specific area or neighborhood'),
-                                    
-                                    Forms\Components\Grid::make(2)
-                                        ->schema([
-                                            Forms\Components\TextInput::make('latitude')
-                                                ->label('Latitude (GPS)')
-                                                ->numeric()
-                                                ->step(0.0000001)
-                                                ->minValue(-90)
-                                                ->maxValue(90)
-                                                ->placeholder('e.g., 6.5244')
-                                                ->helperText('Auto-filled from address or enter manually')
-                                                ->id('latitude-field'),
-                                            
-                                            Forms\Components\TextInput::make('longitude')
-                                                ->label('Longitude (GPS)')
-                                                ->numeric()
-                                                ->step(0.0000001)
-                                                ->minValue(-180)
-                                                ->maxValue(180)
-                                                ->placeholder('e.g., 3.3792')
-                                                ->helperText('Auto-filled from address or enter manually')
-                                                ->id('longitude-field'),
-                                        ]),
-                                ])
-                                ->columns(2),
-                            
-                            Forms\Components\Section::make('Contact Information')
-                                ->description('How can customers reach you?')
-                                ->schema([
-                                    Forms\Components\TextInput::make('phone')
-                                        ->label('Phone Number')
-                                        ->tel()
-                                        ->maxLength(20)
-                                        ->placeholder('+234 800 123 4567')
-                                        ->required(),
-                                    
-                                    Forms\Components\TextInput::make('email')
-                                        ->label('Email Address')
-                                        ->email()
-                                        ->maxLength(255)
-                                        ->placeholder('contact@yourbusiness.com')
-                                        ->required()
-                                        ->live(onBlur: true)
-                                        ->afterStateUpdated(function ($state) {
-                                            $this->guestEmail = $state;
-                                        }),
-                                    
-                                    Forms\Components\TextInput::make('whatsapp')
-                                        ->label('WhatsApp Number')
-                                        ->tel()
-                                        ->maxLength(20)
-                                        ->placeholder('+234 800 123 4567'),
-                                    
-                                    Forms\Components\TextInput::make('website')
-                                        ->label('Website URL')
-                                        ->url()
-                                        ->maxLength(255)
-                                        ->placeholder('https://www.yourbusiness.com'),
-                                    
-                                    Forms\Components\Textarea::make('whatsapp_message')
-                                        ->label('Default WhatsApp Message')
-                                        ->maxLength(500)
-                                        ->placeholder('Hello! I would like to inquire about your services...')
-                                        ->helperText('Pre-filled message when customers click WhatsApp')
-                                        ->rows(3)
-                                        ->columnSpanFull(),
-                                ])
-                                ->columns(2),
-                        ])
-                        ->columns(1)
-                        ->afterValidation(function () {
-                            $this->saveDraft(2);
-                        }),
-                    
-                    // Step 3: Business Hours
-                    Wizard\Step::make('Business Hours')
-                        ->description('Set your operating hours (Monday-Friday required, weekend optional)')
-                        ->schema($this->getBusinessHoursSchema())
-                        ->columns(1)
-                        ->afterValidation(function () {
-                            $this->saveDraft(3);
-                        }),
-                    
-                    // Step 4: Review & Submit
-                    Wizard\Step::make('Review & Submit')
-                        ->description('Review your business information and create your listing')
-                        ->schema([
-                            Forms\Components\Placeholder::make('info')
-                                ->content('Please review all the information you\'ve entered. Once you submit, your business listing will be created as a draft and you\'ll need to login or create an account to publish it.')
-                                ->columnSpanFull(),
-                            
-                            Forms\Components\Checkbox::make('terms')
-                                ->label('I agree to the Terms of Service and Privacy Policy')
-                                ->required()
-                                ->accepted(),
-                        ]),
-                ])
-                ->submitAction(new \Illuminate\Support\HtmlString('
-                    <button type="submit" class="filament-button filament-button-size-md inline-flex items-center justify-center py-1 gap-1 font-medium rounded-lg border transition-colors outline-none focus:ring-offset-2 focus:ring-2 focus:ring-inset min-h-[2.25rem] px-4 text-sm text-white shadow focus:ring-white border-transparent bg-primary-600 hover:bg-primary-500 focus:bg-primary-700 focus:ring-offset-primary-700">
-                        Create Business Listing
-                    </button>
-                '))
-                ->persistStepInQueryString()
-                ->startOnStep($this->currentStep),
-            ])
-            ->statePath('data');
-    }
-    
-    protected function getBusinessHoursSchema(): array
-    {
-        $days = [
-            'monday' => 'Monday',
-            'tuesday' => 'Tuesday',
-            'wednesday' => 'Wednesday',
-            'thursday' => 'Thursday',
-            'friday' => 'Friday',
-            'saturday' => 'Saturday',
-            'sunday' => 'Sunday',
-        ];
+        $this->city_location_id = '';
+        $this->city = '';
         
-        $weekdaySchema = [];
-        $weekendSchema = [];
-        
-        foreach ($days as $key => $label) {
-            $isWeekend = in_array($key, ['saturday', 'sunday']);
-            
-            $daySchema = Forms\Components\Grid::make(4)
-                ->schema([
-                    Forms\Components\Placeholder::make("{$key}_label")
-                        ->label('')
-                        ->content($label),
-                    
-                    Forms\Components\TimePicker::make("{$key}_open")
-                        ->label('Opens')
-                        ->required(fn (Forms\Get $get): bool => !$get("{$key}_closed"))
-                        ->disabled(fn (Forms\Get $get) => $get("{$key}_closed")),
-                    
-                    Forms\Components\TimePicker::make("{$key}_close")
-                        ->label('Closes')
-                        ->required(fn (Forms\Get $get): bool => !$get("{$key}_closed"))
-                        ->disabled(fn (Forms\Get $get) => $get("{$key}_closed")),
-                    
-                    Forms\Components\Toggle::make("{$key}_closed")
-                        ->label('Closed')
-                        ->default($isWeekend)
-                        ->live()
-                        ->afterStateUpdated(function ($state, Forms\Set $set) use ($key) {
-                            if ($state) {
-                                $set("{$key}_open", null);
-                                $set("{$key}_close", null);
-                            }
-                        }),
-                ]);
-            
-            if ($isWeekend) {
-                $weekendSchema[] = $daySchema;
-            } else {
-                $weekdaySchema[] = $daySchema;
-            }
+        if ($value) {
+            $this->state = Location::find($value)?->name;
+            $this->cities = Location::where('type', 'city')
+                ->where('parent_id', $value)
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get();
+        } else {
+            $this->cities = [];
         }
-        
-        return [
-            Forms\Components\Section::make('Weekdays (Required)')
-                ->description('Please specify your operating hours for Monday through Friday')
-                ->schema($weekdaySchema),
-            
-            Forms\Components\Section::make('Weekend (Optional)')
-                ->description('Optionally set your weekend hours')
-                ->schema($weekendSchema)
-                ->collapsible()
-                ->collapsed(),
-        ];
     }
     
-    protected function saveDraft(int $step)
+    public function updatedCityLocationId($value)
+    {
+        if ($value) {
+            $this->city = Location::find($value)?->name;
+        }
+    }
+    
+    public function updatedEmail($value)
+    {
+        $this->guestEmail = $value;
+    }
+    
+    // Toggle day closed
+    public function toggleDay($day)
+    {
+        $closedProperty = "{$day}_closed";
+        $this->{$closedProperty} = !$this->{$closedProperty};
+        
+        if ($this->{$closedProperty}) {
+            $this->{"{$day}_open"} = '';
+            $this->{"{$day}_close"} = '';
+        }
+    }
+    
+    public function nextStep()
+    {
+        $this->validateCurrentStep();
+        
+        if ($this->currentStep < $this->totalSteps) {
+            $this->saveDraft($this->currentStep);
+            $this->currentStep++;
+        }
+    }
+    
+    public function previousStep()
+    {
+        if ($this->currentStep > 1) {
+            $this->currentStep--;
+        }
+    }
+    
+    public function goToStep($step)
+    {
+        if ($step >= 1 && $step <= $this->currentStep) {
+            $this->currentStep = $step;
+        }
+    }
+    
+    protected function validateCurrentStep()
+    {
+        $rules = $this->getValidationRulesForStep($this->currentStep);
+        $this->validate($rules);
+    }
+    
+    protected function getValidationRulesForStep($step)
+    {
+        switch ($step) {
+            case 1:
+                return [
+                    'business_name' => 'required|string|max:255',
+                    'slug' => 'required|string|max:255|unique:businesses,slug',
+                    'business_type_id' => 'required|exists:business_types,id',
+                    'categories' => 'nullable|array',
+                    'categories.*' => 'exists:categories,id',
+                    'description' => 'required|string|max:1000',
+                    'years_in_business' => 'required|integer|min:0|max:100',
+                ];
+            
+            case 2:
+                return [
+                    'state_location_id' => 'required|exists:locations,id',
+                    'city_location_id' => 'required|exists:locations,id',
+                    'address' => 'required|string|max:255',
+                    'phone' => 'required|string|max:20',
+                    'email' => 'required|email|max:255',
+                ];
+            
+            case 3:
+                $rules = [];
+                $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+                foreach ($days as $day) {
+                    $rules["{$day}_open"] = "required_if:{$day}_closed,false";
+                    $rules["{$day}_close"] = "required_if:{$day}_closed,false";
+                }
+                return $rules;
+            
+            case 4:
+                return [
+                    'terms' => 'accepted',
+                ];
+            
+            default:
+                return [];
+        }
+    }
+    
+    protected function saveDraft($step)
     {
         try {
-            $formData = $this->form->getState();
+            $formData = $this->getFormData();
             
-            // Store current step
-            $this->currentStep = $step;
-            
-            // Create or update draft
             if ($this->draftId) {
                 $draft = GuestBusinessDraft::find($this->draftId);
                 if ($draft) {
                     $draft->update([
                         'form_data' => $formData,
                         'current_step' => $step,
-                        'guest_email' => $this->guestEmail ?? $formData['email'] ?? null,
-                        'guest_phone' => $this->guestPhone ?? $formData['phone'] ?? null,
+                        'guest_email' => $this->guestEmail ?? $this->email,
+                        'guest_phone' => $this->phone,
                         'last_activity_at' => now(),
                     ]);
                 }
@@ -446,8 +262,8 @@ class CreateGuestBusiness extends Component implements HasForms
                 $draft = GuestBusinessDraft::create([
                     'form_data' => $formData,
                     'current_step' => $step,
-                    'guest_email' => $this->guestEmail ?? $formData['email'] ?? null,
-                    'guest_phone' => $this->guestPhone ?? $formData['phone'] ?? null,
+                    'guest_email' => $this->guestEmail ?? $this->email,
+                    'guest_phone' => $this->phone,
                     'session_id' => session()->getId(),
                     'ip_address' => request()->ip(),
                     'user_agent' => request()->userAgent(),
@@ -458,12 +274,14 @@ class CreateGuestBusiness extends Component implements HasForms
                 session()->put('guest_draft_id', $draft->id);
             }
             
+            session()->flash('draft_saved', 'Your progress has been saved!');
+            
         } catch (\Exception $e) {
             \Log::error('Failed to save guest draft: ' . $e->getMessage());
         }
     }
     
-    protected function loadDraft(int $draftId)
+    protected function loadDraft($draftId)
     {
         try {
             $draft = GuestBusinessDraft::find($draftId);
@@ -471,30 +289,87 @@ class CreateGuestBusiness extends Component implements HasForms
             if ($draft && !$draft->is_converted) {
                 $this->draftId = $draft->id;
                 $this->currentStep = $draft->current_step;
-                $this->guestEmail = $draft->guest_email;
-                $this->guestPhone = $draft->guest_phone;
                 
-                $this->form->fill($draft->form_data);
+                // Fill all properties from form_data
+                $data = $draft->form_data;
+                foreach ($data as $key => $value) {
+                    if (property_exists($this, $key)) {
+                        $this->{$key} = $value;
+                    }
+                }
                 
-                // Update last activity
+                // Load dependent data
+                if ($this->business_type_id) {
+                    $this->updatedBusinessTypeId($this->business_type_id);
+                }
+                if ($this->state_location_id) {
+                    $this->updatedStateLocationId($this->state_location_id);
+                }
+                
                 $draft->update(['last_activity_at' => now()]);
                 
-                Notification::make()
-                    ->title('Draft Resumed')
-                    ->body('Your previous progress has been restored.')
-                    ->success()
-                    ->send();
+                session()->flash('message', 'Your previous progress has been restored.');
             }
         } catch (\Exception $e) {
             \Log::error('Failed to load guest draft: ' . $e->getMessage());
         }
     }
     
+    protected function getFormData()
+    {
+        return [
+            'business_name' => $this->business_name,
+            'slug' => $this->slug,
+            'business_type_id' => $this->business_type_id,
+            'categories' => $this->categories,
+            'description' => $this->description,
+            'payment_methods' => $this->payment_methods,
+            'amenities' => $this->amenities,
+            'registration_number' => $this->registration_number,
+            'entity_type' => $this->entity_type,
+            'years_in_business' => $this->years_in_business,
+            'state_location_id' => $this->state_location_id,
+            'city_location_id' => $this->city_location_id,
+            'state' => $this->state,
+            'city' => $this->city,
+            'area' => $this->area,
+            'address' => $this->address,
+            'latitude' => $this->latitude,
+            'longitude' => $this->longitude,
+            'phone' => $this->phone,
+            'email' => $this->email,
+            'whatsapp' => $this->whatsapp,
+            'website' => $this->website,
+            'whatsapp_message' => $this->whatsapp_message,
+            'monday_open' => $this->monday_open,
+            'monday_close' => $this->monday_close,
+            'monday_closed' => $this->monday_closed,
+            'tuesday_open' => $this->tuesday_open,
+            'tuesday_close' => $this->tuesday_close,
+            'tuesday_closed' => $this->tuesday_closed,
+            'wednesday_open' => $this->wednesday_open,
+            'wednesday_close' => $this->wednesday_close,
+            'wednesday_closed' => $this->wednesday_closed,
+            'thursday_open' => $this->thursday_open,
+            'thursday_close' => $this->thursday_close,
+            'thursday_closed' => $this->thursday_closed,
+            'friday_open' => $this->friday_open,
+            'friday_close' => $this->friday_close,
+            'friday_closed' => $this->friday_closed,
+            'saturday_open' => $this->saturday_open,
+            'saturday_close' => $this->saturday_close,
+            'saturday_closed' => $this->saturday_closed,
+            'sunday_open' => $this->sunday_open,
+            'sunday_close' => $this->sunday_close,
+            'sunday_closed' => $this->sunday_closed,
+        ];
+    }
+    
     public function submit()
     {
+        $this->validateCurrentStep();
+        
         try {
-            $data = $this->form->getState();
-            
             DB::beginTransaction();
             
             // Prepare business hours
@@ -503,53 +378,50 @@ class CreateGuestBusiness extends Component implements HasForms
             
             foreach ($days as $day) {
                 $businessHours[$day] = [
-                    'open' => $data["{$day}_open"] ?? null,
-                    'close' => $data["{$day}_close"] ?? null,
-                    'closed' => $data["{$day}_closed"] ?? false,
+                    'open' => $this->{"{$day}_open"} ?? null,
+                    'close' => $this->{"{$day}_close"} ?? null,
+                    'closed' => $this->{"{$day}_closed"} ?? false,
                 ];
-                
-                // Remove individual day fields
-                unset($data["{$day}_open"], $data["{$day}_close"], $data["{$day}_closed"]);
             }
             
             // Create the business as a draft
             $business = Business::create([
-                'business_name' => $data['business_name'],
-                'slug' => $data['slug'],
-                'business_type_id' => $data['business_type_id'],
-                'description' => $data['description'],
-                'state_location_id' => $data['state_location_id'],
-                'city_location_id' => $data['city_location_id'],
-                'state' => $data['state'],
-                'city' => $data['city'],
-                'area' => $data['area'] ?? null,
-                'address' => $data['address'],
-                'latitude' => $data['latitude'] ?? null,
-                'longitude' => $data['longitude'] ?? null,
-                'phone' => $data['phone'],
-                'email' => $data['email'],
-                'whatsapp' => $data['whatsapp'] ?? null,
-                'website' => $data['website'] ?? null,
-                'whatsapp_message' => $data['whatsapp_message'] ?? null,
-                'registration_number' => $data['registration_number'] ?? null,
-                'entity_type' => $data['entity_type'] ?? null,
-                'years_in_business' => $data['years_in_business'],
+                'business_name' => $this->business_name,
+                'slug' => $this->slug,
+                'business_type_id' => $this->business_type_id,
+                'description' => $this->description,
+                'state_location_id' => $this->state_location_id,
+                'city_location_id' => $this->city_location_id,
+                'state' => $this->state,
+                'city' => $this->city,
+                'area' => $this->area,
+                'address' => $this->address,
+                'latitude' => $this->latitude,
+                'longitude' => $this->longitude,
+                'phone' => $this->phone,
+                'email' => $this->email,
+                'whatsapp' => $this->whatsapp,
+                'website' => $this->website,
+                'whatsapp_message' => $this->whatsapp_message,
+                'registration_number' => $this->registration_number,
+                'entity_type' => $this->entity_type,
+                'years_in_business' => $this->years_in_business,
                 'business_hours' => $businessHours,
-                'status' => 'draft', // Keep as draft until user logs in
-                'user_id' => null, // No user yet
+                'status' => 'draft',
+                'user_id' => null,
             ]);
             
             // Attach relationships
-            if (!empty($data['categories'])) {
-                $business->categories()->attach($data['categories']);
+            if (!empty($this->categories)) {
+                $business->categories()->attach($this->categories);
             }
             
-            if (!empty($data['payment_methods'])) {
-                $business->paymentMethods()->attach($data['payment_methods']);
+            if (!empty($this->payment_methods)) {
+                $business->paymentMethods()->attach($this->payment_methods);
             }
             
-            if (!empty($data['amenities'])) {
-                $business->amenities()->attach($data['amenities']);
+            if (!empty($this->amenities)) {
+                $business->amenities()->attach($this->amenities);
             }
             
             // Mark draft as converted
@@ -563,12 +435,11 @@ class CreateGuestBusiness extends Component implements HasForms
             
             DB::commit();
             
-            // Store business ID and email in session for login/registration
+            // Store business ID in session for login
             session()->put('pending_business_id', $business->id);
-            session()->put('pending_business_email', $data['email']);
+            session()->put('pending_business_email', $this->email);
             session()->forget('guest_draft_id');
             
-            // Redirect to login/register page with message
             return redirect()->route('login')->with([
                 'success' => 'Business listing created! Please login or create an account to publish it.',
                 'info' => 'Your business listing has been saved as a draft. Complete registration to publish it and start receiving customers.'
@@ -579,14 +450,15 @@ class CreateGuestBusiness extends Component implements HasForms
             
             \Log::error('Failed to create guest business: ' . $e->getMessage());
             
-            Notification::make()
-                ->title('Error')
-                ->body('Failed to create business listing. Please try again.')
-                ->danger()
-                ->send();
+            session()->flash('error', 'Failed to create business listing. Please try again.');
             
             return null;
         }
+    }
+    
+    public function getCompletionPercentage()
+    {
+        return (int) (($this->currentStep / $this->totalSteps) * 100);
     }
     
     public function render()
