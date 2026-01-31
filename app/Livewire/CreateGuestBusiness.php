@@ -136,6 +136,9 @@ class CreateGuestBusiness extends Component
                 ->where('is_active', true)
                 ->orderBy('name')
                 ->get();
+            
+            // Dispatch event to reinitialize Choices.js
+            $this->dispatch('reinitialize-choices');
         } else {
             $this->availableCategories = [];
         }
@@ -213,7 +216,6 @@ class CreateGuestBusiness extends Component
         // Reload categories if on step 1 and business type is selected
         if ($this->currentStep === 1 && $this->business_type_id) {
             $this->updatedBusinessTypeId($this->business_type_id);
-            $this->dispatch('reinitialize-choices');
         }
         
         // Reload cities if on step 2 and state is selected
@@ -399,12 +401,18 @@ class CreateGuestBusiness extends Component
             'auth_email' => 'required|email|max:255',
         ]);
 
+        // Check if email already exists
+        if (\App\Models\User::where('email', $this->auth_email)->exists()) {
+            session()->flash('error', 'This email is already registered. Please login instead.');
+            return;
+        }
+
         // Generate 6-digit code
         $code = rand(100000, 999999);
         session()->put("verification_code_{$this->auth_email}", $code);
         session()->put("verification_code_time_{$this->auth_email}", now());
 
-        // Send email with code (using Mail::send or notification)
+        // Send email with code
         try {
             \Mail::send('emails.verification-code', ['code' => $code], function ($message) {
                 $message->to($this->auth_email)
@@ -468,7 +476,7 @@ class CreateGuestBusiness extends Component
             'email' => $this->auth_email,
             'password' => bcrypt($this->generated_password),
             'email_verified_at' => now(), // Verified via OTP
-            'role' => \App\Enums\UserRole::BUSINESS_OWNER->value,
+            'role' => \App\Enums\UserRole::BUSINESS_OWNER,
         ]);
 
         return $user;
@@ -503,14 +511,27 @@ class CreateGuestBusiness extends Component
 
             // Handle authentication
             if (!$this->has_account) {
+                // Double-check if email already exists
+                if (\App\Models\User::where('email', $this->auth_email)->exists()) {
+                    session()->flash('error', 'This email is already registered. Please login instead or use a different email.');
+                    DB::rollBack();
+                    return;
+                }
+                
                 // Register new user
                 $user = $this->registerUser();
                 \Illuminate\Support\Facades\Auth::login($user);
                 $userId = $user->id;
             } else {
                 // Login existing user
-                $user = $this->loginExistingUser();
-                $userId = $user->id;
+                try {
+                    $user = $this->loginExistingUser();
+                    $userId = $user->id;
+                } catch (\Exception $e) {
+                    session()->flash('error', 'Invalid email or password. Please try again.');
+                    DB::rollBack();
+                    return;
+                }
             }
 
             // Prepare business hours
@@ -548,8 +569,8 @@ class CreateGuestBusiness extends Component
                 'entity_type' => $this->entity_type,
                 'years_in_business' => $this->years_in_business,
                 'business_hours' => $businessHours,
-                'status' => 'draft',
-                'user_id' => $userId,  // Now attach to authenticated user
+                'status' => 'active',
+                'user_id' => $userId,
             ]);
             
             // Attach relationships
@@ -576,18 +597,18 @@ class CreateGuestBusiness extends Component
             
             DB::commit();
             
-            // Clear session
+            // ✅ Clear session ONLY on success
             session()->forget('guest_draft_id');
             session()->forget('pending_business_id');
             
             // If new user, show them their password
             if (!$this->has_account) {
-                return redirect()->route('dashboard')->with([
+                return redirect()->route('filament.business.pages.select-business')->with([
                     'success' => "Business '{$this->business_name}' created successfully!",
                     'password_info' => "Your account has been created. Password: {$this->generated_password}. Please change it in settings.",
                 ]);
             } else {
-                return redirect()->route('dashboard')->with([
+                return redirect()->route('filament.business.pages.select-business')->with([
                     'success' => "Business '{$this->business_name}' created and linked to your account!",
                 ]);
             }
@@ -595,12 +616,16 @@ class CreateGuestBusiness extends Component
         } catch (\Exception $e) {
             DB::rollBack();
             
-            \Log::error('Failed to create guest business: ' . $e->getMessage());
+            \Log::error('Failed to create guest business: ' . $e->getMessage(), [
+                'user_id' => auth()->id(),
+                'email' => $this->auth_email,
+                'trace' => $e->getTraceAsString()
+            ]);
             
-            // Don't clear session - keep draft so user can retry
-            session()->flash('error', 'Failed to create business listing: ' . $e->getMessage());
+            // ❌ DON'T clear session - keep draft so user can retry
+            session()->flash('error', 'Failed to create business listing. Please try again. Error: ' . $e->getMessage());
             
-            // Stay on current step so user can fix the issue
+            // Stay on current step
             return;
         }
     }

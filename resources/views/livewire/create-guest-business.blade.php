@@ -55,67 +55,81 @@
         let categoriesChoices, paymentMethodsChoices, amenitiesChoices;
         
         document.addEventListener('livewire:init', () => {
-            // Initialize Choices.js when component loads
             initializeChoices();
-            
-            // Re-initialize after Livewire updates
-            Livewire.hook('morph.updated', () => {
-                initializeChoices();
-            });
-            
-            // Listen for reinitialize event from Livewire
-            Livewire.on('reinitialize-choices', () => {
-                setTimeout(() => {
-                    initializeChoices();
-                }, 100);
-            });
         });
+        
+        // Listen for the reinitialize event from Livewire
+        Livewire.on('reinitialize-choices', () => {
+            setTimeout(() => {
+                destroyAndReinitialize();
+            }, 200);
+        });
+        
+        // Also reinitialize after any Livewire update
+        document.addEventListener('livewire:update', () => {
+            setTimeout(() => {
+                const categoriesEl = document.getElementById('categories');
+                if (categoriesEl && !categoriesEl.disabled && !categoriesChoices) {
+                    initializeChoices();
+                }
+            }, 100);
+        });
+        
+        function destroyAndReinitialize() {
+            // Destroy all existing instances
+            if (categoriesChoices) {
+                try {
+                    categoriesChoices.destroy();
+                } catch (e) {
+                    console.log('Categories destroy error:', e);
+                }
+                categoriesChoices = null;
+            }
+            if (paymentMethodsChoices) {
+                try {
+                    paymentMethodsChoices.destroy();
+                } catch (e) {
+                    console.log('Payment methods destroy error:', e);
+                }
+                paymentMethodsChoices = null;
+            }
+            if (amenitiesChoices) {
+                try {
+                    amenitiesChoices.destroy();
+                } catch (e) {
+                    console.log('Amenities destroy error:', e);
+                }
+                amenitiesChoices = null;
+            }
+            
+            // Reinitialize
+            initializeChoices();
+        }
         
         function initializeChoices() {
             // Categories
             const categoriesEl = document.getElementById('categories');
-            if (categoriesEl) {
-                // Always destroy existing instance to ensure fresh state
-                if (categoriesChoices) {
-                    try {
-                        categoriesChoices.destroy();
-                        categoriesChoices = null;
-                    } catch (e) {
-                        console.log('Categories Choices cleanup:', e);
-                    }
-                }
+            if (categoriesEl && !categoriesEl.disabled && !categoriesChoices) {
+                categoriesChoices = new Choices(categoriesEl, {
+                    removeItemButton: true,
+                    searchEnabled: true,
+                    searchPlaceholderValue: 'Search categories...',
+                    placeholderValue: 'Select categories...',
+                    itemSelectText: 'Click to select',
+                    maxItemCount: -1,
+                    shouldSort: false,
+                    silent: true
+                });
                 
-                // Only initialize if select is not disabled
-                if (!categoriesEl.disabled) {
-                    categoriesChoices = new Choices(categoriesEl, {
-                        removeItemButton: true,
-                        searchEnabled: true,
-                        searchPlaceholderValue: 'Search categories...',
-                        placeholderValue: 'Select categories...',
-                        itemSelectText: 'Click to select',
-                        maxItemCount: -1,
-                        shouldSort: false
-                    });
-                    
-                    categoriesEl.addEventListener('change', function() {
-                        const values = categoriesChoices.getValue(true);
-                        @this.set('categories', Array.isArray(values) ? values : [values]);
-                    });
-                }
+                categoriesEl.addEventListener('change', function() {
+                    const values = categoriesChoices.getValue(true);
+                    @this.set('categories', Array.isArray(values) ? values : (values ? [values] : []));
+                });
             }
             
             // Payment Methods
             const paymentMethodsEl = document.getElementById('payment_methods');
-            if (paymentMethodsEl) {
-                if (paymentMethodsChoices) {
-                    try {
-                        paymentMethodsChoices.destroy();
-                        paymentMethodsChoices = null;
-                    } catch (e) {
-                        console.log('Payment methods Choices cleanup:', e);
-                    }
-                }
-                
+            if (paymentMethodsEl && !paymentMethodsChoices) {
                 paymentMethodsChoices = new Choices(paymentMethodsEl, {
                     removeItemButton: true,
                     searchEnabled: true,
@@ -123,27 +137,19 @@
                     placeholderValue: 'Select payment methods...',
                     itemSelectText: 'Click to select',
                     maxItemCount: -1,
-                    shouldSort: false
+                    shouldSort: false,
+                    silent: true
                 });
                 
                 paymentMethodsEl.addEventListener('change', function() {
                     const values = paymentMethodsChoices.getValue(true);
-                    @this.set('payment_methods', Array.isArray(values) ? values : [values]);
+                    @this.set('payment_methods', Array.isArray(values) ? values : (values ? [values] : []));
                 });
             }
             
             // Amenities
             const amenitiesEl = document.getElementById('amenities');
-            if (amenitiesEl) {
-                if (amenitiesChoices) {
-                    try {
-                        amenitiesChoices.destroy();
-                        amenitiesChoices = null;
-                    } catch (e) {
-                        console.log('Amenities Choices cleanup:', e);
-                    }
-                }
-                
+            if (amenitiesEl && !amenitiesChoices) {
                 amenitiesChoices = new Choices(amenitiesEl, {
                     removeItemButton: true,
                     searchEnabled: true,
@@ -151,12 +157,13 @@
                     placeholderValue: 'Select amenities...',
                     itemSelectText: 'Click to select',
                     maxItemCount: -1,
-                    shouldSort: false
+                    shouldSort: false,
+                    silent: true
                 });
                 
                 amenitiesEl.addEventListener('change', function() {
                     const values = amenitiesChoices.getValue(true);
-                    @this.set('amenities', Array.isArray(values) ? values : [values]);
+                    @this.set('amenities', Array.isArray(values) ? values : (values ? [values] : []));
                 });
             }
         }
@@ -278,8 +285,6 @@
             <!-- Form Content -->
             <div class="px-6 py-8 md:px-10 md:py-10">
                 
-                <!-- Authentication Section moved into Step 4 -->
-                
                 <!-- Step 1: Basic Information -->
                 @if ($currentStep === 1)
                     <div class="space-y-6">
@@ -336,28 +341,32 @@
                         </div>
 
                         <!-- Categories -->
-                        <div wire:ignore>
+                        <div>
                             <label for="categories" class="block text-sm font-medium text-gray-700 mb-2">
                                 Categories <span class="text-red-500">*</span>
                             </label>
                             <div class="relative">
-                                <select id="categories"
-                                        multiple
-                                        {{ !$business_type_id ? 'disabled' : '' }}
-                                        class="w-full {{ !$business_type_id ? 'opacity-50 cursor-not-allowed' : '' }}">
-                                    @if (!$business_type_id)
-                                        <option disabled selected>Select business type first</option>
-                                    @else
-                                        @foreach ($availableCategories as $category)
-                                            <option value="{{ $category->id }}" 
-                                                    @if(in_array($category->id, $categories ?? [])) selected @endif>
-                                                {{ $category->name }}
-                                            </option>
-                                        @endforeach
-                                    @endif
-                                </select>
-                                <div wire:loading wire:target="updatedBusinessTypeId" class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                    <svg class="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                @if (!$business_type_id)
+                                    <div class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 text-center">
+                                        Please select a business type first
+                                    </div>
+                                @else
+                                    <div wire:ignore>
+                                        <select id="categories"
+                                                multiple
+                                                class="w-full">
+                                            @foreach ($availableCategories as $category)
+                                                <option value="{{ $category->id }}" 
+                                                        @if(in_array($category->id, $categories ?? [])) selected @endif>
+                                                    {{ $category->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                @endif
+                                
+                                <div wire:loading wire:target="business_type_id" class="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center rounded-lg">
+                                    <svg class="animate-spin h-8 w-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                     </svg>
@@ -515,7 +524,7 @@
                                         <option value="{{ $city->id }}">{{ $city->name }}</option>
                                     @endforeach
                                 </select>
-                                <div wire:loading wire:target="updatedStateLocationId" class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                <div wire:loading wire:target="state_location_id" class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                                     <svg class="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -721,19 +730,13 @@
                                     <svg class="w-5 h-5 text-green-600 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                                     </svg>
-                                    Your business listing will be created as a <strong>draft</strong>
+                                    Complete <strong>authentication</strong> to verify your account
                                 </li>
                                 <li class="flex items-start">
                                     <svg class="w-5 h-5 text-green-600 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                                     </svg>
-                                    You'll be redirected to <strong>login or create an account</strong>
-                                </li>
-                                <li class="flex items-start">
-                                    <svg class="w-5 h-5 text-green-600 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                    </svg>
-                                    After login, your listing will be <strong>published</strong> and live!
+                                    Your listing will be <strong>published and live</strong> immediately!
                                 </li>
                                 <li class="flex items-start">
                                     <svg class="w-5 h-5 text-green-600 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -768,7 +771,7 @@
                             </div>
                         </div>
 
-                        <!-- Authentication Section (moved here) -->
+                        <!-- Authentication Section -->
                         <div class="mb-8 pb-8 border-b-2 border-gray-200">
                             <div class="flex items-center justify-between mb-6">
                                 <h3 class="text-lg font-semibold text-gray-900">Account Authentication</h3>
@@ -826,8 +829,8 @@
                                                     wire:click="sendVerificationCode"
                                                     wire:loading.attr="disabled"
                                                     class="w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50">
-                                                <span wire:loading.remove>Send Verification Code</span>
-                                                <span wire:loading>
+                                                <span wire:loading.remove wire:target="sendVerificationCode">Send Verification Code</span>
+                                                <span wire:loading wire:target="sendVerificationCode">
                                                     <svg class="animate-spin h-4 w-4 inline mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -847,17 +850,25 @@
                                                        inputmode="numeric">
                                                 <button type="button"
                                                         wire:click="verifyCode"
-                                                        class="px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition">
-                                                    Verify
+                                                        wire:loading.attr="disabled"
+                                                        class="px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition disabled:opacity-50">
+                                                    <span wire:loading.remove wire:target="verifyCode">Verify</span>
+                                                    <span wire:loading wire:target="verifyCode">
+                                                        <svg class="animate-spin h-4 w-4 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                        </svg>
+                                                    </span>
                                                 </button>
                                             </div>
+                                            <p class="text-xs text-gray-500">Enter the 6-digit code sent to your email</p>
                                         @endif
                                     @else
                                         <div class="flex items-center space-x-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                                             <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
                                                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                                             </svg>
-                                            <span class="text-green-800 font-medium">Email verified!</span>
+                                            <span class="text-green-800 font-medium">Email verified! ✓</span>
                                         </div>
                                     @endif
                                 </div>
@@ -920,9 +931,9 @@
                         <button type="button"
                                 wire:click="previousStep"
                                 wire:loading.attr="disabled"
-                                class="hover:cursor-pointer px-6 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition disabled:opacity-50 disabled:cursor-not-allowed">
-                            <span wire:loading.remove>← Previous</span>
-                            <span wire:loading>
+                                class="px-6 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                            <span wire:loading.remove wire:target="previousStep">← Previous</span>
+                            <span wire:loading wire:target="previousStep">
                                 <svg class="animate-spin h-4 w-4 inline mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -938,9 +949,9 @@
                         <button type="button"
                                 wire:click="nextStep"
                                 wire:loading.attr="disabled"
-                                class="hover:cursor-pointer px-6 py-3 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
-                            <span wire:loading.remove>Continue →</span>
-                            <span wire:loading>
+                                class="px-6 py-3 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                            <span wire:loading.remove wire:target="nextStep">Continue →</span>
+                            <span wire:loading wire:target="nextStep">
                                 <svg class="animate-spin h-4 w-4 inline mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -952,9 +963,9 @@
                         <button type="button"
                                 wire:click="submit"
                                 wire:loading.attr="disabled"
-                                class="hover:cursor-pointer px-8 py-3 text-sm font-medium text-white bg-gradient-to-r from-green-600 to-blue-600 rounded-lg hover:from-green-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
-                            <span wire:loading.remove>🚀 Create Business</span>
-                            <span wire:loading>
+                                class="px-8 py-3 text-sm font-medium text-white bg-gradient-to-r from-green-600 to-blue-600 rounded-lg hover:from-green-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                            <span wire:loading.remove wire:target="submit">🚀 Create Business</span>
+                            <span wire:loading wire:target="submit">
                                 <svg class="animate-spin h-4 w-4 inline mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
