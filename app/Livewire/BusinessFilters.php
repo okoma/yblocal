@@ -201,9 +201,9 @@ class BusinessFilters extends Component
         // Apply context filters (from route)
         if ($this->contextLocation) {
             if ($this->contextLocation->type === 'state') {
-                $query->where('state_id', $this->contextLocation->id);
+                $query->where('state_location_id', $this->contextLocation->id);
             } elseif ($this->contextLocation->type === 'city') {
-                $query->where('city_id', $this->contextLocation->id);
+                $query->where('city_location_id', $this->contextLocation->id);
             }
         }
 
