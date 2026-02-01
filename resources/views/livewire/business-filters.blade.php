@@ -350,10 +350,10 @@
                             @foreach([5, 4, 3, 2, 1] as $ratingOption)
                                 <label class="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded-md transition-colors">
                                     <input 
-                                        type="radio" 
+                                        type="checkbox" 
                                         wire:model.live="rating"
                                         value="{{ $ratingOption }}"
-                                        class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                        class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                                     >
                                     <span class="ml-2 flex items-center">
                                         @for($i = 1; $i <= $ratingOption; $i++)
@@ -374,40 +374,40 @@
                         <div class="space-y-2">
                             <label class="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded-md transition-colors">
                                 <input 
-                                    type="radio" 
+                                    type="checkbox" 
                                     wire:model.live="priceTier"
                                     value="budget"
-                                    class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                    class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                                 >
                                 <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">₦ Budget</span>
                             </label>
                             
                             <label class="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded-md transition-colors">
                                 <input 
-                                    type="radio" 
+                                    type="checkbox" 
                                     wire:model.live="priceTier"
                                     value="affordable"
-                                    class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                    class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                                 >
                                 <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">₦₦ Affordable</span>
                             </label>
                             
                             <label class="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded-md transition-colors">
                                 <input 
-                                    type="radio" 
+                                    type="checkbox" 
                                     wire:model.live="priceTier"
                                     value="premium"
-                                    class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                    class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                                 >
                                 <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">₦₦₦ Premium</span>
                             </label>
                             
                             <label class="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded-md transition-colors">
                                 <input 
-                                    type="radio" 
+                                    type="checkbox" 
                                     wire:model.live="priceTier"
                                     value="luxury"
-                                    class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                    class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                                 >
                                 <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">₦₦₦₦ Luxury</span>
                             </label>

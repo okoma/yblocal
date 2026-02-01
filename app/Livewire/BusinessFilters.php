@@ -31,10 +31,10 @@ class BusinessFilters extends Component
     public $city = '';
 
     #[Url(as: 'rating', history: true)]
-    public $rating = '';
+    public $rating = [];
 
     #[Url(as: 'price_tier', history: true)]
-    public $priceTier = '';
+    public $priceTier = [];
 
     #[Url(as: 'amenities', history: true)]
     public $amenities = [];
@@ -172,10 +172,14 @@ class BusinessFilters extends Component
 
     public function clearFilter($filter)
     {
-        // Handle boolean filters differently from string filters
+        // Handle boolean filters differently from string/array filters
         if (in_array($filter, ['verified', 'premium', 'openNow'])) {
             $this->$filter = false;
+        } elseif (in_array($filter, ['rating', 'priceTier', 'amenities'])) {
+            // Array filters
+            $this->$filter = [];
         } else {
+            // String filters
             $this->$filter = '';
         }
         
@@ -248,12 +252,15 @@ class BusinessFilters extends Component
             }
         }
 
-        if ($this->rating) {
-            $query->where('avg_rating', '>=', $this->rating);
+        if (!empty($this->rating)) {
+            // If multiple ratings selected, get the minimum (most permissive)
+            $minRating = min($this->rating);
+            $query->where('avg_rating', '>=', $minRating);
         }
 
-        if ($this->priceTier) {
-            $query->where('price_tier', $this->priceTier);
+        if (!empty($this->priceTier)) {
+            // Filter by selected price tiers
+            $query->whereIn('price_tier', $this->priceTier);
         }
 
         if (!empty($this->amenities)) {
