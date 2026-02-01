@@ -80,22 +80,6 @@ Route::domain(config('app.domain'))->group(function () {
         Route::get('/search', [DiscoveryController::class, 'index'])->name('search');
     });
 
-    // ============================================
-    // CLEAN URL ROUTES (MUST BE BEFORE BUSINESS DETAIL ROUTES!)
-    // These handle: /lagos, /hotels, /lagos/hotels
-    // Order: Most specific routes first
-    // ============================================
-    Route::get('/{location}/{category}', [DiscoveryController::class, 'index'])
-        ->name('discovery.combined')
-        ->where([
-            'location' => '[a-z0-9\-]+',
-            'category' => '[a-z0-9\-]+'
-        ]);
-    
-    Route::get('/{locationOrCategory}', [DiscoveryController::class, 'index'])
-        ->name('discovery.single')
-        ->where('locationOrCategory', '[a-z0-9\-]+');
-
     // Business Type Based Routes (e.g., /hotel/grand-hotel, /restaurant/my-restaurant)
     Route::name('businesses.')->group(function () {
         // Single business detail page
@@ -165,6 +149,14 @@ Route::domain(config('app.domain'))->group(function () {
         Route::get('/business/transaction/{transaction}/receipt', [\App\Http\Controllers\PaymentController::class, 'downloadReceipt'])
             ->name('business.transaction.receipt');
     });
+
+    // ============================================
+    // CLEAN URL ROUTES (MUST BE LAST!)
+    // These handle: /lagos, /hotels, /lagos/hotels
+    // Order: Most specific routes first
+    // ============================================
+    Route::get('/{location}/{category}', [DiscoveryController::class, 'index'])->name('discovery.combined');
+    Route::get('/{locationOrCategory}', [DiscoveryController::class, 'index'])->name('discovery.single');
 });
 
 // ============================================
