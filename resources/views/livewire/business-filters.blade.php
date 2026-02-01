@@ -91,8 +91,19 @@
 
                     @if(!empty($rating))
                         <span class="inline-flex items-center gap-1 px-3 py-1 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded-full text-sm">
-                            {{ $rating }}+ Stars
+                            Rating: {{ implode(', ', array_map(fn($r) => $r . '+★', $rating)) }}
                             <button wire:click="clearFilter('rating')" class="hover:text-yellow-600">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </span>
+                    @endif
+
+                    @if(!empty($priceTier))
+                        <span class="inline-flex items-center gap-1 px-3 py-1 bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 rounded-full text-sm">
+                            Price: {{ implode(', ', array_map(fn($tier) => \App\Enums\PriceTier::from($tier)->symbol(), $priceTier)) }}
+                            <button wire:click="clearFilter('priceTier')" class="hover:text-emerald-600">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                                 </svg>
