@@ -235,7 +235,7 @@ class BusinessFilters extends Component
                 ->where('type', 'state')
                 ->first();
             if ($stateLocation) {
-                $query->where('state_id', $stateLocation->id);
+                $query->where('state_location_id', $stateLocation->id);
             }
         }
 
@@ -244,7 +244,7 @@ class BusinessFilters extends Component
                 ->where('type', 'city')
                 ->first();
             if ($cityLocation) {
-                $query->where('city_id', $cityLocation->id);
+                $query->where('city_location_id', $cityLocation->id);
             }
         }
 

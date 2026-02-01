@@ -273,50 +273,36 @@
                     <!-- Business Type Filter -->
                     @if($this->businessTypes->isNotEmpty())
                         <div class="mb-6 pb-6 border-b border-gray-200 dark:border-gray-700">
-                            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Business Type</h3>
-                            <div class="space-y-2">
+                            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Business Type</label>
+                            <select 
+                                wire:model.live="businessType"
+                                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                            >
+                                <option value="">-- Select Type --</option>
                                 @foreach($this->businessTypes as $type)
-                                    <label class="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded-md transition-colors">
-                                        <input 
-                                            type="radio" 
-                                            wire:model.live="businessType"
-                                            value="{{ $type->slug }}"
-                                            class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                                        >
-                                        <span class="ml-2 text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                                            @if($type->icon)
-                                                <span>{{ $type->icon }}</span>
-                                            @endif
-                                            {{ $type->name }}
-                                        </span>
-                                    </label>
+                                    <option value="{{ $type->slug }}">
+                                        {{ $type->icon ?? '' }} {{ $type->name }}
+                                    </option>
                                 @endforeach
-                            </div>
+                            </select>
                         </div>
                     @endif
 
                     <!-- Category Filter -->
                     @if($this->categories->isNotEmpty())
                         <div class="mb-6 pb-6 border-b border-gray-200 dark:border-gray-700">
-                            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Categories</h3>
-                            <div class="space-y-2 max-h-64 overflow-y-auto">
+                            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Categories</label>
+                            <select 
+                                wire:model.live="category"
+                                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                            >
+                                <option value="">-- Select Category --</option>
                                 @foreach($this->categories as $cat)
-                                    <label class="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded-md transition-colors">
-                                        <input 
-                                            type="radio" 
-                                            wire:model.live="category"
-                                            value="{{ $cat->slug }}"
-                                            class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                        >
-                                        <span class="ml-2 text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                                            @if($cat->icon)
-                                                <span>{{ $cat->icon }}</span>
-                                            @endif
-                                            {{ $cat->name }}
-                                        </span>
-                                    </label>
+                                    <option value="{{ $cat->slug }}">
+                                        {{ $cat->icon ?? '' }} {{ $cat->name }}
+                                    </option>
                                 @endforeach
-                            </div>
+                            </select>
                         </div>
                     @endif
 

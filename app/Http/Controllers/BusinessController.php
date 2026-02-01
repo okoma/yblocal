@@ -54,6 +54,7 @@ class BusinessController extends Controller
                 'amenities:id,name,slug,icon',
                 'owner:id,name,avatar'
             ])
+            ->select('id', 'business_type_id', 'business_name', 'slug', 'description', 'logo', 'cover_photo', 'gallery', 'email', 'phone', 'whatsapp', 'website', 'whatsapp_message', 'state_location_id', 'city_location_id', 'state', 'city', 'area', 'address', 'latitude', 'longitude', 'registration_number', 'entity_type', 'years_in_business', 'business_hours', 'price_tier', 'is_claimed', 'is_verified', 'verification_level', 'verification_score', 'is_premium', 'status', 'avg_rating', 'total_reviews', 'total_views', 'total_leads', 'total_saves', 'user_id')
             ->firstOrFail();
         
         // Auto-detect referral source and page type using model methods
