@@ -69,6 +69,11 @@ class BusinessFilters extends Component
         $this->contextBusinessType = $businessType;
         $this->search = $search;
 
+        // Ensure array properties are arrays (in case they came from URL as strings)
+        $this->rating = is_array($this->rating) ? $this->rating : ($this->rating ? [$this->rating] : []);
+        $this->priceTier = is_array($this->priceTier) ? $this->priceTier : ($this->priceTier ? [$this->priceTier] : []);
+        $this->amenities = is_array($this->amenities) ? $this->amenities : ($this->amenities ? [$this->amenities] : []);
+
         // Pre-select filters based on context
         if ($location) {
             if ($location->type === 'state') {
@@ -114,11 +119,19 @@ class BusinessFilters extends Component
 
     public function updatedRating()
     {
+        // Ensure rating is always an array
+        if (!is_array($this->rating)) {
+            $this->rating = $this->rating ? [$this->rating] : [];
+        }
         $this->resetPage();
     }
 
     public function updatedPriceTier()
     {
+        // Ensure priceTier is always an array
+        if (!is_array($this->priceTier)) {
+            $this->priceTier = $this->priceTier ? [$this->priceTier] : [];
+        }
         $this->resetPage();
     }
 
