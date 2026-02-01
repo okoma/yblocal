@@ -35,6 +35,19 @@ class DiscoveryController extends Controller
         
         // Handle clean URL structure: /lagos, /hotels, /lagos/hotels
         if ($locationOrCategory) {
+            // IMPORTANT: If we have 2 segments, check if first is a business type
+            // If so, abort 404 to let the business detail route handle it
+            if ($category) {
+                $firstSegmentIsBusinessType = BusinessType::where('slug', $locationOrCategory)
+                    ->where('is_active', true)
+                    ->exists();
+                
+                if ($firstSegmentIsBusinessType) {
+                    // This looks like /{businessType}/{slug}, not a discovery route
+                    abort(404);
+                }
+            }
+            
             // Check if first segment is a location
             $location = Location::where('slug', $locationOrCategory)
                 ->where('is_active', true)
